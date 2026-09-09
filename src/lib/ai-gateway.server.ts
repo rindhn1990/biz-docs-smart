@@ -66,7 +66,7 @@ export async function callGateway(opts: {
 export function parseJsonBlock<T>(text: string): T | null {
   if (!text) return null;
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const candidate = (fenced ? fenced[1] : text).trim();
+  const candidate = (fenced?.[1] ?? text).trim();
   const start = candidate.indexOf("{");
   const end = candidate.lastIndexOf("}");
   if (start === -1 || end === -1) return null;

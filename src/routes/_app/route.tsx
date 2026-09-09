@@ -93,7 +93,7 @@ function AppLayout() {
               <DropdownMenuItem
                 onSelect={async () => {
                   await signOut();
-                  void navigate({ to: "/auth" });
+                  void navigate({ to: "/auth", search: { next: undefined } });
                 }}
               >
                 <LogOut className="mr-2 size-4" />
