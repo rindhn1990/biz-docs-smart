@@ -1,0 +1,200 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  Gavel,
+  FileSignature,
+  Wallet,
+  FileStack,
+  AlertTriangle,
+  TrendingUp,
+  ArrowRight,
+} from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
+import { KpiCard } from "@/components/KpiCard";
+import { StatusBadge } from "@/components/StatusBadge";
+import { useContracts, useDocuments, usePayments, useTenders } from "@/hooks/useData";
+import { contractAlert, CONTRACT_STATUS, DOC_STATUS } from "@/lib/domain";
+import { formatCompact, formatDate } from "@/lib/format";
+
+export const Route = createFileRoute("/_app/tong-quan")({
+  head: () => ({
+    meta: [
+      { title: "Tổng quan — OfficeFlow" },
+      {
+        name: "description",
+        content:
+          "Bảng điều khiển tổng quan: gói thầu, hợp đồng, thanh toán và hồ sơ đang chờ xử lý trong toàn doanh nghiệp.",
+      },
+      { property: "og:title", content: "Tổng quan — OfficeFlow" },
+      {
+        property: "og:description",
+        content: "Theo dõi toàn bộ hoạt động đấu thầu, hợp đồng và thanh toán trên một màn hình.",
+      },
+    ],
+  }),
+  component: Overview,
+});
+
+const MODULES = [
+  {
+    to: "/dau-thau",
+    title: "A · Thương mại – Đấu thầu",
+    desc: "Dashboard, hồ sơ, gói thầu, kết quả",
+    ready: true,
+  },
+  { to: "/hop-dong", title: "B · Hợp đồng", desc: "Theo dõi hạn, bảo lãnh, bảo hành", ready: true },
+  { to: "/thanh-toan", title: "C · Thanh toán", desc: "Đề nghị, duyệt, xuất hồ sơ", ready: true },
+  { to: "/ho-so", title: "D · Văn bản – Hồ sơ", desc: "Tải lên, nhận dạng, kiểm tra", ready: true },
+  { to: "/bao-cao", title: "E · Báo cáo – Thống kê", desc: "Theo kỳ, xuất Excel/CSV", ready: true },
+  { to: "/tai-lieu", title: "F · Quản lý tài liệu", desc: "Thư mục hồ sơ, phiên bản", ready: true },
+  { to: "/cai-dat", title: "G · Cài đặt hệ thống", desc: "Người dùng, quyền, cảnh báo", ready: true },
+];
+
+function Overview() {
+  const tenders = useTenders();
+  const contracts = useContracts();
+  const payments = usePayments();
+  const documents = useDocuments();
+
+  const t = tenders.data ?? [];
+  const c = contracts.data ?? [];
+  const p = payments.data ?? [];
+  const d = documents.data ?? [];
+
+  const expiring = c.filter((x) => {
+    const a = contractAlert(x.end_date);
+    return a && a.days >= 0 && a.days <= 90 && x.status !== "completed" && x.status !== "liquidated";
+  });
+  const pendingDocs = d.filter((x) => x.status === "pending_review");
+  const pendingPayments = p.filter((x) => x.status === "pending");
+
+  return (
+    <div>
+      <PageHeader
+        title="Tổng quan"
+        description="Bức tranh chung của toàn hệ thống. Chọn một phân hệ để đi sâu vào nghiệp vụ."
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard label="Gói thầu" value={t.length} icon={Gavel} sub={`${t.filter((x) => x.status === "won").length} gói trúng thầu`} />
+        <KpiCard
+          label="Hợp đồng đang thực hiện"
+          value={c.filter((x) => x.status === "in_progress").length}
+          icon={FileSignature}
+          tone="info"
+          sub={`${c.length} hợp đồng trong hệ thống`}
+        />
+        <KpiCard
+          label="Hồ sơ chờ kiểm tra"
+          value={pendingDocs.length}
+          icon={FileStack}
+          tone="warning"
+          sub="Cần người dùng xác nhận dữ liệu"
+        />
+        <KpiCard
+          label="Thanh toán chờ duyệt"
+          value={pendingPayments.length}
+          icon={Wallet}
+          tone={pendingPayments.length ? "warning" : "default"}
+          sub={`${formatCompact(pendingPayments.reduce((s, x) => s + Number(x.total_amount ?? 0), 0))} VNĐ`}
+        />
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <section className="panel lg:col-span-2">
+          <header className="flex items-center justify-between border-b border-border px-4 py-3">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <AlertTriangle className="size-4 text-warning-foreground" />
+              Hợp đồng sắp đến hạn
+            </h2>
+            <Link to="/hop-dong" className="text-xs text-primary hover:underline">
+              Xem tất cả
+            </Link>
+          </header>
+          {expiring.length === 0 ? (
+            <p className="px-4 py-10 text-center text-sm text-muted-foreground">
+              Không có hợp đồng nào đến hạn trong 90 ngày tới.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {expiring.slice(0, 6).map((x) => {
+                const alert = contractAlert(x.end_date)!;
+                return (
+                  <li key={x.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{x.contract_number}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {x.customers?.name ?? "Chưa gán khách hàng"} · hết hạn {formatDate(x.end_date)}
+                      </p>
+                    </div>
+                    <StatusBadge tone={alert.tone}>{alert.label}</StatusBadge>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+        <section className="panel">
+          <header className="flex items-center justify-between border-b border-border px-4 py-3">
+            <h2 className="text-sm font-semibold">Hồ sơ mới nhất</h2>
+            <Link to="/ho-so" className="text-xs text-primary hover:underline">
+              Xử lý
+            </Link>
+          </header>
+          {d.length === 0 ? (
+            <p className="px-4 py-10 text-center text-sm text-muted-foreground">
+              Chưa có tài liệu nào được tải lên.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {d.slice(0, 6).map((x) => (
+                <li key={x.id} className="px-4 py-3">
+                  <p className="truncate text-sm">{x.file_name}</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <StatusBadge tone={DOC_STATUS[x.status]?.tone}>
+                      {DOC_STATUS[x.status]?.label ?? x.status}
+                    </StatusBadge>
+                    <span className="text-xs text-muted-foreground">{formatDate(x.created_at)}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+
+      <h2 className="mb-3 mt-8 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <TrendingUp className="size-4" />
+        Các phân hệ
+      </h2>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {MODULES.map((m) => (
+          <Link
+            key={m.to}
+            to={m.to}
+            className="panel group flex flex-col justify-between gap-4 p-4 transition-shadow hover:shadow-[var(--shadow-raised)]"
+          >
+            <div>
+              <p className="text-sm font-semibold">{m.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{m.desc}</p>
+            </div>
+            <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        ))}
+      </div>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        {(["not_started", "in_progress", "completed"] as const).map((s) => (
+          <div key={s} className="panel p-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              {CONTRACT_STATUS[s].label}
+            </p>
+            <p className="num mt-1 text-xl font-semibold">
+              {c.filter((x) => x.status === s).length}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
