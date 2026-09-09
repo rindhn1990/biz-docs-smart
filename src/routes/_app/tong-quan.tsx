@@ -187,7 +187,7 @@ function Overview() {
         {(["not_started", "in_progress", "completed"] as const).map((s) => (
           <div key={s} className="panel p-4">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              {CONTRACT_STATUS[s].label}
+              {CONTRACT_STATUS[s]?.label}
             </p>
             <p className="num mt-1 text-xl font-semibold">
               {c.filter((x) => x.status === s).length}
