@@ -141,7 +141,7 @@ function Overview() {
         <section className="panel">
           <header className="flex items-center justify-between border-b border-border px-4 py-3">
             <h2 className="text-sm font-semibold">Hồ sơ mới nhất</h2>
-            <Link to="/ho-so" className="text-xs text-primary hover:underline">
+            <Link to="/ho-so-dau-thau" className="text-xs text-primary hover:underline">
               Xử lý
             </Link>
           </header>
@@ -172,19 +172,36 @@ function Overview() {
         Các phân hệ
       </h2>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {MODULES.map((m) => (
-          <Link
-            key={m.to}
-            to={m.to}
-            className="panel group flex flex-col justify-between gap-4 p-4 transition-shadow hover:shadow-[var(--shadow-raised)]"
-          >
-            <div>
-              <p className="text-sm font-semibold">{m.title}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{m.desc}</p>
+        {MODULES.map((m) =>
+          m.ready ? (
+            <Link
+              key={m.title}
+              to={m.to}
+              className="panel group flex flex-col justify-between gap-4 p-4 transition-shadow hover:shadow-[var(--shadow-raised)]"
+            >
+              <div>
+                <p className="text-sm font-semibold">{m.title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{m.desc}</p>
+              </div>
+              <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          ) : (
+            <div
+              key={m.title}
+              aria-disabled="true"
+              className="panel flex cursor-not-allowed flex-col justify-between gap-4 p-4 opacity-60"
+            >
+              <div>
+                <p className="text-sm font-semibold">{m.title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{m.desc}</p>
+              </div>
+              <span className="inline-flex w-fit items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                <Lock className="size-2.5" />
+                Sắp mở rộng
+              </span>
             </div>
-            <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-          </Link>
-        ))}
+          ),
+        )}
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
