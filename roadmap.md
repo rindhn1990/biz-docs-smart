@@ -14,3 +14,9 @@
 - Pipeline OCR/AI thật thay cho giả lập
 - Thanh toán, Báo cáo, Quản lý tài liệu, Cài đặt
 - Nhân sự, Mua sắm, Tài sản, Công văn, Kế toán, Quản lý dự án
+
+## Module Hợp đồng nhân sự (xong)
+- [x] Bảng employees, employee_contracts, employee_documents, employee_document_fields + dữ liệu mẫu
+- [x] /nhan-su, /nhan-su/$documentId, /nhan-su/hop-dong
+- [x] Tab Đấu thầu / Hợp đồng nhân sự + sidebar theo tab
+- [x] Mẫu "Hợp đồng lao động" trong Mẫu văn bản
