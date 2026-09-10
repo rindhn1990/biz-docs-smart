@@ -2,45 +2,38 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Building2,
   LayoutDashboard,
-  Gavel,
-  FileSignature,
-  Wallet,
-  FolderOpen,
-  BarChart3,
-  Settings,
   FileStack,
-  CalendarDays,
   FileText,
-  Sparkles,
+  FileSignature,
+  ScrollText,
+  BarChart3,
+  FolderOpen,
+  Settings,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Item = { to: string; label: string; icon: React.ElementType };
+type ActiveItem = { to: string; label: string; icon: React.ElementType; locked?: false };
+type LockedItem = { label: string; icon: React.ElementType; locked: true };
+type Item = ActiveItem | LockedItem;
 
 const groups: { title: string; items: Item[] }[] = [
   {
-    title: "Tổng quan",
-    items: [{ to: "/tong-quan", label: "Bảng điều khiển", icon: LayoutDashboard }],
-  },
-  {
-    title: "Thương mại – Đấu thầu",
+    title: "MVP – Giai đoạn 1",
     items: [
-      { to: "/dau-thau", label: "Dashboard đấu thầu", icon: BarChart3 },
-      { to: "/ho-so", label: "Hồ sơ đấu thầu", icon: FileStack },
-      { to: "/goi-thau", label: "Gói thầu", icon: Gavel },
+      { to: "/tong-quan", label: "Tổng quan", icon: LayoutDashboard },
+      { to: "/ho-so-dau-thau", label: "Hồ sơ đấu thầu", icon: FileStack },
+      { to: "/mau-van-ban", label: "Mẫu văn bản", icon: FileText },
       { to: "/hop-dong", label: "Hợp đồng", icon: FileSignature },
-      { to: "/lich-hop-dong", label: "Lịch hợp đồng", icon: CalendarDays },
-      { to: "/thanh-toan", label: "Thanh toán", icon: Wallet },
     ],
   },
   {
-    title: "Văn phòng",
+    title: "Sắp mở rộng",
     items: [
-      { to: "/tai-lieu", label: "Tài liệu", icon: FolderOpen },
-      { to: "/bieu-mau", label: "Biểu mẫu", icon: FileText },
-      { to: "/tro-ly", label: "Trợ lý AI", icon: Sparkles },
-      { to: "/bao-cao", label: "Báo cáo", icon: BarChart3 },
-      { to: "/cai-dat", label: "Cài đặt", icon: Settings },
+      { label: "Văn bản – Hồ sơ", icon: ScrollText, locked: true },
+      { label: "Báo cáo – Thống kê", icon: BarChart3, locked: true },
+      { label: "Quản lý tài liệu", icon: FolderOpen, locked: true },
+      { label: "Cài đặt hệ thống", icon: Settings, locked: true },
     ],
   },
 ];
@@ -69,6 +62,23 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
             </p>
             <ul className="space-y-0.5">
               {group.items.map((item) => {
+                if (item.locked) {
+                  return (
+                    <li key={item.label}>
+                      <span
+                        aria-disabled="true"
+                        className="flex cursor-not-allowed items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-sidebar-foreground/40"
+                      >
+                        <item.icon className="size-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                        <span className="ml-auto inline-flex items-center gap-1 rounded border border-sidebar-border px-1.5 py-0.5 text-[10px] text-sidebar-foreground/45">
+                          <Lock className="size-2.5" />
+                          Sắp mở rộng
+                        </span>
+                      </span>
+                    </li>
+                  );
+                }
                 const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
                 return (
                   <li key={item.to}>

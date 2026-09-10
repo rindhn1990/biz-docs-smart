@@ -11,7 +11,9 @@ import {
   CommandList,
 } from "@/components/ui/command";
 
-type Hit = { id: string; label: string; sub: string; to: string };
+type Hit =
+  | { kind: "document"; id: string; label: string; sub: string }
+  | { kind: "contract"; id: string; label: string; sub: string };
 
 export function GlobalSearch() {
   const [open, setOpen] = useState(false);
@@ -38,62 +40,45 @@ export function GlobalSearch() {
     }
     const t = setTimeout(async () => {
       const like = `%${q}%`;
-      const [tenders, contracts, customers, docs, projects] = await Promise.all([
-        supabase.from("tenders").select("id,code,name").or(`name.ilike.${like},code.ilike.${like}`).limit(5),
+      const [docs, contracts] = await Promise.all([
+        supabase
+          .from("documents")
+          .select("id,file_name,ocr_text")
+          .or(`file_name.ilike.${like},ocr_text.ilike.${like}`)
+          .limit(8),
         supabase
           .from("contracts")
           .select("id,contract_number,title")
           .or(`contract_number.ilike.${like},title.ilike.${like}`)
           .limit(5),
-        supabase
-          .from("customers")
-          .select("id,name,tax_code")
-          .or(`name.ilike.${like},tax_code.ilike.${like}`)
-          .limit(5),
-        supabase
-          .from("documents")
-          .select("id,file_name,ocr_text")
-          .or(`file_name.ilike.${like},ocr_text.ilike.${like}`)
-          .limit(6),
-        supabase.from("projects").select("id,name,code").or(`name.ilike.${like},code.ilike.${like}`).limit(5),
       ]);
 
-      const result: Hit[] = [
-        ...(tenders.data ?? []).map((t) => ({
-          id: `t-${t.id}`,
-          label: t.name,
-          sub: `Gói thầu · ${t.code ?? "—"}`,
-          to: `/goi-thau/${t.id}`,
+      setHits([
+        ...(docs.data ?? []).map((d) => ({
+          kind: "document" as const,
+          id: d.id,
+          label: d.file_name,
+          sub: "Hồ sơ đấu thầu · tìm cả nội dung đã nhận dạng",
         })),
         ...(contracts.data ?? []).map((c) => ({
-          id: `c-${c.id}`,
+          kind: "contract" as const,
+          id: c.id,
           label: c.contract_number,
           sub: `Hợp đồng · ${c.title ?? ""}`,
-          to: `/hop-dong/${c.id}`,
         })),
-        ...(projects.data ?? []).map((p) => ({
-          id: `p-${p.id}`,
-          label: p.name,
-          sub: `Dự án · ${p.code ?? "—"}`,
-          to: `/tai-lieu`,
-        })),
-        ...(customers.data ?? []).map((c) => ({
-          id: `k-${c.id}`,
-          label: c.name,
-          sub: `Khách hàng · MST ${c.tax_code ?? "—"}`,
-          to: `/cai-dat`,
-        })),
-        ...(docs.data ?? []).map((d) => ({
-          id: `d-${d.id}`,
-          label: d.file_name,
-          sub: "Tài liệu · tìm cả nội dung đã nhận dạng",
-          to: `/ho-so/${d.id}`,
-        })),
-      ];
-      setHits(result);
+      ]);
     }, 250);
     return () => clearTimeout(t);
   }, [term]);
+
+  const openHit = (h: Hit) => {
+    setOpen(false);
+    if (h.kind === "document") {
+      void navigate({ to: "/ho-so-dau-thau/$documentId", params: { documentId: h.id } });
+    } else {
+      void navigate({ to: "/hop-dong" });
+    }
+  };
 
   return (
     <>
@@ -103,18 +88,14 @@ export function GlobalSearch() {
         className="flex h-9 w-full max-w-md items-center gap-2 rounded-md border border-input bg-card px-3 text-sm text-muted-foreground transition-colors hover:bg-accent/40"
       >
         <Search className="size-4" />
-        <span className="truncate">Tìm dự án, hợp đồng, gói thầu, nội dung tài liệu…</span>
+        <span className="truncate">Tìm hồ sơ, hợp đồng, nội dung tài liệu…</span>
         <kbd className="ml-auto hidden rounded border border-border px-1.5 text-[10px] sm:inline">
           Ctrl K
         </kbd>
       </button>
 
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput
-          placeholder="Nhập từ khóa…"
-          value={term}
-          onValueChange={setTerm}
-        />
+        <CommandInput placeholder="Nhập từ khóa…" value={term} onValueChange={setTerm} />
         <CommandList>
           <CommandEmpty>
             {term.length < 2 ? "Nhập ít nhất 2 ký tự." : "Không tìm thấy kết quả nào."}
@@ -123,12 +104,9 @@ export function GlobalSearch() {
             <CommandGroup heading="Kết quả">
               {hits.map((h) => (
                 <CommandItem
-                  key={h.id}
+                  key={`${h.kind}-${h.id}`}
                   value={`${h.label} ${h.sub} ${h.id}`}
-                  onSelect={() => {
-                    setOpen(false);
-                    void navigate({ to: h.to });
-                  }}
+                  onSelect={() => openHit(h)}
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm">{h.label}</p>
