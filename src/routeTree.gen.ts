@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AppTongQuanRouteImport } from './routes/_app/tong-quan'
+import { Route as AppHoSoDauThauIndexRouteImport } from './routes/_app/ho-so-dau-thau/index'
+import { Route as AppHoSoDauThauDocumentIdRouteImport } from './routes/_app/ho-so-dau-thau/$documentId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -33,16 +35,31 @@ const AppTongQuanRoute = AppTongQuanRouteImport.update({
   path: '/tong-quan',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppHoSoDauThauIndexRoute = AppHoSoDauThauIndexRouteImport.update({
+  id: '/ho-so-dau-thau/',
+  path: '/ho-so-dau-thau/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppHoSoDauThauDocumentIdRoute =
+  AppHoSoDauThauDocumentIdRouteImport.update({
+    id: '/ho-so-dau-thau/$documentId',
+    path: '/ho-so-dau-thau/$documentId',
+    getParentRoute: () => AppRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/tong-quan': typeof AppTongQuanRoute
+  '/ho-so-dau-thau/$documentId': typeof AppHoSoDauThauDocumentIdRoute
+  '/ho-so-dau-thau/': typeof AppHoSoDauThauIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/tong-quan': typeof AppTongQuanRoute
+  '/ho-so-dau-thau/$documentId': typeof AppHoSoDauThauDocumentIdRoute
+  '/ho-so-dau-thau': typeof AppHoSoDauThauIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -50,13 +67,32 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_app/tong-quan': typeof AppTongQuanRoute
+  '/_app/ho-so-dau-thau/$documentId': typeof AppHoSoDauThauDocumentIdRoute
+  '/_app/ho-so-dau-thau/': typeof AppHoSoDauThauIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/tong-quan'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/tong-quan'
+    | '/ho-so-dau-thau/$documentId'
+    | '/ho-so-dau-thau/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/tong-quan'
-  id: '__root__' | '/' | '/_app' | '/auth' | '/_app/tong-quan'
+  to:
+    | '/'
+    | '/auth'
+    | '/tong-quan'
+    | '/ho-so-dau-thau/$documentId'
+    | '/ho-so-dau-thau'
+  id:
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/auth'
+    | '/_app/tong-quan'
+    | '/_app/ho-so-dau-thau/$documentId'
+    | '/_app/ho-so-dau-thau/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -95,15 +131,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTongQuanRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/_app/ho-so-dau-thau/': {
+      id: '/_app/ho-so-dau-thau/'
+      path: '/ho-so-dau-thau'
+      fullPath: '/ho-so-dau-thau/'
+      preLoaderRoute: typeof AppHoSoDauThauIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/_app/ho-so-dau-thau/$documentId': {
+      id: '/_app/ho-so-dau-thau/$documentId'
+      path: '/ho-so-dau-thau/$documentId'
+      fullPath: '/ho-so-dau-thau/$documentId'
+      preLoaderRoute: typeof AppHoSoDauThauDocumentIdRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
   }
 }
 
 interface AppRouteRouteChildren {
   AppTongQuanRoute: typeof AppTongQuanRoute
+  AppHoSoDauThauDocumentIdRoute: typeof AppHoSoDauThauDocumentIdRoute
+  AppHoSoDauThauIndexRoute: typeof AppHoSoDauThauIndexRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppTongQuanRoute: AppTongQuanRoute,
+  AppHoSoDauThauDocumentIdRoute: AppHoSoDauThauDocumentIdRoute,
+  AppHoSoDauThauIndexRoute: AppHoSoDauThauIndexRoute,
 }
 
 const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(

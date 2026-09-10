@@ -30,6 +30,7 @@ export const Route = createFileRoute("/_app/ho-so-dau-thau/$documentId")({
 
 type FieldRow = {
   id: string;
+  document_id: string;
   field_key: string;
   label: string;
   value: string | null;
