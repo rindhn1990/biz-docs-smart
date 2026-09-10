@@ -34,19 +34,23 @@ export const Route = createFileRoute("/_app/tong-quan")({
   component: Overview,
 });
 
-const MODULES = [
+type Module =
+  | { to: string; title: string; desc: string; ready: true }
+  | { title: string; desc: string; ready: false };
+
+const MODULES: Module[] = [
   {
-    to: "/dau-thau",
-    title: "A · Thương mại – Đấu thầu",
-    desc: "Dashboard, hồ sơ, gói thầu, kết quả",
+    to: "/ho-so-dau-thau",
+    title: "Hồ sơ đấu thầu",
+    desc: "Tải lên, nhận dạng, kiểm tra dữ liệu",
     ready: true,
   },
-  { to: "/hop-dong", title: "B · Hợp đồng", desc: "Theo dõi hạn, bảo lãnh, bảo hành", ready: true },
-  { to: "/thanh-toan", title: "C · Thanh toán", desc: "Đề nghị, duyệt, xuất hồ sơ", ready: true },
-  { to: "/ho-so", title: "D · Văn bản – Hồ sơ", desc: "Tải lên, nhận dạng, kiểm tra", ready: true },
-  { to: "/bao-cao", title: "E · Báo cáo – Thống kê", desc: "Theo kỳ, xuất Excel/CSV", ready: true },
-  { to: "/tai-lieu", title: "F · Quản lý tài liệu", desc: "Thư mục hồ sơ, phiên bản", ready: true },
-  { to: "/cai-dat", title: "G · Cài đặt hệ thống", desc: "Người dùng, quyền, cảnh báo", ready: true },
+  { to: "/mau-van-ban", title: "Mẫu văn bản", desc: "Ánh xạ trường, điền tự động", ready: true },
+  { to: "/hop-dong", title: "Hợp đồng", desc: "Theo dõi hạn, cảnh báo màu", ready: true },
+  { title: "Văn bản – Hồ sơ", desc: "Luồng công văn đến/đi", ready: false },
+  { title: "Báo cáo – Thống kê", desc: "Theo kỳ, xuất Excel/CSV", ready: false },
+  { title: "Quản lý tài liệu", desc: "Thư mục hồ sơ, phiên bản", ready: false },
+  { title: "Cài đặt hệ thống", desc: "Người dùng, quyền, cảnh báo", ready: false },
 ];
 
 function Overview() {

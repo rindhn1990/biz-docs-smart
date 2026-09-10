@@ -87,8 +87,11 @@ function AppLayout() {
                 </p>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => void navigate({ to: "/cai-dat" })}>
+              <DropdownMenuItem disabled className="justify-between">
                 Cài đặt & tài khoản
+                <span className="ml-2 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  Sắp mở rộng
+                </span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={async () => {
