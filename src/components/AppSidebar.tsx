@@ -73,6 +73,30 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
         <span className="font-display text-base font-semibold">OfficeFlow</span>
       </Link>
 
+      <div className="border-b border-sidebar-border px-3 py-3">
+        <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">
+          Phân hệ
+        </p>
+        <div className="grid gap-1">
+          {MODULE_TABS.map((tab) => (
+            <Link
+              key={tab.key}
+              to={tab.to}
+              onClick={onNavigate}
+              className={cn(
+                "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
+                tab.key === activeModule
+                  ? "bg-sidebar-primary font-medium text-sidebar-primary-foreground"
+                  : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+              )}
+            >
+              <tab.icon className="size-4 shrink-0" />
+              <span className="truncate">{tab.label}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+
       <div className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
         {groups.map((group) => (
           <div key={group.title}>
@@ -98,7 +122,10 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
                     </li>
                   );
                 }
-                const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
+                const active =
+                  item.to === "/nhan-su"
+                    ? pathname === "/nhan-su" || /^\/nhan-su\/(?!hop-dong$)/.test(pathname)
+                    : pathname === item.to || pathname.startsWith(`${item.to}/`);
                 return (
                   <li key={item.to}>
                     <Link
