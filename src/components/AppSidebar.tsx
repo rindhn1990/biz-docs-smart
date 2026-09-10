@@ -10,14 +10,27 @@ import {
   FolderOpen,
   Settings,
   Lock,
+  Users,
+  IdCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MODULE_TABS, currentModule } from "@/components/ModuleTabs";
 
 type ActiveItem = { to: string; label: string; icon: React.ElementType; locked?: false };
 type LockedItem = { label: string; icon: React.ElementType; locked: true };
 type Item = ActiveItem | LockedItem;
 
-const groups: { title: string; items: Item[] }[] = [
+const lockedGroup: { title: string; items: Item[] } = {
+  title: "Sắp mở rộng",
+  items: [
+    { label: "Văn bản – Hồ sơ", icon: ScrollText, locked: true },
+    { label: "Báo cáo – Thống kê", icon: BarChart3, locked: true },
+    { label: "Quản lý tài liệu", icon: FolderOpen, locked: true },
+    { label: "Cài đặt hệ thống", icon: Settings, locked: true },
+  ],
+};
+
+const tenderGroups: { title: string; items: Item[] }[] = [
   {
     title: "MVP – Giai đoạn 1",
     items: [
@@ -27,19 +40,25 @@ const groups: { title: string; items: Item[] }[] = [
       { to: "/hop-dong", label: "Hợp đồng", icon: FileSignature },
     ],
   },
+  lockedGroup,
+];
+
+const hrGroups: { title: string; items: Item[] }[] = [
   {
-    title: "Sắp mở rộng",
+    title: "Hợp đồng nhân sự",
     items: [
-      { label: "Văn bản – Hồ sơ", icon: ScrollText, locked: true },
-      { label: "Báo cáo – Thống kê", icon: BarChart3, locked: true },
-      { label: "Quản lý tài liệu", icon: FolderOpen, locked: true },
-      { label: "Cài đặt hệ thống", icon: Settings, locked: true },
+      { to: "/nhan-su", label: "Hồ sơ nhân sự", icon: IdCard },
+      { to: "/nhan-su/hop-dong", label: "Hợp đồng nhân sự", icon: Users },
+      { to: "/mau-van-ban", label: "Mẫu văn bản", icon: FileText },
     ],
   },
+  lockedGroup,
 ];
 
 export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const activeModule = currentModule(pathname);
+  const groups = activeModule === "nhan-su" ? hrGroups : tenderGroups;
 
   return (
     <nav className="flex h-full w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
@@ -53,6 +72,30 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
         </span>
         <span className="font-display text-base font-semibold">OfficeFlow</span>
       </Link>
+
+      <div className="border-b border-sidebar-border px-3 py-3">
+        <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">
+          Phân hệ
+        </p>
+        <div className="grid gap-1">
+          {MODULE_TABS.map((tab) => (
+            <Link
+              key={tab.key}
+              to={tab.to}
+              onClick={onNavigate}
+              className={cn(
+                "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
+                tab.key === activeModule
+                  ? "bg-sidebar-primary font-medium text-sidebar-primary-foreground"
+                  : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+              )}
+            >
+              <tab.icon className="size-4 shrink-0" />
+              <span className="truncate">{tab.label}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
 
       <div className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
         {groups.map((group) => (
@@ -79,7 +122,10 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
                     </li>
                   );
                 }
-                const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
+                const active =
+                  item.to === "/nhan-su"
+                    ? pathname === "/nhan-su" || /^\/nhan-su\/(?!hop-dong$)/.test(pathname)
+                    : pathname === item.to || pathname.startsWith(`${item.to}/`);
                 return (
                   <li key={item.to}>
                     <Link

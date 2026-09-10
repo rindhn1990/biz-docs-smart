@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
+import { ModuleTabs } from "@/components/ModuleTabs";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useContracts, useDocuments, usePayments, useTenders } from "@/hooks/useData";
 import { contractAlert, CONTRACT_STATUS, DOC_STATUS } from "@/lib/domain";
@@ -78,6 +79,9 @@ function Overview() {
         title="Tổng quan"
         description="Bức tranh chung của toàn hệ thống. Chọn một phân hệ để đi sâu vào nghiệp vụ."
       />
+
+      <ModuleTabs />
+
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard label="Gói thầu" value={t.length} icon={Gavel} sub={`${t.filter((x) => x.status === "won").length} gói trúng thầu`} />
