@@ -532,6 +532,249 @@ export type Database = {
           },
         ]
       }
+      employee_contracts: {
+        Row: {
+          base_salary: number | null
+          contract_number: string
+          contract_type: string | null
+          created_at: string
+          created_by: string | null
+          employee_id: string | null
+          end_date: string | null
+          id: string
+          notes: string | null
+          position: string | null
+          start_date: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          base_salary?: number | null
+          contract_number: string
+          contract_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string | null
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          position?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          base_salary?: number | null
+          contract_number?: string
+          contract_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string | null
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          position?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_contracts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_document_fields: {
+        Row: {
+          bbox_height: number | null
+          bbox_left: number | null
+          bbox_top: number | null
+          bbox_width: number | null
+          confidence: number
+          created_at: string
+          created_by: string | null
+          document_id: string
+          field_key: string
+          id: string
+          label: string
+          needs_review: boolean
+          sort_order: number
+          source_page: number | null
+          updated_at: string
+          updated_by: string | null
+          value: string | null
+        }
+        Insert: {
+          bbox_height?: number | null
+          bbox_left?: number | null
+          bbox_top?: number | null
+          bbox_width?: number | null
+          confidence?: number
+          created_at?: string
+          created_by?: string | null
+          document_id: string
+          field_key: string
+          id?: string
+          label: string
+          needs_review?: boolean
+          sort_order?: number
+          source_page?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          value?: string | null
+        }
+        Update: {
+          bbox_height?: number | null
+          bbox_left?: number | null
+          bbox_top?: number | null
+          bbox_width?: number | null
+          confidence?: number
+          created_at?: string
+          created_by?: string | null
+          document_id?: string
+          field_key?: string
+          id?: string
+          label?: string
+          needs_review?: boolean
+          sort_order?: number
+          source_page?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_document_fields_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "employee_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_documents: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          doc_type: string
+          employee_id: string | null
+          file_name: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          notes: string | null
+          page_count: number | null
+          status: Database["public"]["Enums"]["doc_status"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          doc_type: string
+          employee_id?: string | null
+          file_name: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          page_count?: number | null
+          status?: Database["public"]["Enums"]["doc_status"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          doc_type?: string
+          employee_id?: string | null
+          file_name?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          page_count?: number | null
+          status?: Database["public"]["Enums"]["doc_status"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_documents_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date_of_birth: string | null
+          degree_issue_date: string | null
+          degree_major: string | null
+          degree_name: string | null
+          degree_school: string | null
+          department: string | null
+          full_name: string
+          hometown: string | null
+          id: string
+          id_issue_date: string | null
+          id_issue_place: string | null
+          id_number: string | null
+          position: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date_of_birth?: string | null
+          degree_issue_date?: string | null
+          degree_major?: string | null
+          degree_name?: string | null
+          degree_school?: string | null
+          department?: string | null
+          full_name: string
+          hometown?: string | null
+          id?: string
+          id_issue_date?: string | null
+          id_issue_place?: string | null
+          id_number?: string | null
+          position?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date_of_birth?: string | null
+          degree_issue_date?: string | null
+          degree_major?: string | null
+          degree_name?: string | null
+          degree_school?: string | null
+          department?: string | null
+          full_name?: string
+          hometown?: string | null
+          id?: string
+          id_issue_date?: string | null
+          id_issue_place?: string | null
+          id_number?: string | null
+          position?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string | null
