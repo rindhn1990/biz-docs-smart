@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   TrendingUp,
   ArrowRight,
+  Lock,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
@@ -34,19 +35,23 @@ export const Route = createFileRoute("/_app/tong-quan")({
   component: Overview,
 });
 
-const MODULES = [
+type Module =
+  | { to: string; title: string; desc: string; ready: true }
+  | { title: string; desc: string; ready: false };
+
+const MODULES: Module[] = [
   {
-    to: "/dau-thau",
-    title: "A · Thương mại – Đấu thầu",
-    desc: "Dashboard, hồ sơ, gói thầu, kết quả",
+    to: "/ho-so-dau-thau",
+    title: "Hồ sơ đấu thầu",
+    desc: "Tải lên, nhận dạng, kiểm tra dữ liệu",
     ready: true,
   },
-  { to: "/hop-dong", title: "B · Hợp đồng", desc: "Theo dõi hạn, bảo lãnh, bảo hành", ready: true },
-  { to: "/thanh-toan", title: "C · Thanh toán", desc: "Đề nghị, duyệt, xuất hồ sơ", ready: true },
-  { to: "/ho-so", title: "D · Văn bản – Hồ sơ", desc: "Tải lên, nhận dạng, kiểm tra", ready: true },
-  { to: "/bao-cao", title: "E · Báo cáo – Thống kê", desc: "Theo kỳ, xuất Excel/CSV", ready: true },
-  { to: "/tai-lieu", title: "F · Quản lý tài liệu", desc: "Thư mục hồ sơ, phiên bản", ready: true },
-  { to: "/cai-dat", title: "G · Cài đặt hệ thống", desc: "Người dùng, quyền, cảnh báo", ready: true },
+  { to: "/mau-van-ban", title: "Mẫu văn bản", desc: "Ánh xạ trường, điền tự động", ready: true },
+  { to: "/hop-dong", title: "Hợp đồng", desc: "Theo dõi hạn, cảnh báo màu", ready: true },
+  { title: "Văn bản – Hồ sơ", desc: "Luồng công văn đến/đi", ready: false },
+  { title: "Báo cáo – Thống kê", desc: "Theo kỳ, xuất Excel/CSV", ready: false },
+  { title: "Quản lý tài liệu", desc: "Thư mục hồ sơ, phiên bản", ready: false },
+  { title: "Cài đặt hệ thống", desc: "Người dùng, quyền, cảnh báo", ready: false },
 ];
 
 function Overview() {
@@ -137,7 +142,7 @@ function Overview() {
         <section className="panel">
           <header className="flex items-center justify-between border-b border-border px-4 py-3">
             <h2 className="text-sm font-semibold">Hồ sơ mới nhất</h2>
-            <Link to="/ho-so" className="text-xs text-primary hover:underline">
+            <Link to="/ho-so-dau-thau" className="text-xs text-primary hover:underline">
               Xử lý
             </Link>
           </header>
@@ -168,19 +173,36 @@ function Overview() {
         Các phân hệ
       </h2>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {MODULES.map((m) => (
-          <Link
-            key={m.to}
-            to={m.to}
-            className="panel group flex flex-col justify-between gap-4 p-4 transition-shadow hover:shadow-[var(--shadow-raised)]"
-          >
-            <div>
-              <p className="text-sm font-semibold">{m.title}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{m.desc}</p>
+        {MODULES.map((m) =>
+          m.ready ? (
+            <Link
+              key={m.title}
+              to={m.to}
+              className="panel group flex flex-col justify-between gap-4 p-4 transition-shadow hover:shadow-[var(--shadow-raised)]"
+            >
+              <div>
+                <p className="text-sm font-semibold">{m.title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{m.desc}</p>
+              </div>
+              <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          ) : (
+            <div
+              key={m.title}
+              aria-disabled="true"
+              className="panel flex cursor-not-allowed flex-col justify-between gap-4 p-4 opacity-60"
+            >
+              <div>
+                <p className="text-sm font-semibold">{m.title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{m.desc}</p>
+              </div>
+              <span className="inline-flex w-fit items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                <Lock className="size-2.5" />
+                Sắp mở rộng
+              </span>
             </div>
-            <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-          </Link>
-        ))}
+          ),
+        )}
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
