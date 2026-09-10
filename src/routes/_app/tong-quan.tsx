@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   TrendingUp,
   ArrowRight,
+  Lock,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
