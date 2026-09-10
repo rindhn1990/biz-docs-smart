@@ -314,6 +314,74 @@ export type Database = {
           },
         ]
       }
+      document_fields: {
+        Row: {
+          bbox_height: number | null
+          bbox_left: number | null
+          bbox_top: number | null
+          bbox_width: number | null
+          confidence: number
+          created_at: string
+          created_by: string | null
+          document_id: string
+          field_key: string
+          id: string
+          label: string
+          needs_review: boolean
+          sort_order: number
+          source_page: number | null
+          updated_at: string
+          updated_by: string | null
+          value: string | null
+        }
+        Insert: {
+          bbox_height?: number | null
+          bbox_left?: number | null
+          bbox_top?: number | null
+          bbox_width?: number | null
+          confidence?: number
+          created_at?: string
+          created_by?: string | null
+          document_id: string
+          field_key: string
+          id?: string
+          label: string
+          needs_review?: boolean
+          sort_order?: number
+          source_page?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          value?: string | null
+        }
+        Update: {
+          bbox_height?: number | null
+          bbox_left?: number | null
+          bbox_top?: number | null
+          bbox_width?: number | null
+          confidence?: number
+          created_at?: string
+          created_by?: string | null
+          document_id?: string
+          field_key?: string
+          id?: string
+          label?: string
+          needs_review?: boolean
+          sort_order?: number
+          source_page?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_fields_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_types: {
         Row: {
           code: string
@@ -727,6 +795,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "template_fields_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      template_mappings: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          label: string
+          placeholder: string
+          sort_order: number
+          source_field: string | null
+          template_id: string
+          updated_at: string
+          updated_by: string | null
+          value: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label: string
+          placeholder: string
+          sort_order?: number
+          source_field?: string | null
+          template_id: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string
+          placeholder?: string
+          sort_order?: number
+          source_field?: string | null
+          template_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_mappings_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "templates"
