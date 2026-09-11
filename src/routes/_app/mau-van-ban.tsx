@@ -231,6 +231,19 @@ function TemplatesPage() {
                 if (file) void handleUploadDocx(file);
               }}
             />
+            <select
+              value={uploadMethod}
+              onChange={(e) => setUploadMethod(e.target.value as TenderMethod)}
+              aria-label="Hình thức lựa chọn nhà thầu cho mẫu tải lên"
+              className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+            >
+              {TENDER_METHODS.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+
             <button
               type="button"
               disabled={!canWrite || busy !== null}
