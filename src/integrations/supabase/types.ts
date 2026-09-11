@@ -80,6 +80,63 @@ export type Database = {
         }
         Relationships: []
       }
+      contractors: {
+        Row: {
+          address: string | null
+          bank_account: string | null
+          bank_name: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          representative: string | null
+          representative_title: string | null
+          source: string
+          tax_code: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          address?: string | null
+          bank_account?: string | null
+          bank_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          representative?: string | null
+          representative_title?: string | null
+          source?: string
+          tax_code?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          address?: string | null
+          bank_account?: string | null
+          bank_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          representative?: string | null
+          representative_title?: string | null
+          source?: string
+          tax_code?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       contracts: {
         Row: {
           acceptance_date: string | null
@@ -1172,6 +1229,226 @@ export type Database = {
           },
         ]
       }
+      tender_contractors: {
+        Row: {
+          contractor_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          price: number | null
+          role: string
+          sort_order: number
+          tender_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          contractor_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          price?: number | null
+          role?: string
+          sort_order?: number
+          tender_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          contractor_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          price?: number | null
+          role?: string
+          sort_order?: number
+          tender_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tender_contractors_contractor_id_fkey"
+            columns: ["contractor_id"]
+            isOneToOne: false
+            referencedRelation: "contractors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tender_contractors_tender_id_fkey"
+            columns: ["tender_id"]
+            isOneToOne: false
+            referencedRelation: "tenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tender_data: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data: Json
+          id: string
+          tender_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          id?: string
+          tender_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          id?: string
+          tender_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tender_data_tender_id_fkey"
+            columns: ["tender_id"]
+            isOneToOne: true
+            referencedRelation: "tenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tender_sources: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          file_name: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          parsed: Json
+          status: string
+          storage_path: string | null
+          tender_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by?: string | null
+          file_name: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          parsed?: Json
+          status?: string
+          storage_path?: string | null
+          tender_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          file_name?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          parsed?: Json
+          status?: string
+          storage_path?: string | null
+          tender_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tender_sources_tender_id_fkey"
+            columns: ["tender_id"]
+            isOneToOne: false
+            referencedRelation: "tenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tender_steps: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          data: Json
+          doc_type: string | null
+          id: string
+          name: string
+          required: boolean
+          sort_order: number
+          status: string
+          template_id: string | null
+          tender_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          doc_type?: string | null
+          id?: string
+          name: string
+          required?: boolean
+          sort_order?: number
+          status?: string
+          template_id?: string | null
+          tender_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          doc_type?: string | null
+          id?: string
+          name?: string
+          required?: boolean
+          sort_order?: number
+          status?: string
+          template_id?: string | null
+          tender_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tender_steps_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tender_steps_tender_id_fkey"
+            columns: ["tender_id"]
+            isOneToOne: false
+            referencedRelation: "tenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenders: {
         Row: {
           assignee_id: string | null
@@ -1186,6 +1463,7 @@ export type Database = {
           invited_by: string | null
           issue_date: string | null
           location: string | null
+          method: string | null
           name: string
           notes: string | null
           open_date: string | null
@@ -1212,6 +1490,7 @@ export type Database = {
           invited_by?: string | null
           issue_date?: string | null
           location?: string | null
+          method?: string | null
           name: string
           notes?: string | null
           open_date?: string | null
@@ -1238,6 +1517,7 @@ export type Database = {
           invited_by?: string | null
           issue_date?: string | null
           location?: string | null
+          method?: string | null
           name?: string
           notes?: string | null
           open_date?: string | null
@@ -1333,6 +1613,56 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      workflow_steps: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          doc_type: string | null
+          id: string
+          method: string
+          name: string
+          required: boolean
+          sort_order: number
+          template_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          doc_type?: string | null
+          id?: string
+          method: string
+          name: string
+          required?: boolean
+          sort_order?: number
+          template_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          doc_type?: string | null
+          id?: string
+          method?: string
+          name?: string
+          required?: boolean
+          sort_order?: number
+          template_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_steps_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
