@@ -274,7 +274,7 @@ function PaymentsPage() {
                 className="num mt-1 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
               />
               <span className="mt-1 block text-[11px] italic text-muted-foreground">
-                Bằng chữ: {readVietnameseMoney(amountNumber) || "—"}
+                Bằng chữ: {amountNumber > 0 ? readVietnameseMoney(amountNumber) : "—"}
               </span>
             </label>
 
