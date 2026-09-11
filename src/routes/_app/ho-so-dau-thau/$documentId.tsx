@@ -212,14 +212,23 @@ function ReviewPage() {
           </header>
 
           <div className="flex-1 divide-y divide-border overflow-y-auto">
-            {rows.map((field) => (
-              <FieldRowEditor
-                key={field.id}
-                field={field}
-                active={activeField === field.id}
-                readOnly={!canWrite}
-                onFocusField={() => setActiveField(field.id)}
-              />
+            {grouped.map(([group, groupRows]) => (
+              <div key={group ?? "all"} className="divide-y divide-border">
+                {group ? (
+                  <h3 className="bg-muted/60 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {group}
+                  </h3>
+                ) : null}
+                {groupRows.map((field) => (
+                  <FieldRowEditor
+                    key={field.id}
+                    field={field}
+                    active={activeField === field.id}
+                    readOnly={!canWrite}
+                    onFocusField={() => setActiveField(field.id)}
+                  />
+                ))}
+              </div>
             ))}
           </div>
 
