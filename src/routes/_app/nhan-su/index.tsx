@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Upload, Loader2, ChevronRight } from "lucide-react";
@@ -58,23 +58,30 @@ function EmployeeDocumentsPage() {
   const documents = useEmployeeDocuments();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [docType, setDocType] = useState<EmployeeDocType>("cccd");
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
   const upload = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (files: File[]) => {
+      let completed = 0;
+      for (const [fileIndex, file] of files.entries()) {
       const stamp = new Date();
-      const seq = String(stamp.getTime()).slice(-5);
+      const seq = `${String(stamp.getTime()).slice(-5)}-${fileIndex + 1}`;
       const type = EMPLOYEE_DOC_TYPES[docType];
-      const fileName = `${type.filePrefix}_${stamp.getFullYear()}_${seq}.pdf`;
+      const fileName = file.name || `${type.filePrefix}_${stamp.getFullYear()}_${seq}.pdf`;
+      const storagePath = `employee-uploads/${user?.id ?? "unknown"}/${stamp.getTime()}-${fileIndex}-${fileName}`;
+      const uploaded = await supabase.storage.from("documents").upload(storagePath, file);
+      if (uploaded.error) throw uploaded.error;
 
       const { data: doc, error } = await supabase
         .from("employee_documents")
         .insert({
           file_name: fileName,
+          storage_path: storagePath,
           doc_type: docType,
-          mime_type: "application/pdf",
-          file_size: 940_000,
+          mime_type: file.type || "application/pdf",
+          file_size: file.size,
           page_count: 2,
           status: "new",
           created_by: user?.id ?? null,
@@ -115,10 +122,12 @@ function EmployeeDocumentsPage() {
       }
 
       setProcessingId(null);
-      return doc.id;
+      completed++;
+      }
+      return completed;
     },
     onSuccess: () => {
-      toast.success("Đã xử lý xong hồ sơ nhân sự", {
+      toast.success(`Đã xử lý xong ${upload.data ?? 0} hồ sơ nhân sự`, {
         description: "Dữ liệu đã được trích xuất và đang chờ bạn kiểm tra.",
       });
       void queryClient.invalidateQueries({ queryKey: ["employee_documents"] });
@@ -138,6 +147,18 @@ function EmployeeDocumentsPage() {
         description="Quyết định bổ nhiệm, căn cước công dân và bằng cấp đi qua đúng 5 bước như hồ sơ đấu thầu. Chọn một hồ sơ đã có dữ liệu để kiểm tra."
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={fileInput}
+              type="file"
+              accept="application/pdf,image/*"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                const files = Array.from(event.target.files ?? []);
+                event.target.value = "";
+                if (files.length) upload.mutate(files);
+              }}
+            />
             <select
               value={docType}
               onChange={(e) => setDocType(e.target.value as EmployeeDocType)}
@@ -152,7 +173,7 @@ function EmployeeDocumentsPage() {
             <button
               type="button"
               disabled={!canWrite || upload.isPending}
-              onClick={() => upload.mutate()}
+              onClick={() => fileInput.current?.click()}
               className="inline-flex items-center gap-2 rounded-md bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               {upload.isPending ? (
@@ -160,7 +181,7 @@ function EmployeeDocumentsPage() {
               ) : (
                 <Upload className="size-4" />
               )}
-              Tải lên tài liệu nhân sự
+              Tải lên nhiều tài liệu
             </button>
           </div>
         }
