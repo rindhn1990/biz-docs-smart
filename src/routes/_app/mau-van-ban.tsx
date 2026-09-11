@@ -1,12 +1,24 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, FileUp, Download, Loader2, Plus, Trash2, Lock } from "lucide-react";
+import {
+  FileText,
+  FileUp,
+  Download,
+  Loader2,
+  Plus,
+  Trash2,
+  Lock,
+  Pencil,
+  MousePointerClick,
+  RefreshCw,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { TemplateRegionPicker } from "@/components/TemplateRegionPicker";
 import {
   extractPlaceholdersFromFile,
   prettifyPlaceholder,
@@ -54,12 +66,18 @@ function TemplatesPage() {
   const { user, isAdmin } = useAuth();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [method, setMethod] = useState<TenderMethod>(DEFAULT_METHOD);
-  const [busy, setBusy] = useState<"upload" | "export" | null>(null);
+  const [busy, setBusy] = useState<"upload" | "export" | "replace" | "delete" | null>(null);
   const [adding, setAdding] = useState(false);
   const [newPlaceholder, setNewPlaceholder] = useState("");
   const [newLabel, setNewLabel] = useState("");
   const [newSource, setNewSource] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editMethod, setEditMethod] = useState<TenderMethod>(DEFAULT_METHOD);
   const fileInput = useRef<HTMLInputElement>(null);
+  const replaceInput = useRef<HTMLInputElement>(null);
 
   const templates = useQuery({
     queryKey: ["templates", "with-mappings"],
@@ -134,7 +152,16 @@ function TemplatesPage() {
   useEffect(() => {
     setBusy(null);
     setAdding(false);
+    setEditing(false);
+    setPicking(false);
   }, [currentId]);
+
+  useEffect(() => {
+    if (!current) return;
+    setEditName(current.name);
+    setEditDescription(current.description ?? "");
+    setEditMethod((current.method as TenderMethod) ?? DEFAULT_METHOD);
+  }, [current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleUploadDocx(file: File) {
     setBusy("upload");
@@ -265,6 +292,102 @@ function TemplatesPage() {
     }
   }
 
+  async function handleSaveTemplateInfo() {
+    if (!current) return;
+    const name = editName.trim();
+    if (!name) {
+      toast.error("Tên mẫu không được để trống");
+      return;
+    }
+    const { error } = await supabase
+      .from("templates")
+      .update({
+        name,
+        description: editDescription.trim() || null,
+        method: editMethod,
+        updated_by: user?.id ?? null,
+      })
+      .eq("id", current.id);
+    if (error) {
+      toast.error("Không lưu được thông tin mẫu", { description: error.message });
+      return;
+    }
+    setEditing(false);
+    if (editMethod !== method) setMethod(editMethod);
+    setSelectedId(current.id);
+    await queryClient.invalidateQueries({ queryKey: ["templates"] });
+    toast.success("Đã lưu thông tin mẫu");
+  }
+
+  async function handleReplaceDocx(file: File) {
+    if (!current) return;
+    setBusy("replace");
+    try {
+      const { placeholders, style } = await extractPlaceholdersFromFile(file);
+      const path = current.source_docx_path ?? `templates/${current.id}/source.docx`;
+      const up = await supabase.storage.from("templates").upload(path, file, { upsert: true });
+      if (up.error) throw up.error;
+
+      const { error } = await supabase
+        .from("templates")
+        .update({
+          source_docx_path: path,
+          delimiter_style: style,
+          file_name: file.name,
+          updated_by: user?.id ?? null,
+        })
+        .eq("id", current.id);
+      if (error) throw error;
+
+      const known = new Set(rows.map((r) => r.placeholder));
+      const fresh = placeholders.filter((p) => !known.has(p));
+      if (fresh.length > 0) {
+        await supabase.from("template_mappings").insert(
+          fresh.map((p, i) => ({
+            template_id: current.id,
+            placeholder: p,
+            label: prettifyPlaceholder(p),
+            source_field: KHLCNT_KEYS.has(p) ? p : null,
+            sort_order: (rows.at(-1)?.sort_order ?? 0) + i + 1,
+          })),
+        );
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["templates"] });
+      await queryClient.invalidateQueries({ queryKey: ["template_mappings", current.id] });
+      toast.success("Đã thay file Word của mẫu", {
+        description:
+          fresh.length > 0 ? `Thêm ${fresh.length} chỗ trống mới.` : "Giữ nguyên các ánh xạ cũ.",
+      });
+    } catch (e) {
+      toast.error("Không thay được file", { description: (e as Error).message });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleDeleteTemplate() {
+    if (!current) return;
+    if (!window.confirm(`Xoá mẫu "${current.name}"? Thao tác này không thể hoàn tác.`)) return;
+    setBusy("delete");
+    try {
+      await supabase.from("template_mappings").delete().eq("template_id", current.id);
+      const { error } = await supabase.from("templates").delete().eq("id", current.id);
+      if (error) throw error;
+      if (current.source_docx_path) {
+        await supabase.storage.from("templates").remove([current.source_docx_path]);
+      }
+      setSelectedId(null);
+      await queryClient.invalidateQueries({ queryKey: ["templates"] });
+      toast.success("Đã xoá mẫu văn bản");
+    } catch (e) {
+      toast.error("Không xoá được mẫu", { description: (e as Error).message });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+
   return (
     <div>
       <PageHeader
@@ -388,6 +511,117 @@ function TemplatesPage() {
         </section>
 
         <section className="panel">
+          {isAdmin && current ? (
+            <div className="border-b border-border bg-muted/30 px-4 py-3">
+              <input
+                ref={replaceInput}
+                type="file"
+                accept=".docx"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) void handleReplaceDocx(file);
+                }}
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditing((v) => !v)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+                >
+                  <Pencil className="size-3.5" />
+                  Sửa thông tin mẫu
+                </button>
+                <button
+                  type="button"
+                  disabled={!current.source_docx_path}
+                  onClick={() => setPicking(true)}
+                  title={current.source_docx_path ? undefined : "Mẫu này chưa có tệp Word gốc"}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-50"
+                >
+                  <MousePointerClick className="size-3.5" />
+                  Định nghĩa vùng dữ liệu
+                </button>
+                <button
+                  type="button"
+                  disabled={busy !== null}
+                  onClick={() => replaceInput.current?.click()}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-50"
+                >
+                  {busy === "replace" ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="size-3.5" />
+                  )}
+                  Thay file Word
+                </button>
+                <button
+                  type="button"
+                  disabled={busy !== null}
+                  onClick={() => void handleDeleteTemplate()}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-destructive/40 px-2.5 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+                >
+                  {busy === "delete" ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="size-3.5" />
+                  )}
+                  Xoá mẫu
+                </button>
+              </div>
+
+              {editing ? (
+                <div className="mt-3 space-y-2">
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      aria-label="Tên mẫu"
+                      placeholder="Tên mẫu"
+                      className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+                    />
+                    <input
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      aria-label="Mô tả mẫu"
+                      placeholder="Mô tả"
+                      className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+                    />
+                    <select
+                      value={editMethod}
+                      onChange={(e) => setEditMethod(e.target.value as TenderMethod)}
+                      aria-label="Hình thức lựa chọn nhà thầu"
+                      className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+                    >
+                      {TENDER_METHODS.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleSaveTemplateInfo()}
+                      className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                    >
+                      Lưu thông tin
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditing(false)}
+                      className="rounded-md border border-input px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+                    >
+                      Huỷ
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           <header className="border-b border-border px-4 py-3">
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -556,12 +790,46 @@ function TemplatesPage() {
             </p>
           </header>
           <div className="max-h-[70vh] overflow-y-auto px-5 py-4">
-            <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
-              {current ? renderPreview(current.body ?? "", resolved) : "Chọn một mẫu để xem trước."}
-            </pre>
+            {!current ? (
+              <p className="text-sm text-muted-foreground">Chọn một mẫu để xem trước.</p>
+            ) : current.body ? (
+              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
+                {renderPreview(current.body, resolved)}
+              </pre>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Mẫu này là tệp Word tải lên. Mở bản xem trước để đọc nội dung và bôi đen từng
+                  vùng cần điền dữ liệu.
+                </p>
+                <button
+                  type="button"
+                  disabled={!current.source_docx_path || !isAdmin}
+                  onClick={() => setPicking(true)}
+                  title={isAdmin ? undefined : ADMIN_ONLY_NOTE}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
+                >
+                  <MousePointerClick className="size-4" />
+                  Mở bản xem trước
+                </button>
+              </div>
+            )}
           </div>
         </section>
       </div>
+
+      {picking && isAdmin && current?.source_docx_path ? (
+        <TemplateRegionPicker
+          templateId={current.id}
+          templateName={current.name}
+          storagePath={current.source_docx_path}
+          style={(current.delimiter_style as DelimiterStyle) ?? "curly"}
+          onClose={() => setPicking(false)}
+          onSaved={() => {
+            void queryClient.invalidateQueries({ queryKey: ["template_mappings", current.id] });
+          }}
+        />
+      ) : null}
     </div>
   );
 }

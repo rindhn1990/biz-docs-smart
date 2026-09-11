@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Upload, Loader2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
+import { DocsTabs } from "@/components/DocsTabs";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { DocStepper } from "@/components/DocStepper";
@@ -202,6 +203,8 @@ function DocumentsPage() {
           </div>
         }
       />
+      <DocsTabs />
+
 
       {!canWrite ? (
         <p className="mb-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning-foreground">
