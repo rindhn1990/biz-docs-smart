@@ -27,3 +27,10 @@
 - [x] Xuất file Word thật bằng docxtemplater + pizzip + file-saver
 - [x] Loại hồ sơ "Tờ trình KHLCNT" với 39 trường chia 5 nhóm, review hiển thị theo nhóm
 - [x] Mẫu "Tờ trình phê duyệt KHLCNT" (bản dựng tạm) + ánh xạ sẵn + hồ sơ mẫu đã xác nhận
+
+## Trang Dữ liệu + phân loại mẫu theo hình thức LCNT (hoàn thành)
+- [x] Component dùng chung `FieldGroupEditor` (nhóm + input + badge confidence)
+- [x] Route `/du-lieu`: chọn hồ sơ Tờ trình KHLCNT, sửa 39 trường, xuất Word theo hình thức
+- [x] Cột `templates.method` (5 hình thức) + tab lọc và dropdown khi tải mẫu lên
+- [x] Mẫu KHLCNT gán "Chỉ định thầu rút gọn"; 4 hình thức còn lại hiển thị EmptyState
+
