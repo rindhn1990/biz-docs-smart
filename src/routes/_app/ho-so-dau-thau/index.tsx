@@ -11,6 +11,7 @@ import { FileTypeIcon } from "@/components/FileTypeIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { DOC_STATUS } from "@/lib/domain";
+import { KHLCNT_DOC_TYPE, KHLCNT_FIELDS, TENDER_DOC_TYPES } from "@/lib/khlcnt";
 import { formatDateTime } from "@/lib/format";
 
 export const Route = createFileRoute("/_app/ho-so-dau-thau/")({
