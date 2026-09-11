@@ -11,6 +11,7 @@ import { FileTypeIcon } from "@/components/FileTypeIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { DOC_STATUS } from "@/lib/domain";
+import { KHLCNT_DOC_TYPE, KHLCNT_FIELDS, TENDER_DOC_TYPES } from "@/lib/khlcnt";
 import { formatDateTime } from "@/lib/format";
 
 export const Route = createFileRoute("/_app/ho-so-dau-thau/")({
@@ -74,6 +75,7 @@ function DocumentsPage() {
   const { user, canWrite } = useAuth();
   const documents = useDocumentList();
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [docType, setDocType] = useState<string>("ho_so_du_thau");
 
   const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -81,7 +83,9 @@ function DocumentsPage() {
     mutationFn: async () => {
       const stamp = new Date();
       const seq = String(stamp.getTime()).slice(-5);
-      const fileName = `Ho_so_du_thau_${stamp.getFullYear()}_${seq}.pdf`;
+      const isKhlcnt = docType === KHLCNT_DOC_TYPE;
+      const prefix = TENDER_DOC_TYPES[docType]?.filePrefix ?? "Ho_so_du_thau";
+      const fileName = `${prefix}_${stamp.getFullYear()}_${seq}.pdf`;
 
       const { data: doc, error } = await supabase
         .from("documents")
@@ -89,10 +93,11 @@ function DocumentsPage() {
           file_name: fileName,
           storage_path: `uploads/${fileName}`,
           mime_type: "application/pdf",
-          file_size: 1_850_000,
-          folder: "02_Ho_so_du_thau",
+          file_size: isKhlcnt ? 1_240_000 : 1_850_000,
+          folder: isKhlcnt ? "01_To_trinh" : "02_Ho_so_du_thau",
+          doc_type: docType,
           status: "new",
-          page_count: 12,
+          page_count: isKhlcnt ? 3 : 12,
           created_by: user?.id ?? null,
           updated_by: user?.id ?? null,
         })
@@ -110,22 +115,38 @@ function DocumentsPage() {
         await supabase.from("documents").update({ status }).eq("id", doc.id);
 
         if (status === "extracted") {
-          await supabase.from("document_fields").insert(
-            SAMPLE_FIELDS.map((f, i) => ({
-              document_id: doc.id,
-              field_key: f.key,
-              label: f.label,
-              value: f.value || null,
-              confidence: f.conf,
-              needs_review: f.conf < 0.85,
-              source_page: 1,
-              bbox_top: f.t,
-              bbox_left: 10,
-              bbox_width: 58,
-              bbox_height: 4,
-              sort_order: i + 1,
-            })),
-          );
+          const payload = isKhlcnt
+            ? KHLCNT_FIELDS.map((f, i) => ({
+                document_id: doc.id,
+                field_key: f.key,
+                label: f.label,
+                value: f.value || null,
+                confidence: f.conf,
+                needs_review: f.conf < 0.85 || !f.value,
+                field_group: f.group as string | null,
+                source_page: 1,
+                bbox_top: 14 + (i % 20) * 4,
+                bbox_left: 10,
+                bbox_width: 58,
+                bbox_height: 4,
+                sort_order: i + 1,
+              }))
+            : SAMPLE_FIELDS.map((f, i) => ({
+                document_id: doc.id,
+                field_key: f.key,
+                label: f.label,
+                value: f.value || null,
+                confidence: f.conf,
+                needs_review: f.conf < 0.85,
+                field_group: null,
+                source_page: 1,
+                bbox_top: f.t,
+                bbox_left: 10,
+                bbox_width: 58,
+                bbox_height: 4,
+                sort_order: i + 1,
+              }));
+          await supabase.from("document_fields").insert(payload);
         }
         void queryClient.invalidateQueries({ queryKey: ["documents"] });
       }
@@ -153,19 +174,32 @@ function DocumentsPage() {
         title="Hồ sơ đấu thầu"
         description="Mỗi hồ sơ đi qua 5 bước: tải lên, nhận dạng, trích xuất dữ liệu, kiểm tra và xác nhận. Chọn một hồ sơ đã có dữ liệu để kiểm tra."
         actions={
-          <button
-            type="button"
-            disabled={!canWrite || upload.isPending}
-            onClick={() => upload.mutate()}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-          >
-            {upload.isPending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Upload className="size-4" />
-            )}
-            Tải lên tài liệu
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={docType}
+              onChange={(e) => setDocType(e.target.value)}
+              className="rounded-md border border-input bg-background px-2.5 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+            >
+              {Object.entries(TENDER_DOC_TYPES).map(([key, t]) => (
+                <option key={key} value={key}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={!canWrite || upload.isPending}
+              onClick={() => upload.mutate()}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            >
+              {upload.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Upload className="size-4" />
+              )}
+              Tải lên tài liệu
+            </button>
+          </div>
         }
       />
 

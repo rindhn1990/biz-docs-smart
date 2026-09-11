@@ -20,3 +20,10 @@
 - [x] /nhan-su, /nhan-su/$documentId, /nhan-su/hop-dong
 - [x] Tab Đấu thầu / Hợp đồng nhân sự + sidebar theo tab
 - [x] Mẫu "Hợp đồng lao động" trong Mẫu văn bản
+
+## Mẫu Word thật + Tờ trình KHLCNT (hoàn thành)
+- [x] Cột `documents.doc_type`, `document_fields.field_group`, `templates.source_docx_path`/`delimiter_style`
+- [x] Tải lên mẫu .docx → lưu Storage `templates/{id}/source.docx`, tự dò placeholder {{...}} và [[...]] (gộp run trong cùng đoạn)
+- [x] Xuất file Word thật bằng docxtemplater + pizzip + file-saver
+- [x] Loại hồ sơ "Tờ trình KHLCNT" với 39 trường chia 5 nhóm, review hiển thị theo nhóm
+- [x] Mẫu "Tờ trình phê duyệt KHLCNT" (bản dựng tạm) + ánh xạ sẵn + hồ sơ mẫu đã xác nhận

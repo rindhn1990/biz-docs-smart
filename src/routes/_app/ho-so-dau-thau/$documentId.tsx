@@ -42,6 +42,7 @@ type FieldRow = {
   bbox_width: number | null;
   bbox_height: number | null;
   sort_order: number;
+  field_group: string | null;
 };
 
 function confidenceStyle(c: number) {
@@ -117,6 +118,20 @@ function ReviewPage() {
     [rows, activeField],
   );
   const lowConfidence = rows.filter((f) => Math.round(f.confidence * 100) < 85).length;
+
+  /** Hồ sơ Tờ trình KHLCNT hiển thị theo nhóm; các loại khác giữ danh sách phẳng. */
+  const grouped = useMemo<[string | null, FieldRow[]][]>(() => {
+    const useGroups = rows.some((f) => f.field_group);
+    if (!useGroups) return [[null, rows]];
+    const map = new Map<string, FieldRow[]>();
+    for (const f of rows) {
+      const key = f.field_group ?? "Khác";
+      const list = map.get(key);
+      if (list) list.push(f);
+      else map.set(key, [f]);
+    }
+    return [...map.entries()];
+  }, [rows]);
 
   if (doc.isLoading || fields.isLoading) {
     return <p className="py-16 text-center text-sm text-muted-foreground">Đang tải hồ sơ…</p>;
@@ -211,14 +226,23 @@ function ReviewPage() {
           </header>
 
           <div className="flex-1 divide-y divide-border overflow-y-auto">
-            {rows.map((field) => (
-              <FieldRowEditor
-                key={field.id}
-                field={field}
-                active={activeField === field.id}
-                readOnly={!canWrite}
-                onFocusField={() => setActiveField(field.id)}
-              />
+            {grouped.map(([group, groupRows]) => (
+              <div key={group ?? "all"} className="divide-y divide-border">
+                {group ? (
+                  <h3 className="bg-muted/60 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {group}
+                  </h3>
+                ) : null}
+                {groupRows.map((field) => (
+                  <FieldRowEditor
+                    key={field.id}
+                    field={field}
+                    active={activeField === field.id}
+                    readOnly={!canWrite}
+                    onFocusField={() => setActiveField(field.id)}
+                  />
+                ))}
+              </div>
             ))}
           </div>
 

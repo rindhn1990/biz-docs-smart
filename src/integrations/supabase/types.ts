@@ -324,6 +324,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           document_id: string
+          field_group: string | null
           field_key: string
           id: string
           label: string
@@ -343,6 +344,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           document_id: string
+          field_group?: string | null
           field_key: string
           id?: string
           label: string
@@ -362,6 +364,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           document_id?: string
+          field_group?: string | null
           field_key?: string
           id?: string
           label?: string
@@ -420,6 +423,7 @@ export type Database = {
           contract_id: string | null
           created_at: string
           created_by: string | null
+          doc_type: string | null
           doc_type_code: string | null
           doc_type_confidence: number | null
           file_name: string
@@ -446,6 +450,7 @@ export type Database = {
           contract_id?: string | null
           created_at?: string
           created_by?: string | null
+          doc_type?: string | null
           doc_type_code?: string | null
           doc_type_confidence?: number | null
           file_name: string
@@ -472,6 +477,7 @@ export type Database = {
           contract_id?: string | null
           created_at?: string
           created_by?: string | null
+          doc_type?: string | null
           doc_type_code?: string | null
           doc_type_confidence?: number | null
           file_name?: string
@@ -1101,6 +1107,7 @@ export type Database = {
           category: string | null
           created_at: string
           created_by: string | null
+          delimiter_style: string
           description: string | null
           file_name: string | null
           id: string
@@ -1108,6 +1115,7 @@ export type Database = {
           mime_type: string | null
           name: string
           parent_id: string | null
+          source_docx_path: string | null
           storage_path: string | null
           updated_at: string
           updated_by: string | null
@@ -1118,6 +1126,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           created_by?: string | null
+          delimiter_style?: string
           description?: string | null
           file_name?: string | null
           id?: string
@@ -1125,6 +1134,7 @@ export type Database = {
           mime_type?: string | null
           name: string
           parent_id?: string | null
+          source_docx_path?: string | null
           storage_path?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -1135,6 +1145,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           created_by?: string | null
+          delimiter_style?: string
           description?: string | null
           file_name?: string | null
           id?: string
@@ -1142,6 +1153,7 @@ export type Database = {
           mime_type?: string | null
           name?: string
           parent_id?: string | null
+          source_docx_path?: string | null
           storage_path?: string | null
           updated_at?: string
           updated_by?: string | null
