@@ -292,6 +292,102 @@ function TemplatesPage() {
     }
   }
 
+  async function handleSaveTemplateInfo() {
+    if (!current) return;
+    const name = editName.trim();
+    if (!name) {
+      toast.error("Tên mẫu không được để trống");
+      return;
+    }
+    const { error } = await supabase
+      .from("templates")
+      .update({
+        name,
+        description: editDescription.trim() || null,
+        method: editMethod,
+        updated_by: user?.id ?? null,
+      })
+      .eq("id", current.id);
+    if (error) {
+      toast.error("Không lưu được thông tin mẫu", { description: error.message });
+      return;
+    }
+    setEditing(false);
+    if (editMethod !== method) setMethod(editMethod);
+    setSelectedId(current.id);
+    await queryClient.invalidateQueries({ queryKey: ["templates"] });
+    toast.success("Đã lưu thông tin mẫu");
+  }
+
+  async function handleReplaceDocx(file: File) {
+    if (!current) return;
+    setBusy("replace");
+    try {
+      const { placeholders, style } = await extractPlaceholdersFromFile(file);
+      const path = current.source_docx_path ?? `templates/${current.id}/source.docx`;
+      const up = await supabase.storage.from("templates").upload(path, file, { upsert: true });
+      if (up.error) throw up.error;
+
+      const { error } = await supabase
+        .from("templates")
+        .update({
+          source_docx_path: path,
+          delimiter_style: style,
+          file_name: file.name,
+          updated_by: user?.id ?? null,
+        })
+        .eq("id", current.id);
+      if (error) throw error;
+
+      const known = new Set(rows.map((r) => r.placeholder));
+      const fresh = placeholders.filter((p) => !known.has(p));
+      if (fresh.length > 0) {
+        await supabase.from("template_mappings").insert(
+          fresh.map((p, i) => ({
+            template_id: current.id,
+            placeholder: p,
+            label: prettifyPlaceholder(p),
+            source_field: KHLCNT_KEYS.has(p) ? p : null,
+            sort_order: (rows.at(-1)?.sort_order ?? 0) + i + 1,
+          })),
+        );
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["templates"] });
+      await queryClient.invalidateQueries({ queryKey: ["template_mappings", current.id] });
+      toast.success("Đã thay file Word của mẫu", {
+        description:
+          fresh.length > 0 ? `Thêm ${fresh.length} chỗ trống mới.` : "Giữ nguyên các ánh xạ cũ.",
+      });
+    } catch (e) {
+      toast.error("Không thay được file", { description: (e as Error).message });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleDeleteTemplate() {
+    if (!current) return;
+    if (!window.confirm(`Xoá mẫu "${current.name}"? Thao tác này không thể hoàn tác.`)) return;
+    setBusy("delete");
+    try {
+      await supabase.from("template_mappings").delete().eq("template_id", current.id);
+      const { error } = await supabase.from("templates").delete().eq("id", current.id);
+      if (error) throw error;
+      if (current.source_docx_path) {
+        await supabase.storage.from("templates").remove([current.source_docx_path]);
+      }
+      setSelectedId(null);
+      await queryClient.invalidateQueries({ queryKey: ["templates"] });
+      toast.success("Đã xoá mẫu văn bản");
+    } catch (e) {
+      toast.error("Không xoá được mẫu", { description: (e as Error).message });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+
   return (
     <div>
       <PageHeader
