@@ -152,7 +152,16 @@ function TemplatesPage() {
   useEffect(() => {
     setBusy(null);
     setAdding(false);
+    setEditing(false);
+    setPicking(false);
   }, [currentId]);
+
+  useEffect(() => {
+    if (!current) return;
+    setEditName(current.name);
+    setEditDescription(current.description ?? "");
+    setEditMethod((current.method as TenderMethod) ?? DEFAULT_METHOD);
+  }, [current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleUploadDocx(file: File) {
     setBusy("upload");
