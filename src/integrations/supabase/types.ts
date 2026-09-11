@@ -1171,6 +1171,7 @@ export type Database = {
           is_default: boolean
           method: string | null
           mime_type: string | null
+          module: string
           name: string
           parent_id: string | null
           source_docx_path: string | null
@@ -1191,6 +1192,7 @@ export type Database = {
           is_default?: boolean
           method?: string | null
           mime_type?: string | null
+          module?: string
           name: string
           parent_id?: string | null
           source_docx_path?: string | null
@@ -1211,6 +1213,7 @@ export type Database = {
           is_default?: boolean
           method?: string | null
           mime_type?: string | null
+          module?: string
           name?: string
           parent_id?: string | null
           source_docx_path?: string | null
