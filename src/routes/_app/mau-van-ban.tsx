@@ -790,12 +790,45 @@ function TemplatesPage() {
             </p>
           </header>
           <div className="max-h-[70vh] overflow-y-auto px-5 py-4">
-            <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
-              {current ? renderPreview(current.body ?? "", resolved) : "Chọn một mẫu để xem trước."}
-            </pre>
+            {!current ? (
+              <p className="text-sm text-muted-foreground">Chọn một mẫu để xem trước.</p>
+            ) : current.body ? (
+              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
+                {renderPreview(current.body, resolved)}
+              </pre>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Mẫu này là tệp Word tải lên. Mở bản xem trước để đọc nội dung và bôi đen từng
+                  vùng cần điền dữ liệu.
+                </p>
+                <button
+                  type="button"
+                  disabled={!current.source_docx_path}
+                  onClick={() => setPicking(true)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
+                >
+                  <MousePointerClick className="size-4" />
+                  Mở bản xem trước
+                </button>
+              </div>
+            )}
           </div>
         </section>
       </div>
+
+      {picking && current?.source_docx_path ? (
+        <TemplateRegionPicker
+          templateId={current.id}
+          templateName={current.name}
+          storagePath={current.source_docx_path}
+          style={(current.delimiter_style as DelimiterStyle) ?? "curly"}
+          onClose={() => setPicking(false)}
+          onSaved={() => {
+            void queryClient.invalidateQueries({ queryKey: ["template_mappings", current.id] });
+          }}
+        />
+      ) : null}
     </div>
   );
 }
