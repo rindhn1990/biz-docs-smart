@@ -14,7 +14,9 @@ import {
   type DelimiterStyle,
 } from "@/lib/docx";
 import { KHLCNT_DOC_TYPE, KHLCNT_FIELDS } from "@/lib/khlcnt";
+import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/_app/mau-van-ban")({
   head: () => ({
