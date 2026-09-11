@@ -735,6 +735,7 @@ export type Database = {
           notes: string | null
           page_count: number | null
           status: Database["public"]["Enums"]["doc_status"]
+          storage_path: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -750,6 +751,7 @@ export type Database = {
           notes?: string | null
           page_count?: number | null
           status?: Database["public"]["Enums"]["doc_status"]
+          storage_path?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -765,6 +767,7 @@ export type Database = {
           notes?: string | null
           page_count?: number | null
           status?: Database["public"]["Enums"]["doc_status"]
+          storage_path?: string | null
           updated_at?: string
           updated_by?: string | null
         }
