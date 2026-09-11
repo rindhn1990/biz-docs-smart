@@ -84,6 +84,24 @@ export async function renderAndDownloadDocx(
   saveAs(blob, fileName);
 }
 
+/** Render file .docx với dữ liệu rồi trả về HTML để xem trước ngay trên màn hình. */
+export async function renderDocxToHtml(
+  source: ArrayBuffer,
+  style: DelimiterStyle,
+  data: Record<string, string>,
+): Promise<string> {
+  const zip = new PizZip(source);
+  const doc = new Docxtemplater(zip, {
+    delimiters: DELIMITERS[style],
+    paragraphLoop: true,
+    linebreaks: true,
+    nullGetter: () => "",
+  });
+  doc.render(data);
+  const out = doc.getZip().generate({ type: "arraybuffer" }) as ArrayBuffer;
+  return docxToHtml(out);
+}
+
 function escapeXml(text: string) {
   return text
     .replace(/&/g, "&amp;")
