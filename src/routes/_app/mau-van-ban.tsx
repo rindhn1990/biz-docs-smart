@@ -142,6 +142,8 @@ function TemplatesPage() {
           category: "Tải lên",
           description: `Mẫu Word gốc do người dùng tải lên · ${placeholders.length} chỗ trống`,
           delimiter_style: style,
+          method: uploadMethod,
+
           file_name: file.name,
           mime_type: file.type || "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
           created_by: user?.id ?? null,
@@ -170,7 +172,9 @@ function TemplatesPage() {
       }
 
       await queryClient.invalidateQueries({ queryKey: ["templates"] });
+      setMethod(uploadMethod);
       setSelectedId(tpl.id);
+
       toast.success("Đã tải lên mẫu Word", {
         description: `Tìm thấy ${placeholders.length} chỗ trống kiểu ${style === "square" ? "[[...]]" : "{{...}}"}.`,
       });
