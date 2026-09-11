@@ -126,8 +126,8 @@ function EmployeeDocumentsPage() {
       }
       return completed;
     },
-    onSuccess: () => {
-      toast.success(`Đã xử lý xong ${upload.data ?? 0} hồ sơ nhân sự`, {
+    onSuccess: (count) => {
+      toast.success(`Đã xử lý xong ${count} hồ sơ nhân sự`, {
         description: "Dữ liệu đã được trích xuất và đang chờ bạn kiểm tra.",
       });
       void queryClient.invalidateQueries({ queryKey: ["employee_documents"] });

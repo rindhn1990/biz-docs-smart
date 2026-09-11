@@ -163,8 +163,8 @@ function DocumentsPage() {
       }
       return completed;
     },
-    onSuccess: () => {
-      toast.success(`Đã xử lý xong ${filesLabel(upload.data ?? 0)}`, {
+    onSuccess: (count) => {
+      toast.success(`Đã xử lý xong ${filesLabel(count)}`, {
         description: "Dữ liệu đang chờ bạn kiểm tra.",
       });
       void queryClient.invalidateQueries({ queryKey: ["documents"] });
