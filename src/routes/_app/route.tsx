@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { AppSidebar } from "@/components/AppSidebar";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { NotificationBell } from "@/components/NotificationBell";
+import { ReminderBanner } from "@/components/ReminderBanner";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -105,6 +106,8 @@ function AppLayout() {
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
+
+        <ReminderBanner />
 
         <main className="min-w-0 flex-1 p-4 md:p-6">
           <Outlet />

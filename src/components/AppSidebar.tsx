@@ -14,6 +14,8 @@ import {
   Database,
   IdCard,
   ShieldCheck,
+  Workflow,
+  Handshake,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -38,11 +40,12 @@ const tenderGroups: { title: string; items: Item[] }[] = [
     title: "MVP – Giai đoạn 1",
     items: [
       { to: "/tong-quan", label: "Tổng quan", icon: LayoutDashboard },
+      { to: "/goi-thau", label: "Gói thầu", icon: Workflow },
       { to: "/ho-so-dau-thau", label: "Hồ sơ đấu thầu", icon: FileStack },
       { to: "/du-lieu", label: "Dữ liệu", icon: Database },
+      { to: "/nha-thau", label: "Nhà thầu", icon: Handshake },
       { to: "/mau-van-ban", label: "Mẫu văn bản", icon: FileText },
       { to: "/hop-dong", label: "Hợp đồng", icon: FileSignature },
-
     ],
   },
   lockedGroup,
@@ -70,7 +73,10 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
         ...baseGroups,
         {
           title: "Quản trị",
-          items: [{ to: "/quan-tri", label: "Phân quyền người dùng", icon: ShieldCheck }] as Item[],
+          items: [
+            { to: "/quy-trinh", label: "Quy trình mẫu", icon: Workflow },
+            { to: "/quan-tri", label: "Phân quyền người dùng", icon: ShieldCheck },
+          ] as Item[],
         },
       ]
     : baseGroups;
