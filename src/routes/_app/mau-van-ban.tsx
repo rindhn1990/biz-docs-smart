@@ -108,7 +108,7 @@ function TemplatesPage() {
   const list = useMemo(
     () =>
       (templates.data ?? []).filter(
-        (t) => t.module === module && (module === "hr" || t.method === method),
+        (t) => t.module === module && (module !== "tender" || t.method === method),
       ),
     [templates.data, method, module],
   );
@@ -153,7 +153,12 @@ function TemplatesPage() {
 
   const current = list.find((t) => t.id === currentId) ?? null;
   const rows = mappings.data ?? [];
-  const sourceFields = module === "hr" ? HR_TEMPLATE_FIELDS : KHLCNT_FIELDS;
+  const sourceFields =
+    module === "hr"
+      ? HR_TEMPLATE_FIELDS
+      : module === "payment"
+        ? PAYMENT_TEMPLATE_FIELDS
+        : KHLCNT_FIELDS;
   const sourceKeys = new Set<string>(sourceFields.map((field) => field.key));
   const auto = approvedData.data ?? {};
   const wrap: [string, string] =
@@ -412,7 +417,13 @@ function TemplatesPage() {
     <div>
       <PageHeader
         title="Mẫu văn bản"
-        description={module === "hr" ? "Kho mẫu Word dành riêng cho hồ sơ và hợp đồng nhân sự." : "Chọn hình thức lựa chọn nhà thầu, rồi tải một hoặc nhiều mẫu Word lên."}
+        description={
+          module === "hr"
+            ? "Kho mẫu Word dành riêng cho hồ sơ và hợp đồng nhân sự."
+            : module === "payment"
+              ? "Kho mẫu Word dành riêng cho hồ sơ thanh toán, dữ liệu lấy từ thông tin nhà thầu."
+              : "Chọn hình thức lựa chọn nhà thầu, rồi tải một hoặc nhiều mẫu Word lên."
+        }
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <input
