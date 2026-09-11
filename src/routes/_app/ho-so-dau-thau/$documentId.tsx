@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Check, Loader2, X } from "lucide-react";
@@ -7,7 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { FileTypeIcon } from "@/components/FileTypeIcon";
 import { DocStepper } from "@/components/DocStepper";
+import { FieldGroupEditor, type FieldRow } from "@/components/FieldGroupEditor";
 import { formatFileSize } from "@/lib/format";
+
 
 export const Route = createFileRoute("/_app/ho-so-dau-thau/$documentId")({
   head: () => ({
@@ -119,19 +121,8 @@ function ReviewPage() {
   );
   const lowConfidence = rows.filter((f) => Math.round(f.confidence * 100) < 85).length;
 
-  /** Hồ sơ Tờ trình KHLCNT hiển thị theo nhóm; các loại khác giữ danh sách phẳng. */
-  const grouped = useMemo<[string | null, FieldRow[]][]>(() => {
-    const useGroups = rows.some((f) => f.field_group);
-    if (!useGroups) return [[null, rows]];
-    const map = new Map<string, FieldRow[]>();
-    for (const f of rows) {
-      const key = f.field_group ?? "Khác";
-      const list = map.get(key);
-      if (list) list.push(f);
-      else map.set(key, [f]);
-    }
-    return [...map.entries()];
-  }, [rows]);
+
+
 
   if (doc.isLoading || fields.isLoading) {
     return <p className="py-16 text-center text-sm text-muted-foreground">Đang tải hồ sơ…</p>;
@@ -225,26 +216,15 @@ function ReviewPage() {
             </p>
           </header>
 
-          <div className="flex-1 divide-y divide-border overflow-y-auto">
-            {grouped.map(([group, groupRows]) => (
-              <div key={group ?? "all"} className="divide-y divide-border">
-                {group ? (
-                  <h3 className="bg-muted/60 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {group}
-                  </h3>
-                ) : null}
-                {groupRows.map((field) => (
-                  <FieldRowEditor
-                    key={field.id}
-                    field={field}
-                    active={activeField === field.id}
-                    readOnly={!canWrite}
-                    onFocusField={() => setActiveField(field.id)}
-                  />
-                ))}
-              </div>
-            ))}
+          <div className="flex-1 overflow-y-auto">
+            <FieldGroupEditor
+              rows={rows}
+              readOnly={!canWrite}
+              activeField={activeField}
+              onFocusField={setActiveField}
+            />
           </div>
+
 
           <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3">
             <button
