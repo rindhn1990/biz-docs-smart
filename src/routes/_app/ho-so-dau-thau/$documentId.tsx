@@ -30,39 +30,8 @@ export const Route = createFileRoute("/_app/ho-so-dau-thau/$documentId")({
   component: ReviewPage,
 });
 
-type FieldRow = {
-  id: string;
-  document_id: string;
-  field_key: string;
-  label: string;
-  value: string | null;
-  confidence: number;
-  needs_review: boolean;
-  source_page: number | null;
-  bbox_top: number | null;
-  bbox_left: number | null;
-  bbox_width: number | null;
-  bbox_height: number | null;
-  sort_order: number;
-  field_group: string | null;
-};
 
-function confidenceStyle(c: number) {
-  const pct = Math.round(c * 100);
-  if (pct >= 95)
-    return { pct, cls: "border-success/30 bg-success/10 text-success", warn: false } as const;
-  if (pct >= 85)
-    return {
-      pct,
-      cls: "border-warning/45 bg-warning/18 text-warning-foreground",
-      warn: false,
-    } as const;
-  return {
-    pct,
-    cls: "border-destructive/40 bg-destructive/12 text-destructive",
-    warn: true,
-  } as const;
-}
+
 
 function ReviewPage() {
   const { documentId } = Route.useParams();
