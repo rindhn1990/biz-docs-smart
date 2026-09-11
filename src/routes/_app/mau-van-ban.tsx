@@ -35,7 +35,7 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/mau-van-ban")({
   validateSearch: (search: Record<string, unknown>) => ({
-    module: search.module === "hr" ? ("hr" as const) : ("tender" as const),
+    module: search["module"] === "hr" ? ("hr" as const) : ("tender" as const),
   }),
   head: () => ({
     meta: [
@@ -177,9 +177,7 @@ function TemplatesPage() {
     setEditMethod((current.method as TenderMethod) ?? DEFAULT_METHOD);
   }, [current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function handleUploadDocx(file: File) {
-    setBusy("upload");
-    try {
+  async function uploadOneDocx(file: File) {
       const { placeholders, style } = await extractPlaceholdersFromFile(file);
       const name = file.name.replace(/\.docx$/i, "");
 
@@ -191,7 +189,8 @@ function TemplatesPage() {
           description: `Mẫu Word gốc do người dùng tải lên · ${placeholders.length} chỗ trống`,
           delimiter_style: style,
           // Mẫu luôn thuộc đúng hình thức của tab đang mở.
-          method,
+          method: module === "tender" ? method : null,
+          module,
           file_name: file.name,
           mime_type: file.type || "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
           created_by: user?.id ?? null,
@@ -213,26 +212,27 @@ function TemplatesPage() {
             template_id: tpl.id,
             placeholder: p,
             label: prettifyPlaceholder(p),
-            source_field: KHLCNT_KEYS.has(p) ? p : null,
+            source_field: sourceKeys.has(p) ? p : null,
             sort_order: i + 1,
           })),
         );
       }
 
-      await queryClient.invalidateQueries({ queryKey: ["templates"] });
-      setSelectedId(tpl.id);
+      return { id: tpl.id };
+  }
 
-      toast.success("Đã tải lên mẫu Word", {
-        description:
-          placeholders.length > 0
-            ? `Tìm thấy ${placeholders.length} chỗ trống kiểu ${style === "square" ? "[[...]]" : "{{...}}"}.`
-            : "Không tìm thấy chỗ trống nào — bạn có thể thêm thủ công ở bảng Ánh xạ dữ liệu.",
-      });
-    } catch (e) {
-      toast.error("Không tải lên được mẫu", { description: (e as Error).message });
-    } finally {
-      setBusy(null);
-    }
+  async function handleUploadDocx(files: File[]) {
+    if (!files.length) return;
+    setBusy("upload");
+    const results = await Promise.allSettled(files.map(uploadOneDocx));
+    const succeeded = results.filter((result) => result.status === "fulfilled");
+    const failed = results.length - succeeded.length;
+    await queryClient.invalidateQueries({ queryKey: ["templates"] });
+    const last = succeeded.at(-1);
+    if (last?.status === "fulfilled") setSelectedId(last.value.id);
+    if (succeeded.length) toast.success(`Đã tải lên ${succeeded.length} mẫu Word`);
+    if (failed) toast.error(`${failed} file không tải lên được`, { description: "Các file hợp lệ còn lại đã được lưu." });
+    setBusy(null);
   }
 
   async function handleAddMapping() {
@@ -318,7 +318,7 @@ function TemplatesPage() {
       .update({
         name,
         description: editDescription.trim() || null,
-        method: editMethod,
+        method: module === "tender" ? editMethod : null,
         updated_by: user?.id ?? null,
       })
       .eq("id", current.id);
@@ -327,7 +327,7 @@ function TemplatesPage() {
       return;
     }
     setEditing(false);
-    if (editMethod !== method) setMethod(editMethod);
+    if (module === "tender" && editMethod !== method) setMethod(editMethod);
     setSelectedId(current.id);
     await queryClient.invalidateQueries({ queryKey: ["templates"] });
     toast.success("Đã lưu thông tin mẫu");
@@ -361,7 +361,7 @@ function TemplatesPage() {
             template_id: current.id,
             placeholder: p,
             label: prettifyPlaceholder(p),
-            source_field: KHLCNT_KEYS.has(p) ? p : null,
+            source_field: sourceKeys.has(p) ? p : null,
             sort_order: (rows.at(-1)?.sort_order ?? 0) + i + 1,
           })),
         );
