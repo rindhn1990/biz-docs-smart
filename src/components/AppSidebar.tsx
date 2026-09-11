@@ -158,7 +158,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
                   <li key={item.to}>
                     <Link
                       to={item.to}
-                      search={item.search}
+                      {...(item.search ? { search: item.search } : {})}
                       onClick={onNavigate}
                       className={cn(
                         "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
