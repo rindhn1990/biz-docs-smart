@@ -30,12 +30,18 @@ import {
 } from "@/lib/docx";
 import { KHLCNT_DOC_TYPE, KHLCNT_FIELDS } from "@/lib/khlcnt";
 import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
+import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/mau-van-ban")({
   validateSearch: (search: Record<string, unknown>) => ({
-    module: search["module"] === "hr" ? ("hr" as const) : ("tender" as const),
+    module:
+      search["module"] === "hr"
+        ? ("hr" as const)
+        : search["module"] === "payment"
+          ? ("payment" as const)
+          : ("tender" as const),
   }),
   head: () => ({
     meta: [
