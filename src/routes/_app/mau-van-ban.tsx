@@ -12,6 +12,7 @@ import {
   Pencil,
   MousePointerClick,
   RefreshCw,
+  FileSearch,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { TemplateRegionPicker } from "@/components/TemplateRegionPicker";
+import { TemplateAutoDetect } from "@/components/TemplateAutoDetect";
+import { Button } from "@/components/ui/button";
 import {
   extractPlaceholdersFromFile,
   prettifyPlaceholder,
@@ -26,10 +29,14 @@ import {
   type DelimiterStyle,
 } from "@/lib/docx";
 import { KHLCNT_DOC_TYPE, KHLCNT_FIELDS } from "@/lib/khlcnt";
+import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/mau-van-ban")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    module: search.module === "hr" ? ("hr" as const) : ("tender" as const),
+  }),
   head: () => ({
     meta: [
       { title: "Mẫu văn bản — OfficeFlow" },
@@ -58,10 +65,10 @@ type Mapping = {
   sort_order: number;
 };
 
-const KHLCNT_KEYS = new Set(KHLCNT_FIELDS.map((f) => f.key));
 const ADMIN_ONLY_NOTE = "Chỉ quản trị viên được chỉnh sửa mẫu";
 
 function TemplatesPage() {
+  const { module } = Route.useSearch();
   const queryClient = useQueryClient();
   const { user, isAdmin } = useAuth();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -73,6 +80,7 @@ function TemplatesPage() {
   const [newSource, setNewSource] = useState("");
   const [editing, setEditing] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [detecting, setDetecting] = useState(false);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editMethod, setEditMethod] = useState<TenderMethod>(DEFAULT_METHOD);
@@ -84,7 +92,7 @@ function TemplatesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("templates")
-        .select("id,name,category,description,body,source_docx_path,delimiter_style,method")
+        .select("id,name,category,description,body,source_docx_path,delimiter_style,method,module")
         .order("created_at");
       if (error) throw error;
       return data;
@@ -92,8 +100,11 @@ function TemplatesPage() {
   });
 
   const list = useMemo(
-    () => (templates.data ?? []).filter((t) => t.method === method),
-    [templates.data, method],
+    () =>
+      (templates.data ?? []).filter(
+        (t) => t.module === module && (module === "hr" || t.method === method),
+      ),
+    [templates.data, method, module],
   );
   const currentId = list.some((t) => t.id === selectedId) ? selectedId : (list[0]?.id ?? null);
 
@@ -136,6 +147,8 @@ function TemplatesPage() {
 
   const current = list.find((t) => t.id === currentId) ?? null;
   const rows = mappings.data ?? [];
+  const sourceFields = module === "hr" ? HR_TEMPLATE_FIELDS : KHLCNT_FIELDS;
+  const sourceKeys = new Set<string>(sourceFields.map((field) => field.key));
   const auto = approvedData.data ?? {};
   const wrap: [string, string] =
     current?.delimiter_style === "square" ? ["[[", "]]"] : ["{{", "}}"];
@@ -154,6 +167,7 @@ function TemplatesPage() {
     setAdding(false);
     setEditing(false);
     setPicking(false);
+    setDetecting(false);
   }, [currentId]);
 
   useEffect(() => {
