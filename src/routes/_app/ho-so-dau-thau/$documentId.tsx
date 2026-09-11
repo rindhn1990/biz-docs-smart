@@ -119,6 +119,20 @@ function ReviewPage() {
   );
   const lowConfidence = rows.filter((f) => Math.round(f.confidence * 100) < 85).length;
 
+  /** Hồ sơ Tờ trình KHLCNT hiển thị theo nhóm; các loại khác giữ danh sách phẳng. */
+  const grouped = useMemo<[string | null, FieldRow[]][]>(() => {
+    const useGroups = rows.some((f) => f.field_group);
+    if (!useGroups) return [[null, rows]];
+    const map = new Map<string, FieldRow[]>();
+    for (const f of rows) {
+      const key = f.field_group ?? "Khác";
+      const list = map.get(key);
+      if (list) list.push(f);
+      else map.set(key, [f]);
+    }
+    return [...map.entries()];
+  }, [rows]);
+
   if (doc.isLoading || fields.isLoading) {
     return <p className="py-16 text-center text-sm text-muted-foreground">Đang tải hồ sơ…</p>;
   }
