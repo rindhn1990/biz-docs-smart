@@ -153,19 +153,32 @@ function DocumentsPage() {
         title="Hồ sơ đấu thầu"
         description="Mỗi hồ sơ đi qua 5 bước: tải lên, nhận dạng, trích xuất dữ liệu, kiểm tra và xác nhận. Chọn một hồ sơ đã có dữ liệu để kiểm tra."
         actions={
-          <button
-            type="button"
-            disabled={!canWrite || upload.isPending}
-            onClick={() => upload.mutate()}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-          >
-            {upload.isPending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Upload className="size-4" />
-            )}
-            Tải lên tài liệu
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={docType}
+              onChange={(e) => setDocType(e.target.value)}
+              className="rounded-md border border-input bg-background px-2.5 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+            >
+              {Object.entries(TENDER_DOC_TYPES).map(([key, t]) => (
+                <option key={key} value={key}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={!canWrite || upload.isPending}
+              onClick={() => upload.mutate()}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            >
+              {upload.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Upload className="size-4" />
+              )}
+              Tải lên tài liệu
+            </button>
+          </div>
         }
       />
 
