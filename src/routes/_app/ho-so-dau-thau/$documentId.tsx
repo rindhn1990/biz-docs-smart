@@ -42,6 +42,7 @@ type FieldRow = {
   bbox_width: number | null;
   bbox_height: number | null;
   sort_order: number;
+  field_group: string | null;
 };
 
 function confidenceStyle(c: number) {
