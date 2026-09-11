@@ -628,5 +628,3 @@ function Info({ tender }: { tender: Record<string, unknown> }) {
   );
 }
 
-export { Download, useMemo, renderAndDownloadDocx };
-export type { DelimiterStyle };
