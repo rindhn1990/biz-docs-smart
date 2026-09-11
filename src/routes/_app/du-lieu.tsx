@@ -106,12 +106,13 @@ function DataPage() {
       const byKey: Record<string, string> = {};
       for (const f of rows) if (f.value) byKey[f.field_key] = f.value;
 
+      /** Dữ liệu của hồ sơ đang chọn được ưu tiên; ánh xạ tay chỉ dùng khi hồ sơ trống. */
       const values: Record<string, string> = {};
       for (const m of mappings ?? []) {
-        const manual = m.value?.trim();
-        values[m.placeholder] =
-          manual || (m.source_field ? (byKey[m.source_field] ?? "") : (byKey[m.placeholder] ?? ""));
+        const fromDoc = (m.source_field ? byKey[m.source_field] : byKey[m.placeholder])?.trim();
+        values[m.placeholder] = fromDoc || (m.value?.trim() ?? "");
       }
+
       for (const key of Object.keys(byKey)) values[key] ??= byKey[key]!;
 
       const { data, error } = await supabase.storage
