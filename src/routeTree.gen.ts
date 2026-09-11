@@ -24,6 +24,8 @@ import { Route as AppHoSoDauThauBaoCaoRouteImport } from './routes/_app/ho-so-da
 import { Route as AppNhanSuIndexRouteImport } from './routes/_app/nhan-su/index'
 import { Route as AppNhanSuDocumentIdRouteImport } from './routes/_app/nhan-su/$documentId'
 import { Route as AppNhanSuHopDongRouteImport } from './routes/_app/nhan-su/hop-dong'
+import { Route as AppGoiThauTenderIdIndexRouteImport } from './routes/_app/goi-thau/$tenderId/index'
+import { Route as AppGoiThauTenderIdBuocStepIdRouteImport } from './routes/_app/goi-thau/$tenderId/buoc.$stepId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -100,6 +102,17 @@ const AppNhanSuHopDongRoute = AppNhanSuHopDongRouteImport.update({
   path: '/nhan-su/hop-dong',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppGoiThauTenderIdIndexRoute = AppGoiThauTenderIdIndexRouteImport.update({
+  id: '/goi-thau/$tenderId/',
+  path: '/goi-thau/$tenderId/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppGoiThauTenderIdBuocStepIdRoute =
+  AppGoiThauTenderIdBuocStepIdRouteImport.update({
+    id: '/goi-thau/$tenderId/buoc/$stepId',
+    path: '/goi-thau/$tenderId/buoc/$stepId',
+    getParentRoute: () => AppRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -116,6 +129,8 @@ export interface FileRoutesByFullPath {
   '/goi-thau/': typeof AppGoiThauIndexRoute
   '/ho-so-dau-thau/': typeof AppHoSoDauThauIndexRoute
   '/nhan-su/': typeof AppNhanSuIndexRoute
+  '/goi-thau/$tenderId/': typeof AppGoiThauTenderIdIndexRoute
+  '/goi-thau/$tenderId/buoc/$stepId': typeof AppGoiThauTenderIdBuocStepIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -132,6 +147,8 @@ export interface FileRoutesByTo {
   '/goi-thau': typeof AppGoiThauIndexRoute
   '/ho-so-dau-thau': typeof AppHoSoDauThauIndexRoute
   '/nhan-su': typeof AppNhanSuIndexRoute
+  '/goi-thau/$tenderId': typeof AppGoiThauTenderIdIndexRoute
+  '/goi-thau/$tenderId/buoc/$stepId': typeof AppGoiThauTenderIdBuocStepIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -150,6 +167,8 @@ export interface FileRoutesById {
   '/_app/goi-thau/': typeof AppGoiThauIndexRoute
   '/_app/ho-so-dau-thau/': typeof AppHoSoDauThauIndexRoute
   '/_app/nhan-su/': typeof AppNhanSuIndexRoute
+  '/_app/goi-thau/$tenderId/': typeof AppGoiThauTenderIdIndexRoute
+  '/_app/goi-thau/$tenderId/buoc/$stepId': typeof AppGoiThauTenderIdBuocStepIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -168,6 +187,8 @@ export interface FileRouteTypes {
     | '/goi-thau/'
     | '/ho-so-dau-thau/'
     | '/nhan-su/'
+    | '/goi-thau/$tenderId/'
+    | '/goi-thau/$tenderId/buoc/$stepId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -184,6 +205,8 @@ export interface FileRouteTypes {
     | '/goi-thau'
     | '/ho-so-dau-thau'
     | '/nhan-su'
+    | '/goi-thau/$tenderId'
+    | '/goi-thau/$tenderId/buoc/$stepId'
   id:
     | '__root__'
     | '/'
@@ -201,6 +224,8 @@ export interface FileRouteTypes {
     | '/_app/goi-thau/'
     | '/_app/ho-so-dau-thau/'
     | '/_app/nhan-su/'
+    | '/_app/goi-thau/$tenderId/'
+    | '/_app/goi-thau/$tenderId/buoc/$stepId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -316,6 +341,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppNhanSuHopDongRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/_app/goi-thau/$tenderId/': {
+      id: '/_app/goi-thau/$tenderId/'
+      path: '/goi-thau/$tenderId'
+      fullPath: '/goi-thau/$tenderId/'
+      preLoaderRoute: typeof AppGoiThauTenderIdIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/_app/goi-thau/$tenderId/buoc/$stepId': {
+      id: '/_app/goi-thau/$tenderId/buoc/$stepId'
+      path: '/goi-thau/$tenderId/buoc/$stepId'
+      fullPath: '/goi-thau/$tenderId/buoc/$stepId'
+      preLoaderRoute: typeof AppGoiThauTenderIdBuocStepIdRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
   }
 }
 
@@ -332,6 +371,8 @@ interface AppRouteRouteChildren {
   AppGoiThauIndexRoute: typeof AppGoiThauIndexRoute
   AppHoSoDauThauIndexRoute: typeof AppHoSoDauThauIndexRoute
   AppNhanSuIndexRoute: typeof AppNhanSuIndexRoute
+  AppGoiThauTenderIdIndexRoute: typeof AppGoiThauTenderIdIndexRoute
+  AppGoiThauTenderIdBuocStepIdRoute: typeof AppGoiThauTenderIdBuocStepIdRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
@@ -347,6 +388,8 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppGoiThauIndexRoute: AppGoiThauIndexRoute,
   AppHoSoDauThauIndexRoute: AppHoSoDauThauIndexRoute,
   AppNhanSuIndexRoute: AppNhanSuIndexRoute,
+  AppGoiThauTenderIdIndexRoute: AppGoiThauTenderIdIndexRoute,
+  AppGoiThauTenderIdBuocStepIdRoute: AppGoiThauTenderIdBuocStepIdRoute,
 }
 
 const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
