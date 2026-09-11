@@ -12,18 +12,18 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 - [x] Tab Hợp đồng nhân sự: employees / hợp đồng / tài liệu / review
 - [x] Báo cáo đấu thầu: KPI trạng thái, tiến độ theo tháng, chất lượng nhận dạng, xuất CSV/Excel
 
-## Giai đoạn 1 — Trải nghiệm lõi đấu thầu (học từ app tham khảo)
+## Giai đoạn 1 — Trải nghiệm lõi đấu thầu (ĐÃ XONG)
 
-- [ ] **Checklist bước theo quy trình thật**: mỗi hồ sơ gói thầu gắn quy trình 18–19 bước (Công văn chủ trương → … → Quyết toán/thanh lý), mỗi bước có trạng thái, nút Upload/Mở/Duyệt, tiến độ "x/19 đã duyệt", nút "Sinh toàn bộ hồ sơ" + "Tải toàn bộ hồ sơ"
-- [ ] **Editor từng bước 2 cột**: form dữ liệu bên trái, live preview Word bên phải (realtime), nút Lưu / Xuất Word / Xem trước, cảnh báo liệt kê rõ trường còn thiếu (phân biệt bắt buộc / tuỳ chọn)
-- [ ] **Data Center theo gói thầu**: form chuẩn hoá thông tin gói (tên, giá, giá bằng chữ, đơn vị, nguồn vốn, số/ngày văn bản, người ký/chức vụ); 3 section nhà thầu (báo giá dự toán / chào giá dự thầu / trúng thầu) với liên kết-copy nhanh; nút "Lưu Data Center"
-- [ ] **Nguồn dữ liệu theo loại**: upload nhiều file theo nhóm (ĐKKD, báo giá, giá chào thầu, giá trúng thầu); định dạng hỗ trợ tuỳ loại; AI trích xuất cho ĐKKD, parser thường cho Word/Excel; giá trúng thầu tự đổ vào Data Center
+- [x] **Checklist bước theo quy trình thật**: `/goi-thau` + `/goi-thau/{gói}` — 18 bước theo hình thức, trạng thái từng bước, tiến độ "x/18 đã duyệt"
+- [x] **Editor từng bước 2 cột**: `/goi-thau/{gói}/buoc/{bước}` — form trái, xem trước Word realtime bên phải, cảnh báo trường còn thiếu, Lưu / Duyệt / Xuất file Word
+- [x] **Data Center theo gói thầu**: tab "Dữ liệu chung" lưu jsonb dùng lại cho mọi bước; nhà thầu theo vai trò báo giá / dự thầu / trúng thầu
+- [x] **Nguồn dữ liệu theo loại**: tab "Nguồn dữ liệu" upload file theo nhóm (ĐKKD, báo giá, giá dự thầu, giá trúng thầu, khác)
 
-## Giai đoạn 2 — Quản trị nhà thầu & mẫu
+## Giai đoạn 2 — Quản trị nhà thầu & mẫu (ĐÃ XONG)
 
-- [ ] **Module Nhà thầu**: danh sách (tên, MST, địa chỉ, người đại diện, tài khoản/ngân hàng, số gói tham gia, trúng thầu), thêm mới, gắn vào gói thầu; phân biệt nguồn "Báo giá" / "Nhập tay"
-- [ ] **Kho template theo hình thức nâng cao**: mỗi hình thức có quy trình bước riêng, mỗi bước gắn loại hồ sơ + template chính thức; thao tác Chèn trên/Chèn dưới/Xoá bước/Hoàn tác/Lưu; template chỉ "chính thức" sau khi Lưu
-- [ ] Banner nhắc việc động trên đầu app (số quyết định chưa cấp số, deadline gần nhất)
+- [x] **Module Nhà thầu**: `/nha-thau` — tên, MST, địa chỉ, đại diện, ngân hàng, số gói tham gia/trúng, nguồn Báo giá / Nhập tay
+- [x] **Quy trình mẫu theo hình thức**: `/quy-trinh` (admin) — chèn trên/dưới, xoá bước, gắn mẫu Word, đánh dấu bắt buộc, Hoàn tác / Lưu quy trình
+- [x] Banner nhắc việc động trên đầu app (bước chưa duyệt, hồ sơ chờ kiểm tra, hợp đồng sắp hết hạn)
 
 ## Giai đoạn 3 — Báo cáo, trang chủ, tiện ích
 
