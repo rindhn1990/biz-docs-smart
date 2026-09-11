@@ -406,18 +406,19 @@ function TemplatesPage() {
     <div>
       <PageHeader
         title="Mẫu văn bản"
-        description="Chọn hình thức lựa chọn nhà thầu ở dải tab bên dưới, rồi tải mẫu Word lên — mẫu sẽ thuộc đúng hình thức đang mở."
+        description={module === "hr" ? "Kho mẫu Word dành riêng cho hồ sơ và hợp đồng nhân sự." : "Chọn hình thức lựa chọn nhà thầu, rồi tải một hoặc nhiều mẫu Word lên."}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <input
               ref={fileInput}
               type="file"
               accept=".docx"
+              multiple
               className="hidden"
               onChange={(e) => {
-                const file = e.target.files?.[0];
+                const files = Array.from(e.target.files ?? []);
                 e.target.value = "";
-                if (file) void handleUploadDocx(file);
+                if (files.length) void handleUploadDocx(files);
               }}
             />
             {isAdmin ? (
@@ -432,7 +433,7 @@ function TemplatesPage() {
                 ) : (
                   <FileUp className="size-4" />
                 )}
-                Tải lên mẫu (.docx)
+                Tải lên nhiều mẫu
               </button>
             ) : (
               <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -457,7 +458,7 @@ function TemplatesPage() {
         }
       />
 
-      <div
+      {module === "tender" ? <div
         role="tablist"
         aria-label="Hình thức lựa chọn nhà thầu"
         className="mb-4 inline-flex flex-wrap gap-1 rounded-lg border border-border bg-card p-1"
@@ -482,7 +483,7 @@ function TemplatesPage() {
             {m.label}
           </button>
         ))}
-      </div>
+      </div> : null}
 
       <div className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)_minmax(0,1fr)]">
         <section className="panel h-fit">
@@ -570,6 +571,16 @@ function TemplatesPage() {
                   )}
                   Thay file Word
                 </button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!current.source_docx_path || rows.length === 0}
+                  onClick={() => setDetecting(true)}
+                >
+                  <FileSearch />
+                  Quét file hoàn chỉnh
+                </Button>
                 <button
                   type="button"
                   disabled={busy !== null}
@@ -602,7 +613,7 @@ function TemplatesPage() {
                       placeholder="Mô tả"
                       className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
                     />
-                    <select
+                    {module === "tender" ? <select
                       value={editMethod}
                       onChange={(e) => setEditMethod(e.target.value as TenderMethod)}
                       aria-label="Hình thức lựa chọn nhà thầu"
@@ -613,7 +624,7 @@ function TemplatesPage() {
                           {m.label}
                         </option>
                       ))}
-                    </select>
+                    </select> : null}
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -691,7 +702,7 @@ function TemplatesPage() {
                   className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
                 >
                   <option value="">Nhập tay</option>
-                  {KHLCNT_FIELDS.map((f) => (
+                  {sourceFields.map((f) => (
                     <option key={f.key} value={f.key}>
                       {f.label} ({f.key})
                     </option>
@@ -838,10 +849,19 @@ function TemplatesPage() {
           templateName={current.name}
           storagePath={current.source_docx_path}
           style={(current.delimiter_style as DelimiterStyle) ?? "curly"}
+          module={module}
           onClose={() => setPicking(false)}
           onSaved={() => {
             void queryClient.invalidateQueries({ queryKey: ["template_mappings", current.id] });
           }}
+        />
+      ) : null}
+      {detecting && current?.source_docx_path ? (
+        <TemplateAutoDetect
+          storagePath={current.source_docx_path}
+          mappings={rows}
+          onClose={() => setDetecting(false)}
+          onSaved={() => void queryClient.invalidateQueries({ queryKey: ["template_mappings", current.id] })}
         />
       ) : null}
     </div>
