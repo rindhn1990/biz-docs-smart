@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { docxToHtml, replacePhraseWithToken, type DelimiterStyle } from "@/lib/docx";
 import { KHLCNT_FIELDS } from "@/lib/khlcnt";
 import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
+import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
 import { prettifyPlaceholder } from "@/lib/docx";
 
 type Props = {
@@ -14,7 +15,7 @@ type Props = {
   style: DelimiterStyle;
   onClose: () => void;
   onSaved: () => void;
-  module: "tender" | "hr";
+  module: "tender" | "hr" | "payment";
 };
 
 /** Xem trước nội dung file Word và bôi đen từng vùng để biến thành chỗ trống dữ liệu. */
@@ -27,7 +28,12 @@ export function TemplateRegionPicker({
   onSaved,
   module,
 }: Props) {
-  const sourceFields = module === "hr" ? HR_TEMPLATE_FIELDS : KHLCNT_FIELDS;
+  const sourceFields =
+    module === "hr"
+      ? HR_TEMPLATE_FIELDS
+      : module === "payment"
+        ? PAYMENT_TEMPLATE_FIELDS
+        : KHLCNT_FIELDS;
   const wrap: [string, string] = style === "square" ? ["[[", "]]"] : ["{{", "}}"];
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

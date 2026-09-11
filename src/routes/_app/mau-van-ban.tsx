@@ -30,12 +30,18 @@ import {
 } from "@/lib/docx";
 import { KHLCNT_DOC_TYPE, KHLCNT_FIELDS } from "@/lib/khlcnt";
 import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
+import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/mau-van-ban")({
   validateSearch: (search: Record<string, unknown>) => ({
-    module: search["module"] === "hr" ? ("hr" as const) : ("tender" as const),
+    module:
+      search["module"] === "hr"
+        ? ("hr" as const)
+        : search["module"] === "payment"
+          ? ("payment" as const)
+          : ("tender" as const),
   }),
   head: () => ({
     meta: [
@@ -102,7 +108,7 @@ function TemplatesPage() {
   const list = useMemo(
     () =>
       (templates.data ?? []).filter(
-        (t) => t.module === module && (module === "hr" || t.method === method),
+        (t) => t.module === module && (module !== "tender" || t.method === method),
       ),
     [templates.data, method, module],
   );
@@ -147,7 +153,12 @@ function TemplatesPage() {
 
   const current = list.find((t) => t.id === currentId) ?? null;
   const rows = mappings.data ?? [];
-  const sourceFields = module === "hr" ? HR_TEMPLATE_FIELDS : KHLCNT_FIELDS;
+  const sourceFields =
+    module === "hr"
+      ? HR_TEMPLATE_FIELDS
+      : module === "payment"
+        ? PAYMENT_TEMPLATE_FIELDS
+        : KHLCNT_FIELDS;
   const sourceKeys = new Set<string>(sourceFields.map((field) => field.key));
   const auto = approvedData.data ?? {};
   const wrap: [string, string] =
@@ -406,7 +417,13 @@ function TemplatesPage() {
     <div>
       <PageHeader
         title="Mẫu văn bản"
-        description={module === "hr" ? "Kho mẫu Word dành riêng cho hồ sơ và hợp đồng nhân sự." : "Chọn hình thức lựa chọn nhà thầu, rồi tải một hoặc nhiều mẫu Word lên."}
+        description={
+          module === "hr"
+            ? "Kho mẫu Word dành riêng cho hồ sơ và hợp đồng nhân sự."
+            : module === "payment"
+              ? "Kho mẫu Word dành riêng cho hồ sơ thanh toán, dữ liệu lấy từ thông tin nhà thầu."
+              : "Chọn hình thức lựa chọn nhà thầu, rồi tải một hoặc nhiều mẫu Word lên."
+        }
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <input
