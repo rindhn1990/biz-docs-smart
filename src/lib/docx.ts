@@ -83,3 +83,111 @@ export async function renderAndDownloadDocx(
   });
   saveAs(blob, fileName);
 }
+
+function escapeXml(text: string) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+/** Chuyển file .docx thành HTML để xem trước (dùng mammoth, chỉ chạy phía trình duyệt). */
+export async function docxToHtml(source: ArrayBuffer): Promise<string> {
+  const mammoth = await import("mammoth/mammoth.browser.js");
+  const convert = (mammoth as unknown as { convertToHtml: (o: unknown) => Promise<{ value: string }> })
+    .convertToHtml;
+  const result = await convert({ arrayBuffer: source });
+  return result.value;
+}
+
+/**
+ * Thay đoạn chữ `needle` trong file .docx bằng token chỗ trống (ví dụ "{{TEN_GOI_THAU}}"),
+ * giữ nguyên định dạng của các run không bị ảnh hưởng.
+ */
+export function replacePhraseWithToken(
+  source: ArrayBuffer,
+  needle: string,
+  token: string,
+): { buffer: ArrayBuffer; count: number } {
+  const zip = new PizZip(source);
+  const file = zip.file("word/document.xml");
+  if (!file) throw new Error("Không đọc được nội dung file Word");
+  let xml = file.asText();
+  const target = needle.replace(/\s+/g, " ").trim();
+  if (!target) throw new Error("Chưa chọn đoạn chữ nào");
+
+  const paragraphRe = /<w:p[\s>][\s\S]*?<\/w:p>/g;
+  let count = 0;
+  xml = xml.replace(paragraphRe, (paragraph) => {
+    const runRe = /(<w:t[^>]*>)([\s\S]*?)(<\/w:t>)/g;
+    type Slot = { open: string; close: string; text: string; at: number; len: number; start: number };
+    const slots: Slot[] = [];
+    let merged = "";
+    let m: RegExpExecArray | null;
+    while ((m = runRe.exec(paragraph)) !== null) {
+      const raw = m[2] ?? "";
+      const text = decodeXml(raw);
+      slots.push({
+        open: m[1] ?? "<w:t>",
+        close: m[3] ?? "</w:t>",
+        text,
+        at: m.index,
+        len: m[0].length,
+        start: merged.length,
+      });
+      merged += text;
+    }
+    if (slots.length === 0) return paragraph;
+
+    const normalized = merged.replace(/\s+/g, " ");
+    const idxNorm = normalized.indexOf(target);
+    if (idxNorm === -1) return paragraph;
+
+    // Ánh xạ vị trí trên chuỗi đã chuẩn hoá về chuỗi gốc.
+    const mapping: number[] = [];
+    let prevSpace = false;
+    for (let i = 0; i < merged.length; i++) {
+      const ch = merged[i] ?? "";
+      if (/\s/.test(ch)) {
+        if (prevSpace) continue;
+        prevSpace = true;
+      } else prevSpace = false;
+      mapping.push(i);
+    }
+    const start = mapping[idxNorm] ?? 0;
+    const endNorm = idxNorm + target.length;
+    const end = endNorm >= mapping.length ? merged.length : (mapping[endNorm] ?? merged.length);
+
+    let out = paragraph;
+    let inserted = false;
+    for (let i = slots.length - 1; i >= 0; i--) {
+      const slot = slots[i]!;
+      const s = slot.start;
+      const e = s + slot.text.length;
+      if (e <= start || s >= end) continue;
+      const before = slot.text.slice(0, Math.max(0, start - s));
+      const after = slot.text.slice(Math.max(0, Math.min(slot.text.length, end - s)));
+      const isFirst = s <= start;
+      const next = before + (isFirst ? token : "") + after;
+      if (isFirst) inserted = true;
+      const open = slot.open.includes("xml:space")
+        ? slot.open
+        : slot.open.replace(/>$/, ' xml:space="preserve">');
+      out =
+        out.slice(0, slot.at) + open + escapeXml(next) + slot.close + out.slice(slot.at + slot.len);
+    }
+    if (inserted) count++;
+    return out;
+  });
+
+  if (count === 0) {
+    throw new Error("Không tìm thấy đoạn chữ này trong file Word (có thể nằm ở nhiều đoạn khác nhau)");
+  }
+  zip.file("word/document.xml", xml);
+  const uint = zip.generate({ type: "uint8array", compression: "DEFLATE" }) as Uint8Array;
+  const buffer = new ArrayBuffer(uint.byteLength);
+  new Uint8Array(buffer).set(uint);
+  return { buffer, count };
+}
