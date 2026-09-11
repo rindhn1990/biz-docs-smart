@@ -65,6 +65,11 @@ export function FieldGroupEditor({
   onFocusField?: (id: string) => void;
 }) {
   const grouped = useGroupedFields(rows);
+  const byKey = useMemo(() => {
+    const map = new Map<string, FieldRow>();
+    for (const f of rows) map.set(f.field_key, f);
+    return map;
+  }, [rows]);
   return (
     <div className="divide-y divide-border">
       {grouped.map(([group, groupRows]) => (
@@ -78,6 +83,11 @@ export function FieldGroupEditor({
             <FieldRowEditor
               key={field.id}
               field={field}
+              textField={
+                isMoneyNumberField(field.field_key, field.label)
+                  ? (byKey.get(moneyTextKey(field.field_key)) ?? null)
+                  : null
+              }
               active={activeField === field.id}
               readOnly={readOnly}
               onFocusField={() => onFocusField?.(field.id)}
@@ -94,17 +104,21 @@ export function FieldRowEditor({
   active,
   readOnly,
   onFocusField,
+  textField,
 }: {
   field: FieldRow;
   active: boolean;
   readOnly: boolean;
   onFocusField: () => void;
+  /** Trường "bằng chữ" đi kèm, sẽ tự điền khi nhập xong số tiền. */
+  textField?: FieldRow | null;
 }) {
   const queryClient = useQueryClient();
   const [value, setValue] = useState(field.value ?? "");
   const [saving, setSaving] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const conf = confidenceStyle(Number(field.confidence));
+  const isMoney = isMoneyNumberField(field.field_key, field.label) && !!textField;
 
   useEffect(() => setValue(field.value ?? ""), [field.value]);
 
@@ -115,6 +129,18 @@ export function FieldRowEditor({
       .from("document_fields")
       .update({ value: next || null })
       .eq("id", field.id);
+
+    /** Số tiền bằng chữ luôn bám theo số tiền bằng số vừa nhập. */
+    if (!error && isMoney && textField) {
+      const words = readVietnameseMoney(next);
+      if ((textField.value ?? "") !== words) {
+        await supabase
+          .from("document_fields")
+          .update({ value: words || null })
+          .eq("id", textField.id);
+      }
+    }
+
     setSaving(false);
     if (error) {
       toast.error("Không lưu được thay đổi", { description: error.message });
@@ -146,9 +172,10 @@ export function FieldRowEditor({
         id={field.id}
         value={value}
         readOnly={readOnly}
+        inputMode={isMoney ? "numeric" : undefined}
         placeholder={conf.warn ? "Chưa đọc được — vui lòng nhập tay" : "—"}
         onChange={(e) => {
-          const next = e.target.value;
+          const next = isMoney ? formatThousands(e.target.value) : e.target.value;
           setValue(next);
           if (timer.current) clearTimeout(timer.current);
           timer.current = setTimeout(() => void save(next), 800);
@@ -160,6 +187,12 @@ export function FieldRowEditor({
         }}
         className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30 read-only:bg-muted"
       />
+      {isMoney && value ? (
+        <p className="mt-1 text-[11px] italic text-muted-foreground">
+          Bằng chữ: {readVietnameseMoney(value)}
+        </p>
+      ) : null}
     </div>
   );
 }
+
