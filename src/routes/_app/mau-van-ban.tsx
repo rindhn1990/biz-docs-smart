@@ -66,12 +66,18 @@ function TemplatesPage() {
   const { user, isAdmin } = useAuth();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [method, setMethod] = useState<TenderMethod>(DEFAULT_METHOD);
-  const [busy, setBusy] = useState<"upload" | "export" | null>(null);
+  const [busy, setBusy] = useState<"upload" | "export" | "replace" | "delete" | null>(null);
   const [adding, setAdding] = useState(false);
   const [newPlaceholder, setNewPlaceholder] = useState("");
   const [newLabel, setNewLabel] = useState("");
   const [newSource, setNewSource] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editMethod, setEditMethod] = useState<TenderMethod>(DEFAULT_METHOD);
   const fileInput = useRef<HTMLInputElement>(null);
+  const replaceInput = useRef<HTMLInputElement>(null);
 
   const templates = useQuery({
     queryKey: ["templates", "with-mappings"],
