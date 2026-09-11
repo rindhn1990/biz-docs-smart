@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, FileUp, Download, Loader2 } from "lucide-react";
+import { FileText, FileUp, Download, Loader2, Plus, Trash2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,7 +16,6 @@ import {
 import { KHLCNT_DOC_TYPE, KHLCNT_FIELDS } from "@/lib/khlcnt";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { cn } from "@/lib/utils";
-
 
 export const Route = createFileRoute("/_app/mau-van-ban")({
   head: () => ({
@@ -48,14 +47,18 @@ type Mapping = {
 };
 
 const KHLCNT_KEYS = new Set(KHLCNT_FIELDS.map((f) => f.key));
+const ADMIN_ONLY_NOTE = "Chỉ quản trị viên được chỉnh sửa mẫu";
 
 function TemplatesPage() {
   const queryClient = useQueryClient();
-  const { user, canWrite } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [method, setMethod] = useState<TenderMethod>(DEFAULT_METHOD);
-  const [uploadMethod, setUploadMethod] = useState<TenderMethod>(DEFAULT_METHOD);
   const [busy, setBusy] = useState<"upload" | "export" | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [newPlaceholder, setNewPlaceholder] = useState("");
+  const [newLabel, setNewLabel] = useState("");
+  const [newSource, setNewSource] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
 
   const templates = useQuery({
@@ -75,7 +78,6 @@ function TemplatesPage() {
     [templates.data, method],
   );
   const currentId = list.some((t) => t.id === selectedId) ? selectedId : (list[0]?.id ?? null);
-
 
   const mappings = useQuery({
     queryKey: ["template_mappings", currentId],
@@ -117,6 +119,8 @@ function TemplatesPage() {
   const current = list.find((t) => t.id === currentId) ?? null;
   const rows = mappings.data ?? [];
   const auto = approvedData.data ?? {};
+  const wrap: [string, string] =
+    current?.delimiter_style === "square" ? ["[[", "]]"] : ["{{", "}}"];
 
   const resolved = useMemo(() => {
     const out: Record<string, string> = {};
@@ -127,7 +131,10 @@ function TemplatesPage() {
     return out;
   }, [rows, auto]);
 
-  useEffect(() => setBusy(null), [currentId]);
+  useEffect(() => {
+    setBusy(null);
+    setAdding(false);
+  }, [currentId]);
 
   async function handleUploadDocx(file: File) {
     setBusy("upload");
@@ -142,8 +149,8 @@ function TemplatesPage() {
           category: "Tải lên",
           description: `Mẫu Word gốc do người dùng tải lên · ${placeholders.length} chỗ trống`,
           delimiter_style: style,
-          method: uploadMethod,
-
+          // Mẫu luôn thuộc đúng hình thức của tab đang mở.
+          method,
           file_name: file.name,
           mime_type: file.type || "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
           created_by: user?.id ?? null,
@@ -172,17 +179,62 @@ function TemplatesPage() {
       }
 
       await queryClient.invalidateQueries({ queryKey: ["templates"] });
-      setMethod(uploadMethod);
       setSelectedId(tpl.id);
 
       toast.success("Đã tải lên mẫu Word", {
-        description: `Tìm thấy ${placeholders.length} chỗ trống kiểu ${style === "square" ? "[[...]]" : "{{...}}"}.`,
+        description:
+          placeholders.length > 0
+            ? `Tìm thấy ${placeholders.length} chỗ trống kiểu ${style === "square" ? "[[...]]" : "{{...}}"}.`
+            : "Không tìm thấy chỗ trống nào — bạn có thể thêm thủ công ở bảng Ánh xạ dữ liệu.",
       });
     } catch (e) {
       toast.error("Không tải lên được mẫu", { description: (e as Error).message });
     } finally {
       setBusy(null);
     }
+  }
+
+  async function handleAddMapping() {
+    if (!currentId) return;
+    const placeholder = newPlaceholder.trim().replace(/^[[{]+|[\]}]+$/g, "");
+    if (!/^[A-Za-z0-9_]+$/.test(placeholder)) {
+      toast.error("Tên chỗ trống chỉ gồm chữ, số và dấu gạch dưới");
+      return;
+    }
+    if (rows.some((r) => r.placeholder === placeholder)) {
+      toast.error("Chỗ trống này đã có trong mẫu");
+      return;
+    }
+    const { error } = await supabase.from("template_mappings").insert({
+      template_id: currentId,
+      placeholder,
+      label: newLabel.trim() || prettifyPlaceholder(placeholder),
+      source_field: newSource || null,
+      sort_order: (rows.at(-1)?.sort_order ?? 0) + 1,
+      created_by: user?.id ?? null,
+      updated_by: user?.id ?? null,
+    });
+    if (error) {
+      toast.error("Không thêm được chỗ trống", { description: error.message });
+      return;
+    }
+    setNewPlaceholder("");
+    setNewLabel("");
+    setNewSource("");
+    setAdding(false);
+    await queryClient.invalidateQueries({ queryKey: ["template_mappings", currentId] });
+    toast.success("Đã thêm chỗ trống", {
+      description: `Nhớ chèn ${wrap[0]}${placeholder}${wrap[1]} vào file Word rồi tải lại.`,
+    });
+  }
+
+  async function handleDeleteMapping(id: string) {
+    const { error } = await supabase.from("template_mappings").delete().eq("id", id);
+    if (error) {
+      toast.error("Không xoá được dòng", { description: error.message });
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["template_mappings", currentId] });
   }
 
   async function handleExport() {
@@ -217,7 +269,7 @@ function TemplatesPage() {
     <div>
       <PageHeader
         title="Mẫu văn bản"
-        description="Tải lên mẫu Word thật, hệ thống tự dò các chỗ trống [[Ten_bien]] hoặc {{TEN_BIEN}} và điền dữ liệu từ hồ sơ đã xác nhận."
+        description="Chọn hình thức lựa chọn nhà thầu ở dải tab bên dưới, rồi tải mẫu Word lên — mẫu sẽ thuộc đúng hình thức đang mở."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <input
@@ -231,32 +283,26 @@ function TemplatesPage() {
                 if (file) void handleUploadDocx(file);
               }}
             />
-            <select
-              value={uploadMethod}
-              onChange={(e) => setUploadMethod(e.target.value as TenderMethod)}
-              aria-label="Hình thức lựa chọn nhà thầu cho mẫu tải lên"
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
-            >
-              {TENDER_METHODS.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-
-            <button
-              type="button"
-              disabled={!canWrite || busy !== null}
-              onClick={() => fileInput.current?.click()}
-              className="inline-flex items-center gap-2 rounded-md border border-input px-3.5 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
-            >
-              {busy === "upload" ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <FileUp className="size-4" />
-              )}
-              Tải lên mẫu (.docx)
-            </button>
+            {isAdmin ? (
+              <button
+                type="button"
+                disabled={busy !== null}
+                onClick={() => fileInput.current?.click()}
+                className="inline-flex items-center gap-2 rounded-md border border-input px-3.5 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
+              >
+                {busy === "upload" ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <FileUp className="size-4" />
+                )}
+                Tải lên mẫu (.docx)
+              </button>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Lock className="size-3.5" />
+                {ADMIN_ONLY_NOTE}
+              </span>
+            )}
             <button
               type="button"
               disabled={!current || busy !== null}
@@ -315,7 +361,6 @@ function TemplatesPage() {
               description="Tải lên file .docx để bắt đầu."
             />
           ) : (
-
             <ul className="divide-y divide-border">
               {list.map((t) => (
                 <li key={t.id}>
@@ -344,15 +389,91 @@ function TemplatesPage() {
 
         <section className="panel">
           <header className="border-b border-border px-4 py-3">
-            <h2 className="text-sm font-semibold">Ánh xạ dữ liệu</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Chỗ trống trong mẫu được nối với trường dữ liệu nguồn. Để trống ô giá trị nếu muốn
-              dùng dữ liệu tự động từ hồ sơ đã xác nhận.
-            </p>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-semibold">Ánh xạ dữ liệu</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Chỗ trống trong mẫu được nối với trường dữ liệu nguồn. Để trống ô giá trị nếu
+                  muốn dùng dữ liệu tự động từ hồ sơ đã xác nhận.
+                </p>
+              </div>
+              {isAdmin ? (
+                <button
+                  type="button"
+                  disabled={!currentId}
+                  onClick={() => setAdding((v) => !v)}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-50"
+                >
+                  <Plus className="size-3.5" />
+                  Thêm chỗ trống
+                </button>
+              ) : (
+                <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                  <Lock className="size-3.5" />
+                  {ADMIN_ONLY_NOTE}
+                </span>
+              )}
+            </div>
             {current?.description ? (
               <p className="mt-1 text-xs italic text-muted-foreground">{current.description}</p>
             ) : null}
           </header>
+
+          {adding && isAdmin ? (
+            <div className="space-y-2 border-b border-border bg-muted/40 px-4 py-3">
+              <div className="grid gap-2 sm:grid-cols-3">
+                <input
+                  value={newPlaceholder}
+                  onChange={(e) => setNewPlaceholder(e.target.value)}
+                  placeholder="TEN_GOI_THAU"
+                  aria-label="Tên chỗ trống"
+                  className="num rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+                />
+                <input
+                  value={newLabel}
+                  onChange={(e) => setNewLabel(e.target.value)}
+                  placeholder="Nhãn hiển thị"
+                  aria-label="Nhãn hiển thị"
+                  className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+                />
+                <select
+                  value={newSource}
+                  onChange={(e) => setNewSource(e.target.value)}
+                  aria-label="Trường nguồn"
+                  className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+                >
+                  <option value="">Nhập tay</option>
+                  {KHLCNT_FIELDS.map((f) => (
+                    <option key={f.key} value={f.key}>
+                      {f.label} ({f.key})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleAddMapping()}
+                  className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                >
+                  Lưu chỗ trống
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdding(false)}
+                  className="rounded-md border border-input px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+                >
+                  Huỷ
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Chèn đúng {`${wrap[0]}${newPlaceholder.trim() || "TEN_GOI_THAU"}${wrap[1]}`} (hoặc{" "}
+                {`[[${newPlaceholder.trim() || "TEN_GOI_THAU"}]]`} tuỳ mẫu) vào nội dung file Word
+                rồi tải lại để xuất chính xác.
+              </p>
+            </div>
+          ) : null}
+
           <div className="max-h-[70vh] overflow-auto">
             <table className="w-full min-w-[420px] text-sm">
               <thead>
@@ -360,50 +481,65 @@ function TemplatesPage() {
                   <th className="px-4 py-2.5 font-medium">Chỗ trống</th>
                   <th className="px-4 py-2.5 font-medium">Trường nguồn</th>
                   <th className="px-4 py-2.5 font-medium">Giá trị</th>
+                  {isAdmin ? <th className="px-2 py-2.5" /> : null}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {rows.map((m) => {
-                  const wrap = current?.delimiter_style === "square" ? ["[[", "]]"] : ["{{", "}}"];
-                  return (
-                    <tr key={m.id}>
-                      <td className="px-4 py-2.5">
-                        <span className="num rounded bg-muted px-1.5 py-0.5 text-xs">
-                          {`${wrap[0]}${m.placeholder}${wrap[1]}`}
-                        </span>
-                        <span className="mt-1 block text-xs text-muted-foreground">{m.label}</span>
+                {rows.map((m) => (
+                  <tr key={m.id}>
+                    <td className="px-4 py-2.5">
+                      <span className="num rounded bg-muted px-1.5 py-0.5 text-xs">
+                        {`${wrap[0]}${m.placeholder}${wrap[1]}`}
+                      </span>
+                      <span className="mt-1 block text-xs text-muted-foreground">{m.label}</span>
+                    </td>
+                    <td className="num px-4 py-2.5 text-xs text-muted-foreground">
+                      {m.source_field ?? "Nhập tay"}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <input
+                        defaultValue={m.value ?? ""}
+                        readOnly={!isAdmin}
+                        title={isAdmin ? undefined : ADMIN_ONLY_NOTE}
+                        placeholder={
+                          m.source_field ? (auto[m.source_field] ?? "Chưa có dữ liệu") : "—"
+                        }
+                        onBlur={async (e) => {
+                          const next = e.target.value;
+                          if (next === (m.value ?? "")) return;
+                          await supabase
+                            .from("template_mappings")
+                            .update({ value: next || null })
+                            .eq("id", m.id);
+                          void queryClient.invalidateQueries({
+                            queryKey: ["template_mappings", currentId],
+                          });
+                        }}
+                        className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30 read-only:bg-muted"
+                      />
+                    </td>
+                    {isAdmin ? (
+                      <td className="px-2 py-2.5">
+                        <button
+                          type="button"
+                          aria-label={`Xoá chỗ trống ${m.placeholder}`}
+                          onClick={() => void handleDeleteMapping(m.id)}
+                          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
                       </td>
-                      <td className="num px-4 py-2.5 text-xs text-muted-foreground">
-                        {m.source_field ?? "Nhập tay"}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <input
-                          defaultValue={m.value ?? ""}
-                          readOnly={!canWrite}
-                          placeholder={
-                            m.source_field ? (auto[m.source_field] ?? "Chưa có dữ liệu") : "—"
-                          }
-                          onBlur={async (e) => {
-                            const next = e.target.value;
-                            if (next === (m.value ?? "")) return;
-                            await supabase
-                              .from("template_mappings")
-                              .update({ value: next || null })
-                              .eq("id", m.id);
-                            void queryClient.invalidateQueries({
-                              queryKey: ["template_mappings", currentId],
-                            });
-                          }}
-                          className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30 read-only:bg-muted"
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
+                    ) : null}
+                  </tr>
+                ))}
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                    <td
+                      colSpan={isAdmin ? 4 : 3}
+                      className="px-4 py-8 text-center text-sm text-muted-foreground"
+                    >
                       Mẫu này chưa khai báo chỗ trống nào.
+                      {isAdmin ? ' Bấm "Thêm chỗ trống" để khai báo thủ công.' : ""}
                     </td>
                   </tr>
                 ) : null}
