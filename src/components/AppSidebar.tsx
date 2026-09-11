@@ -13,9 +13,10 @@ import {
   Users,
   Database,
   IdCard,
-
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 import { MODULE_TABS, currentModule } from "@/components/ModuleTabs";
 
 type ActiveItem = { to: string; label: string; icon: React.ElementType; locked?: false };
@@ -62,7 +63,17 @@ const hrGroups: { title: string; items: Item[] }[] = [
 export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const activeModule = currentModule(pathname);
-  const groups = activeModule === "nhan-su" ? hrGroups : tenderGroups;
+  const { isAdmin } = useAuth();
+  const baseGroups = activeModule === "nhan-su" ? hrGroups : tenderGroups;
+  const groups = isAdmin
+    ? [
+        ...baseGroups,
+        {
+          title: "Quản trị",
+          items: [{ to: "/quan-tri", label: "Phân quyền người dùng", icon: ShieldCheck }] as Item[],
+        },
+      ]
+    : baseGroups;
 
   return (
     <nav className="flex h-full w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
