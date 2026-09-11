@@ -17,7 +17,7 @@ import {
   STEP_STATUS,
   formatMoney,
 } from "@/lib/tender";
-import { renderAndDownloadDocx, type DelimiterStyle } from "@/lib/docx";
+
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
