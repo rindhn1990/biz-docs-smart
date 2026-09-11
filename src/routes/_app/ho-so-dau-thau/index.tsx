@@ -75,6 +75,7 @@ function DocumentsPage() {
   const { user, canWrite } = useAuth();
   const documents = useDocumentList();
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [docType, setDocType] = useState<string>("ho_so_du_thau");
 
   const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -82,7 +83,9 @@ function DocumentsPage() {
     mutationFn: async () => {
       const stamp = new Date();
       const seq = String(stamp.getTime()).slice(-5);
-      const fileName = `Ho_so_du_thau_${stamp.getFullYear()}_${seq}.pdf`;
+      const isKhlcnt = docType === KHLCNT_DOC_TYPE;
+      const prefix = TENDER_DOC_TYPES[docType]?.filePrefix ?? "Ho_so_du_thau";
+      const fileName = `${prefix}_${stamp.getFullYear()}_${seq}.pdf`;
 
       const { data: doc, error } = await supabase
         .from("documents")
@@ -90,10 +93,11 @@ function DocumentsPage() {
           file_name: fileName,
           storage_path: `uploads/${fileName}`,
           mime_type: "application/pdf",
-          file_size: 1_850_000,
-          folder: "02_Ho_so_du_thau",
+          file_size: isKhlcnt ? 1_240_000 : 1_850_000,
+          folder: isKhlcnt ? "01_To_trinh" : "02_Ho_so_du_thau",
+          doc_type: docType,
           status: "new",
-          page_count: 12,
+          page_count: isKhlcnt ? 3 : 12,
           created_by: user?.id ?? null,
           updated_by: user?.id ?? null,
         })
@@ -111,22 +115,38 @@ function DocumentsPage() {
         await supabase.from("documents").update({ status }).eq("id", doc.id);
 
         if (status === "extracted") {
-          await supabase.from("document_fields").insert(
-            SAMPLE_FIELDS.map((f, i) => ({
-              document_id: doc.id,
-              field_key: f.key,
-              label: f.label,
-              value: f.value || null,
-              confidence: f.conf,
-              needs_review: f.conf < 0.85,
-              source_page: 1,
-              bbox_top: f.t,
-              bbox_left: 10,
-              bbox_width: 58,
-              bbox_height: 4,
-              sort_order: i + 1,
-            })),
-          );
+          const payload = isKhlcnt
+            ? KHLCNT_FIELDS.map((f, i) => ({
+                document_id: doc.id,
+                field_key: f.key,
+                label: f.label,
+                value: f.value || null,
+                confidence: f.conf,
+                needs_review: f.conf < 0.85 || !f.value,
+                field_group: f.group,
+                source_page: 1,
+                bbox_top: 14 + (i % 20) * 4,
+                bbox_left: 10,
+                bbox_width: 58,
+                bbox_height: 4,
+                sort_order: i + 1,
+              }))
+            : SAMPLE_FIELDS.map((f, i) => ({
+                document_id: doc.id,
+                field_key: f.key,
+                label: f.label,
+                value: f.value || null,
+                confidence: f.conf,
+                needs_review: f.conf < 0.85,
+                field_group: null,
+                source_page: 1,
+                bbox_top: f.t,
+                bbox_left: 10,
+                bbox_width: 58,
+                bbox_height: 4,
+                sort_order: i + 1,
+              }));
+          await supabase.from("document_fields").insert(payload);
         }
         void queryClient.invalidateQueries({ queryKey: ["documents"] });
       }
