@@ -51,6 +51,8 @@ function TemplatesPage() {
   const queryClient = useQueryClient();
   const { user, canWrite } = useAuth();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [method, setMethod] = useState<TenderMethod>(DEFAULT_METHOD);
+  const [uploadMethod, setUploadMethod] = useState<TenderMethod>(DEFAULT_METHOD);
   const [busy, setBusy] = useState<"upload" | "export" | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -59,15 +61,19 @@ function TemplatesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("templates")
-        .select("id,name,category,description,body,source_docx_path,delimiter_style")
+        .select("id,name,category,description,body,source_docx_path,delimiter_style,method")
         .order("created_at");
       if (error) throw error;
       return data;
     },
   });
 
-  const list = useMemo(() => templates.data ?? [], [templates.data]);
-  const currentId = selectedId ?? list[0]?.id ?? null;
+  const list = useMemo(
+    () => (templates.data ?? []).filter((t) => t.method === method),
+    [templates.data, method],
+  );
+  const currentId = list.some((t) => t.id === selectedId) ? selectedId : (list[0]?.id ?? null);
+
 
   const mappings = useQuery({
     queryKey: ["template_mappings", currentId],
