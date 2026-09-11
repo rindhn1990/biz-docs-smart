@@ -804,8 +804,9 @@ function TemplatesPage() {
                 </p>
                 <button
                   type="button"
-                  disabled={!current.source_docx_path}
+                  disabled={!current.source_docx_path || !isAdmin}
                   onClick={() => setPicking(true)}
+                  title={isAdmin ? undefined : ADMIN_ONLY_NOTE}
                   className="inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
                 >
                   <MousePointerClick className="size-4" />
@@ -817,7 +818,7 @@ function TemplatesPage() {
         </section>
       </div>
 
-      {picking && current?.source_docx_path ? (
+      {picking && isAdmin && current?.source_docx_path ? (
         <TemplateRegionPicker
           templateId={current.id}
           templateName={current.name}
