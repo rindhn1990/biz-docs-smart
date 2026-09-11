@@ -11,6 +11,8 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 - [x] Tờ trình KHLCNT: docx mẫu sinh tự động, 39 trường / 5 nhóm, trang /du-lieu tổng hợp + xuất Word thật
 - [x] Tab Hợp đồng nhân sự: employees / hợp đồng / tài liệu / review
 - [x] Báo cáo đấu thầu: KPI trạng thái, tiến độ theo tháng, chất lượng nhận dạng, xuất CSV/Excel
+- [x] Tách kho mẫu Đấu thầu/Nhân sự; tải nhiều file ở kho mẫu và hai loại hồ sơ
+- [x] Đối chiếu mẫu gốc với file Word hoàn chỉnh, duyệt giá trị nhận diện trước khi lưu
 
 ## Giai đoạn 1 — Trải nghiệm lõi đấu thầu (ĐÃ XONG)
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Upload, Loader2, ChevronRight } from "lucide-react";
@@ -77,24 +77,30 @@ function DocumentsPage() {
   const documents = useDocumentList();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [docType, setDocType] = useState<string>("ho_so_du_thau");
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
   const upload = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (files: File[]) => {
+      let completed = 0;
+      for (const [fileIndex, file] of files.entries()) {
       const stamp = new Date();
-      const seq = String(stamp.getTime()).slice(-5);
+      const seq = `${String(stamp.getTime()).slice(-5)}-${fileIndex + 1}`;
       const isKhlcnt = docType === KHLCNT_DOC_TYPE;
       const prefix = TENDER_DOC_TYPES[docType]?.filePrefix ?? "Ho_so_du_thau";
-      const fileName = `${prefix}_${stamp.getFullYear()}_${seq}.pdf`;
+      const fileName = file.name || `${prefix}_${stamp.getFullYear()}_${seq}.pdf`;
+      const storagePath = `uploads/${user?.id ?? "unknown"}/${stamp.getTime()}-${fileIndex}-${fileName}`;
+      const uploaded = await supabase.storage.from("documents").upload(storagePath, file);
+      if (uploaded.error) throw uploaded.error;
 
       const { data: doc, error } = await supabase
         .from("documents")
         .insert({
           file_name: fileName,
-          storage_path: `uploads/${fileName}`,
-          mime_type: "application/pdf",
-          file_size: isKhlcnt ? 1_240_000 : 1_850_000,
+          storage_path: storagePath,
+          mime_type: file.type || "application/pdf",
+          file_size: file.size,
           folder: isKhlcnt ? "01_To_trinh" : "02_Ho_so_du_thau",
           doc_type: docType,
           status: "new",
@@ -153,11 +159,13 @@ function DocumentsPage() {
       }
 
       setProcessingId(null);
-      return doc.id;
+      completed++;
+      }
+      return completed;
     },
-    onSuccess: () => {
-      toast.success("Đã xử lý xong hồ sơ", {
-        description: "Dữ liệu đã được trích xuất và đang chờ bạn kiểm tra.",
+    onSuccess: (count) => {
+      toast.success(`Đã xử lý xong ${filesLabel(count)}`, {
+        description: "Dữ liệu đang chờ bạn kiểm tra.",
       });
       void queryClient.invalidateQueries({ queryKey: ["documents"] });
     },
@@ -169,6 +177,10 @@ function DocumentsPage() {
 
   const rows = documents.data ?? [];
 
+  function filesLabel(count: number) {
+    return `${count} hồ sơ`;
+  }
+
   return (
     <div>
       <PageHeader
@@ -176,6 +188,18 @@ function DocumentsPage() {
         description="Mỗi hồ sơ đi qua 5 bước: tải lên, nhận dạng, trích xuất dữ liệu, kiểm tra và xác nhận. Chọn một hồ sơ đã có dữ liệu để kiểm tra."
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={fileInput}
+              type="file"
+              accept="application/pdf,image/*"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                const files = Array.from(event.target.files ?? []);
+                event.target.value = "";
+                if (files.length) upload.mutate(files);
+              }}
+            />
             <select
               value={docType}
               onChange={(e) => setDocType(e.target.value)}
@@ -190,7 +214,7 @@ function DocumentsPage() {
             <button
               type="button"
               disabled={!canWrite || upload.isPending}
-              onClick={() => upload.mutate()}
+              onClick={() => fileInput.current?.click()}
               className="inline-flex items-center gap-2 rounded-md bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               {upload.isPending ? (
@@ -198,7 +222,7 @@ function DocumentsPage() {
               ) : (
                 <Upload className="size-4" />
               )}
-              Tải lên tài liệu
+              Tải lên nhiều tài liệu
             </button>
           </div>
         }

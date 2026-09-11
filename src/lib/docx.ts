@@ -11,6 +11,12 @@ export const DELIMITERS: Record<DelimiterStyle, { start: string; end: string }> 
 
 const PLACEHOLDER_RE = /\{\{[A-Za-z0-9_]+\}\}|\[\[[A-Za-z0-9_]+\]\]/g;
 
+export type DetectedTemplateValue = {
+  placeholder: string;
+  value: string;
+  confidence: "high" | "medium" | "low";
+};
+
 function decodeXml(text: string) {
   return text
     .replace(/&lt;/g, "<")
@@ -51,6 +57,66 @@ export async function extractPlaceholdersFromFile(file: File | Blob) {
   const zip = new PizZip(await file.arrayBuffer());
   const xml = zip.file("word/document.xml")?.asText() ?? "";
   return extractPlaceholdersFromDocumentXml(xml);
+}
+
+function paragraphTexts(source: ArrayBuffer): string[] {
+  const zip = new PizZip(source);
+  const xml = zip.file("word/document.xml")?.asText() ?? "";
+  return (xml.match(/<w:p[\s>][\s\S]*?<\/w:p>/g) ?? [])
+    .map((paragraph) =>
+      decodeXml(
+        (paragraph.match(/<w:t[^>]*>[\s\S]*?<\/w:t>/g) ?? [])
+          .map((run) => run.replace(/<[^>]+>/g, ""))
+          .join(""),
+      )
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .filter(Boolean);
+}
+
+function escapeRegExp(text: string) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Đối chiếu từng đoạn của mẫu và bản hoàn chỉnh để đề xuất giá trị thay placeholder. */
+export function detectTemplateValues(
+  templateSource: ArrayBuffer,
+  completedSource: ArrayBuffer,
+): DetectedTemplateValue[] {
+  const templateParagraphs = paragraphTexts(templateSource);
+  const completedParagraphs = paragraphTexts(completedSource);
+  const results: DetectedTemplateValue[] = [];
+
+  for (let index = 0; index < templateParagraphs.length; index++) {
+    const template = templateParagraphs[index] ?? "";
+    const tokens = template.match(PLACEHOLDER_RE) ?? [];
+    if (tokens.length === 0) continue;
+    const parts = template.split(PLACEHOLDER_RE);
+    const pattern = parts.map(escapeRegExp).join("([\\s\\S]*?)");
+    const exactCandidate = completedParagraphs[index] ?? "";
+    let match = exactCandidate.match(new RegExp(`^${pattern}$`, "i"));
+    let confidence: DetectedTemplateValue["confidence"] = "high";
+
+    if (!match) {
+      const anchor = parts.find((part) => part.trim().length >= 5)?.trim();
+      const candidate = anchor
+        ? completedParagraphs.find((paragraph) => paragraph.includes(anchor))
+        : undefined;
+      match = candidate?.match(new RegExp(`^${pattern}$`, "i")) ?? null;
+      confidence = "medium";
+    }
+
+    tokens.forEach((token, tokenIndex) => {
+      const placeholder = token.slice(2, -2);
+      const value = match?.[tokenIndex + 1]?.trim() ?? "";
+      results.push({ placeholder, value, confidence: value ? confidence : "low" });
+    });
+  }
+
+  return results.filter(
+    (result, index) => results.findIndex((item) => item.placeholder === result.placeholder) === index,
+  );
 }
 
 /** "Ten_goi_thau" → "Ten goi thau" (nhãn hiển thị gợi ý). */

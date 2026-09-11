@@ -21,7 +21,13 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { MODULE_TABS, currentModule } from "@/components/ModuleTabs";
 
-type ActiveItem = { to: string; label: string; icon: React.ElementType; locked?: false };
+type ActiveItem = {
+  to: string;
+  label: string;
+  icon: React.ElementType;
+  locked?: false;
+  search?: { module: "tender" | "hr" };
+};
 type LockedItem = { label: string; icon: React.ElementType; locked: true };
 type Item = ActiveItem | LockedItem;
 
@@ -44,7 +50,7 @@ const tenderGroups: { title: string; items: Item[] }[] = [
       { to: "/ho-so-dau-thau", label: "Hồ sơ đấu thầu", icon: FileStack },
       { to: "/du-lieu", label: "Dữ liệu", icon: Database },
       { to: "/nha-thau", label: "Nhà thầu", icon: Handshake },
-      { to: "/mau-van-ban", label: "Mẫu văn bản", icon: FileText },
+      { to: "/mau-van-ban", label: "Mẫu văn bản", icon: FileText, search: { module: "tender" } },
       { to: "/hop-dong", label: "Hợp đồng", icon: FileSignature },
     ],
   },
@@ -57,15 +63,16 @@ const hrGroups: { title: string; items: Item[] }[] = [
     items: [
       { to: "/nhan-su", label: "Hồ sơ nhân sự", icon: IdCard },
       { to: "/nhan-su/hop-dong", label: "Hợp đồng nhân sự", icon: Users },
-      { to: "/mau-van-ban", label: "Mẫu văn bản", icon: FileText },
+      { to: "/mau-van-ban", label: "Mẫu văn bản", icon: FileText, search: { module: "hr" } },
     ],
   },
   lockedGroup,
 ];
 
 export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const activeModule = currentModule(pathname);
+  const location = useRouterState({ select: (s) => s.location });
+  const pathname = location.pathname;
+  const activeModule = currentModule(pathname, (location.search as { module?: unknown }).module);
   const { isAdmin } = useAuth();
   const baseGroups = activeModule === "nhan-su" ? hrGroups : tenderGroups;
   const groups = isAdmin
@@ -151,6 +158,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
                   <li key={item.to}>
                     <Link
                       to={item.to}
+                      search={item.search ? { module: item.search.module } : {}}
                       onClick={onNavigate}
                       className={cn(
                         "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",

@@ -12,6 +12,7 @@ import {
   Pencil,
   MousePointerClick,
   RefreshCw,
+  FileSearch,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { TemplateRegionPicker } from "@/components/TemplateRegionPicker";
+import { TemplateAutoDetect } from "@/components/TemplateAutoDetect";
+import { Button } from "@/components/ui/button";
 import {
   extractPlaceholdersFromFile,
   prettifyPlaceholder,
@@ -26,10 +29,14 @@ import {
   type DelimiterStyle,
 } from "@/lib/docx";
 import { KHLCNT_DOC_TYPE, KHLCNT_FIELDS } from "@/lib/khlcnt";
+import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/mau-van-ban")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    module: search["module"] === "hr" ? ("hr" as const) : ("tender" as const),
+  }),
   head: () => ({
     meta: [
       { title: "Mẫu văn bản — OfficeFlow" },
@@ -58,10 +65,10 @@ type Mapping = {
   sort_order: number;
 };
 
-const KHLCNT_KEYS = new Set(KHLCNT_FIELDS.map((f) => f.key));
 const ADMIN_ONLY_NOTE = "Chỉ quản trị viên được chỉnh sửa mẫu";
 
 function TemplatesPage() {
+  const { module } = Route.useSearch();
   const queryClient = useQueryClient();
   const { user, isAdmin } = useAuth();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -73,6 +80,7 @@ function TemplatesPage() {
   const [newSource, setNewSource] = useState("");
   const [editing, setEditing] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [detecting, setDetecting] = useState(false);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editMethod, setEditMethod] = useState<TenderMethod>(DEFAULT_METHOD);
@@ -84,7 +92,7 @@ function TemplatesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("templates")
-        .select("id,name,category,description,body,source_docx_path,delimiter_style,method")
+        .select("id,name,category,description,body,source_docx_path,delimiter_style,method,module")
         .order("created_at");
       if (error) throw error;
       return data;
@@ -92,8 +100,11 @@ function TemplatesPage() {
   });
 
   const list = useMemo(
-    () => (templates.data ?? []).filter((t) => t.method === method),
-    [templates.data, method],
+    () =>
+      (templates.data ?? []).filter(
+        (t) => t.module === module && (module === "hr" || t.method === method),
+      ),
+    [templates.data, method, module],
   );
   const currentId = list.some((t) => t.id === selectedId) ? selectedId : (list[0]?.id ?? null);
 
@@ -136,6 +147,8 @@ function TemplatesPage() {
 
   const current = list.find((t) => t.id === currentId) ?? null;
   const rows = mappings.data ?? [];
+  const sourceFields = module === "hr" ? HR_TEMPLATE_FIELDS : KHLCNT_FIELDS;
+  const sourceKeys = new Set<string>(sourceFields.map((field) => field.key));
   const auto = approvedData.data ?? {};
   const wrap: [string, string] =
     current?.delimiter_style === "square" ? ["[[", "]]"] : ["{{", "}}"];
@@ -154,6 +167,7 @@ function TemplatesPage() {
     setAdding(false);
     setEditing(false);
     setPicking(false);
+    setDetecting(false);
   }, [currentId]);
 
   useEffect(() => {
@@ -163,9 +177,7 @@ function TemplatesPage() {
     setEditMethod((current.method as TenderMethod) ?? DEFAULT_METHOD);
   }, [current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function handleUploadDocx(file: File) {
-    setBusy("upload");
-    try {
+  async function uploadOneDocx(file: File) {
       const { placeholders, style } = await extractPlaceholdersFromFile(file);
       const name = file.name.replace(/\.docx$/i, "");
 
@@ -177,7 +189,8 @@ function TemplatesPage() {
           description: `Mẫu Word gốc do người dùng tải lên · ${placeholders.length} chỗ trống`,
           delimiter_style: style,
           // Mẫu luôn thuộc đúng hình thức của tab đang mở.
-          method,
+          method: module === "tender" ? method : null,
+          module,
           file_name: file.name,
           mime_type: file.type || "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
           created_by: user?.id ?? null,
@@ -199,26 +212,27 @@ function TemplatesPage() {
             template_id: tpl.id,
             placeholder: p,
             label: prettifyPlaceholder(p),
-            source_field: KHLCNT_KEYS.has(p) ? p : null,
+            source_field: sourceKeys.has(p) ? p : null,
             sort_order: i + 1,
           })),
         );
       }
 
-      await queryClient.invalidateQueries({ queryKey: ["templates"] });
-      setSelectedId(tpl.id);
+      return { id: tpl.id };
+  }
 
-      toast.success("Đã tải lên mẫu Word", {
-        description:
-          placeholders.length > 0
-            ? `Tìm thấy ${placeholders.length} chỗ trống kiểu ${style === "square" ? "[[...]]" : "{{...}}"}.`
-            : "Không tìm thấy chỗ trống nào — bạn có thể thêm thủ công ở bảng Ánh xạ dữ liệu.",
-      });
-    } catch (e) {
-      toast.error("Không tải lên được mẫu", { description: (e as Error).message });
-    } finally {
-      setBusy(null);
-    }
+  async function handleUploadDocx(files: File[]) {
+    if (!files.length) return;
+    setBusy("upload");
+    const results = await Promise.allSettled(files.map(uploadOneDocx));
+    const succeeded = results.filter((result) => result.status === "fulfilled");
+    const failed = results.length - succeeded.length;
+    await queryClient.invalidateQueries({ queryKey: ["templates"] });
+    const last = succeeded.at(-1);
+    if (last?.status === "fulfilled") setSelectedId(last.value.id);
+    if (succeeded.length) toast.success(`Đã tải lên ${succeeded.length} mẫu Word`);
+    if (failed) toast.error(`${failed} file không tải lên được`, { description: "Các file hợp lệ còn lại đã được lưu." });
+    setBusy(null);
   }
 
   async function handleAddMapping() {
@@ -304,7 +318,7 @@ function TemplatesPage() {
       .update({
         name,
         description: editDescription.trim() || null,
-        method: editMethod,
+        method: module === "tender" ? editMethod : null,
         updated_by: user?.id ?? null,
       })
       .eq("id", current.id);
@@ -313,7 +327,7 @@ function TemplatesPage() {
       return;
     }
     setEditing(false);
-    if (editMethod !== method) setMethod(editMethod);
+    if (module === "tender" && editMethod !== method) setMethod(editMethod);
     setSelectedId(current.id);
     await queryClient.invalidateQueries({ queryKey: ["templates"] });
     toast.success("Đã lưu thông tin mẫu");
@@ -347,7 +361,7 @@ function TemplatesPage() {
             template_id: current.id,
             placeholder: p,
             label: prettifyPlaceholder(p),
-            source_field: KHLCNT_KEYS.has(p) ? p : null,
+            source_field: sourceKeys.has(p) ? p : null,
             sort_order: (rows.at(-1)?.sort_order ?? 0) + i + 1,
           })),
         );
@@ -392,18 +406,19 @@ function TemplatesPage() {
     <div>
       <PageHeader
         title="Mẫu văn bản"
-        description="Chọn hình thức lựa chọn nhà thầu ở dải tab bên dưới, rồi tải mẫu Word lên — mẫu sẽ thuộc đúng hình thức đang mở."
+        description={module === "hr" ? "Kho mẫu Word dành riêng cho hồ sơ và hợp đồng nhân sự." : "Chọn hình thức lựa chọn nhà thầu, rồi tải một hoặc nhiều mẫu Word lên."}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <input
               ref={fileInput}
               type="file"
               accept=".docx"
+              multiple
               className="hidden"
               onChange={(e) => {
-                const file = e.target.files?.[0];
+                const files = Array.from(e.target.files ?? []);
                 e.target.value = "";
-                if (file) void handleUploadDocx(file);
+                if (files.length) void handleUploadDocx(files);
               }}
             />
             {isAdmin ? (
@@ -418,7 +433,7 @@ function TemplatesPage() {
                 ) : (
                   <FileUp className="size-4" />
                 )}
-                Tải lên mẫu (.docx)
+                Tải lên nhiều mẫu
               </button>
             ) : (
               <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -443,7 +458,7 @@ function TemplatesPage() {
         }
       />
 
-      <div
+      {module === "tender" ? <div
         role="tablist"
         aria-label="Hình thức lựa chọn nhà thầu"
         className="mb-4 inline-flex flex-wrap gap-1 rounded-lg border border-border bg-card p-1"
@@ -468,7 +483,7 @@ function TemplatesPage() {
             {m.label}
           </button>
         ))}
-      </div>
+      </div> : null}
 
       <div className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)_minmax(0,1fr)]">
         <section className="panel h-fit">
@@ -556,6 +571,16 @@ function TemplatesPage() {
                   )}
                   Thay file Word
                 </button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!current.source_docx_path || rows.length === 0}
+                  onClick={() => setDetecting(true)}
+                >
+                  <FileSearch />
+                  Quét file hoàn chỉnh
+                </Button>
                 <button
                   type="button"
                   disabled={busy !== null}
@@ -588,7 +613,7 @@ function TemplatesPage() {
                       placeholder="Mô tả"
                       className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
                     />
-                    <select
+                    {module === "tender" ? <select
                       value={editMethod}
                       onChange={(e) => setEditMethod(e.target.value as TenderMethod)}
                       aria-label="Hình thức lựa chọn nhà thầu"
@@ -599,7 +624,7 @@ function TemplatesPage() {
                           {m.label}
                         </option>
                       ))}
-                    </select>
+                    </select> : null}
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -677,7 +702,7 @@ function TemplatesPage() {
                   className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
                 >
                   <option value="">Nhập tay</option>
-                  {KHLCNT_FIELDS.map((f) => (
+                  {sourceFields.map((f) => (
                     <option key={f.key} value={f.key}>
                       {f.label} ({f.key})
                     </option>
@@ -824,10 +849,19 @@ function TemplatesPage() {
           templateName={current.name}
           storagePath={current.source_docx_path}
           style={(current.delimiter_style as DelimiterStyle) ?? "curly"}
+          module={module}
           onClose={() => setPicking(false)}
           onSaved={() => {
             void queryClient.invalidateQueries({ queryKey: ["template_mappings", current.id] });
           }}
+        />
+      ) : null}
+      {detecting && current?.source_docx_path ? (
+        <TemplateAutoDetect
+          storagePath={current.source_docx_path}
+          mappings={rows}
+          onClose={() => setDetecting(false)}
+          onSaved={() => void queryClient.invalidateQueries({ queryKey: ["template_mappings", current.id] })}
         />
       ) : null}
     </div>
