@@ -274,6 +274,33 @@ function TemplatesPage() {
         }
       />
 
+      <div
+        role="tablist"
+        aria-label="Hình thức lựa chọn nhà thầu"
+        className="mb-4 inline-flex flex-wrap gap-1 rounded-lg border border-border bg-card p-1"
+      >
+        {TENDER_METHODS.map((m) => (
+          <button
+            key={m.value}
+            type="button"
+            role="tab"
+            aria-selected={m.value === method}
+            onClick={() => {
+              setMethod(m.value);
+              setSelectedId(null);
+            }}
+            className={cn(
+              "rounded-md px-3.5 py-2 text-sm font-medium transition-colors",
+              m.value === method
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground",
+            )}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+
       <div className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)_minmax(0,1fr)]">
         <section className="panel h-fit">
           <header className="border-b border-border px-4 py-3">
@@ -282,8 +309,13 @@ function TemplatesPage() {
           {templates.isLoading ? (
             <p className="px-4 py-8 text-center text-sm text-muted-foreground">Đang tải…</p>
           ) : list.length === 0 ? (
-            <EmptyState title="Chưa có mẫu nào" description="Hãy thêm mẫu văn bản để bắt đầu." />
+            <EmptyState
+              icon={FileText}
+              title="Chưa có mẫu cho hình thức này"
+              description="Tải lên file .docx để bắt đầu."
+            />
           ) : (
+
             <ul className="divide-y divide-border">
               {list.map((t) => (
                 <li key={t.id}>
