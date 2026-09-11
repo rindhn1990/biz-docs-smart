@@ -11,7 +11,9 @@ import {
   Settings,
   Lock,
   Users,
+  Database,
   IdCard,
+
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MODULE_TABS, currentModule } from "@/components/ModuleTabs";
@@ -36,8 +38,10 @@ const tenderGroups: { title: string; items: Item[] }[] = [
     items: [
       { to: "/tong-quan", label: "Tổng quan", icon: LayoutDashboard },
       { to: "/ho-so-dau-thau", label: "Hồ sơ đấu thầu", icon: FileStack },
+      { to: "/du-lieu", label: "Dữ liệu", icon: Database },
       { to: "/mau-van-ban", label: "Mẫu văn bản", icon: FileText },
       { to: "/hop-dong", label: "Hợp đồng", icon: FileSignature },
+
     ],
   },
   lockedGroup,

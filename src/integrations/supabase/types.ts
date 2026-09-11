@@ -1112,6 +1112,7 @@ export type Database = {
           file_name: string | null
           id: string
           is_default: boolean
+          method: string | null
           mime_type: string | null
           name: string
           parent_id: string | null
@@ -1131,6 +1132,7 @@ export type Database = {
           file_name?: string | null
           id?: string
           is_default?: boolean
+          method?: string | null
           mime_type?: string | null
           name: string
           parent_id?: string | null
@@ -1150,6 +1152,7 @@ export type Database = {
           file_name?: string | null
           id?: string
           is_default?: boolean
+          method?: string | null
           mime_type?: string | null
           name?: string
           parent_id?: string | null
