@@ -99,8 +99,8 @@ function StepEditor() {
     const out: Record<string, string> = {};
     for (const m of mappings.data ?? []) {
       const key = m.placeholder;
-      const fromShared = (m.source_field ? shared[m.source_field] : shared[key]) ?? "";
-      out[key] = stepData[key] ?? fromShared ?? m.value ?? "";
+      const fromShared = m.source_field ? shared[m.source_field] : shared[key];
+      out[key] = stepData[key] || fromShared || m.value || "";
     }
     return out;
   }, [step.data, center.data, mappings.data]);
