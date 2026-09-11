@@ -57,7 +57,7 @@ export async function extractPlaceholdersFromFile(file: File | Blob) {
 export function prettifyPlaceholder(name: string) {
   const words = name.split("_").filter(Boolean);
   if (words.length === 0) return name;
-  const first = words[0];
+  const first = words[0] ?? name;
   return [first.charAt(0).toUpperCase() + first.slice(1), ...words.slice(1)].join(" ");
 }
 
