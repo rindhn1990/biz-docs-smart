@@ -77,7 +77,7 @@ function EmployeeContractsPage() {
         actions={
           <button
             type="button"
-            onClick={() => void navigate({ to: "/mau-van-ban" })}
+            onClick={() => void navigate({ to: "/mau-van-ban", search: { module: "hr" } })}
             className="inline-flex items-center gap-2 rounded-md bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             <FilePlus2 className="size-4" />

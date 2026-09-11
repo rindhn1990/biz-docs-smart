@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { docxToHtml, replacePhraseWithToken, type DelimiterStyle } from "@/lib/docx";
 import { KHLCNT_FIELDS } from "@/lib/khlcnt";
+import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
 import { prettifyPlaceholder } from "@/lib/docx";
 
 type Props = {
@@ -13,6 +14,7 @@ type Props = {
   style: DelimiterStyle;
   onClose: () => void;
   onSaved: () => void;
+  module: "tender" | "hr";
 };
 
 /** Xem trước nội dung file Word và bôi đen từng vùng để biến thành chỗ trống dữ liệu. */
@@ -23,7 +25,9 @@ export function TemplateRegionPicker({
   style,
   onClose,
   onSaved,
+  module,
 }: Props) {
+  const sourceFields = module === "hr" ? HR_TEMPLATE_FIELDS : KHLCNT_FIELDS;
   const wrap: [string, string] = style === "square" ? ["[[", "]]"] : ["{{", "}}"];
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -202,7 +206,7 @@ export function TemplateRegionPicker({
                 className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
               >
                 <option value="">Nhập tay</option>
-                {KHLCNT_FIELDS.map((f) => (
+                {sourceFields.map((f) => (
                   <option key={f.key} value={f.key}>
                     {f.label} ({f.key})
                   </option>

@@ -7,8 +7,8 @@ export const MODULE_TABS = [
   { key: "nhan-su", label: "Hợp đồng nhân sự", to: "/nhan-su", icon: Users },
 ] as const;
 
-export function currentModule(pathname: string): "dau-thau" | "nhan-su" {
-  return pathname.startsWith("/nhan-su") ? "nhan-su" : "dau-thau";
+export function currentModule(pathname: string, module?: unknown): "dau-thau" | "nhan-su" {
+  return pathname.startsWith("/nhan-su") || module === "hr" ? "nhan-su" : "dau-thau";
 }
 
 export function ModuleTabs({ className }: { className?: string }) {

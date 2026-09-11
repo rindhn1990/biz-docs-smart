@@ -1,5 +1,24 @@
 export type EmployeeDocType = "quyet_dinh_bo_nhiem" | "cccd" | "bang_cap";
 
+export const HR_TEMPLATE_FIELDS = [
+  { key: "full_name", label: "Họ và tên" },
+  { key: "date_of_birth", label: "Ngày sinh" },
+  { key: "id_number", label: "Số CCCD" },
+  { key: "id_issue_date", label: "Ngày cấp CCCD" },
+  { key: "id_issue_place", label: "Nơi cấp CCCD" },
+  { key: "hometown", label: "Quê quán" },
+  { key: "position", label: "Chức vụ" },
+  { key: "department", label: "Phòng ban" },
+  { key: "contract_number", label: "Số hợp đồng" },
+  { key: "contract_type", label: "Loại hợp đồng" },
+  { key: "start_date", label: "Ngày bắt đầu" },
+  { key: "end_date", label: "Ngày kết thúc" },
+  { key: "base_salary", label: "Lương cơ bản" },
+  { key: "degree_name", label: "Tên bằng cấp" },
+  { key: "degree_major", label: "Chuyên ngành" },
+  { key: "degree_school", label: "Trường cấp bằng" },
+] as const;
+
 export const EMPLOYEE_DOC_TYPES: Record<
   EmployeeDocType,
   { label: string; filePrefix: string; scan: boolean }
