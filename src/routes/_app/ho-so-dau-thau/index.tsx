@@ -123,7 +123,7 @@ function DocumentsPage() {
                 value: f.value || null,
                 confidence: f.conf,
                 needs_review: f.conf < 0.85 || !f.value,
-                field_group: f.group,
+                field_group: f.group as string | null,
                 source_page: 1,
                 bbox_top: 14 + (i % 20) * 4,
                 bbox_left: 10,
