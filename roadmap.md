@@ -34,3 +34,8 @@
 - [x] Cột `templates.method` (5 hình thức) + tab lọc và dropdown khi tải mẫu lên
 - [x] Mẫu KHLCNT gán "Chỉ định thầu rút gọn"; 4 hình thức còn lại hiển thị EmptyState
 
+
+## Mẫu văn bản – phân quyền (hoàn thành)
+- [x] Thêm/xoá chỗ trống thủ công cho mẫu chưa có placeholder
+- [x] Tải mẫu lên gán đúng hình thức của tab đang mở (bỏ dropdown riêng)
+- [x] Chỉ admin được sửa mẫu (RLS + UI); trang /quan-tri gán vai trò theo email
