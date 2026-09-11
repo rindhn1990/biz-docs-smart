@@ -511,6 +511,117 @@ function TemplatesPage() {
         </section>
 
         <section className="panel">
+          {isAdmin && current ? (
+            <div className="border-b border-border bg-muted/30 px-4 py-3">
+              <input
+                ref={replaceInput}
+                type="file"
+                accept=".docx"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) void handleReplaceDocx(file);
+                }}
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditing((v) => !v)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+                >
+                  <Pencil className="size-3.5" />
+                  Sửa thông tin mẫu
+                </button>
+                <button
+                  type="button"
+                  disabled={!current.source_docx_path}
+                  onClick={() => setPicking(true)}
+                  title={current.source_docx_path ? undefined : "Mẫu này chưa có tệp Word gốc"}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-50"
+                >
+                  <MousePointerClick className="size-3.5" />
+                  Định nghĩa vùng dữ liệu
+                </button>
+                <button
+                  type="button"
+                  disabled={busy !== null}
+                  onClick={() => replaceInput.current?.click()}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-50"
+                >
+                  {busy === "replace" ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="size-3.5" />
+                  )}
+                  Thay file Word
+                </button>
+                <button
+                  type="button"
+                  disabled={busy !== null}
+                  onClick={() => void handleDeleteTemplate()}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-destructive/40 px-2.5 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+                >
+                  {busy === "delete" ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="size-3.5" />
+                  )}
+                  Xoá mẫu
+                </button>
+              </div>
+
+              {editing ? (
+                <div className="mt-3 space-y-2">
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      aria-label="Tên mẫu"
+                      placeholder="Tên mẫu"
+                      className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+                    />
+                    <input
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      aria-label="Mô tả mẫu"
+                      placeholder="Mô tả"
+                      className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+                    />
+                    <select
+                      value={editMethod}
+                      onChange={(e) => setEditMethod(e.target.value as TenderMethod)}
+                      aria-label="Hình thức lựa chọn nhà thầu"
+                      className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+                    >
+                      {TENDER_METHODS.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleSaveTemplateInfo()}
+                      className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                    >
+                      Lưu thông tin
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditing(false)}
+                      className="rounded-md border border-input px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+                    >
+                      Huỷ
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           <header className="border-b border-border px-4 py-3">
             <div className="flex items-start justify-between gap-2">
               <div>
