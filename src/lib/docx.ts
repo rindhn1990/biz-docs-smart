@@ -275,3 +275,45 @@ export function replacePhraseWithToken(
   new Uint8Array(buffer).set(uint);
   return { buffer, count };
 }
+
+/** Toàn bộ văn bản thuần của một file .docx (mỗi đoạn một dòng). */
+export function docxPlainText(source: ArrayBuffer): string {
+  return paragraphTexts(source).join("\n");
+}
+
+/** Dò giá trị theo nhãn trong văn bản Word: "Tên gói thầu: Mua xe ô tô". */
+export function matchLabeledValues(
+  text: string,
+  fields: { key: string; label: string }[],
+): Record<string, { value: string; confidence: number }> {
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const normalize = (value: string) =>
+    value
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+
+  const out: Record<string, { value: string; confidence: number }> = {};
+  for (const field of fields) {
+    const label = normalize(field.label.replace(/\(.*?\)/g, ""));
+    if (label.length < 3) continue;
+    for (const line of lines) {
+      const separator = line.search(/[:：]/);
+      if (separator <= 0) continue;
+      const head = normalize(line.slice(0, separator));
+      const value = line.slice(separator + 1).trim();
+      if (!value) continue;
+      if (head === label || head.includes(label) || label.includes(head)) {
+        out[field.key] = { value, confidence: head === label ? 0.92 : 0.75 };
+        break;
+      }
+    }
+  }
+  return out;
+}
