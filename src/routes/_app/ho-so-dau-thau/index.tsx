@@ -162,7 +162,18 @@ function DocumentsPage() {
                 bbox_height: 4,
                 sort_order: i + 1,
               }));
-          await supabase.from("document_fields").insert(payload);
+          // Với file Word, ưu tiên dữ liệu quét được thật từ nội dung tài liệu.
+          const merged = payload.map((row) => {
+            const hit = scanned[row.field_key];
+            if (!hit) return row;
+            return {
+              ...row,
+              value: hit.value,
+              confidence: hit.confidence,
+              needs_review: hit.confidence < 0.85,
+            };
+          });
+          await supabase.from("document_fields").insert(merged);
         }
         void queryClient.invalidateQueries({ queryKey: ["documents"] });
       }
