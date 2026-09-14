@@ -36,27 +36,6 @@ export const Route = createFileRoute("/_app/ho-so-dau-thau/")({
   component: DocumentsPage,
 });
 
-const SAMPLE_FIELDS = [
-  { key: "tender_code", label: "Mã gói thầu", value: "GT-2026-009", conf: 0.97, t: 14 },
-  {
-    key: "tender_name",
-    label: "Tên gói thầu",
-    value: "Cung cấp vật tư điện dự phòng quý III",
-    conf: 0.94,
-    t: 22,
-  },
-  {
-    key: "investor",
-    label: "Chủ đầu tư",
-    value: "Tổng Công ty Điện lực Miền Bắc",
-    conf: 0.96,
-    t: 30,
-  },
-  { key: "package_value", label: "Giá gói thầu (VNĐ)", value: "8900000000", conf: 0.92, t: 38 },
-  { key: "submit_deadline", label: "Hạn nộp hồ sơ", value: "", conf: 0.61, t: 46 },
-  { key: "funding_source", label: "Nguồn vốn", value: "Vốn doanh nghiệp", conf: 0.89, t: 54 },
-  { key: "duration", label: "Thời gian thực hiện", value: "60 ngày", conf: 0.83, t: 62 },
-];
 
 function useDocumentList() {
   return useQuery({
@@ -98,7 +77,7 @@ function DocumentsPage() {
       const scanned = isWord
         ? matchLabeledValues(
             docxPlainText(await file.arrayBuffer()),
-            (isKhlcnt ? KHLCNT_FIELDS : SAMPLE_FIELDS).map((f) => ({ key: f.key, label: f.label })),
+            KHLCNT_FIELDS.map((f) => ({ key: f.key, label: f.label })),
           )
         : {};
       const uploaded = await supabase.storage.from("documents").upload(storagePath, file);
@@ -132,8 +111,8 @@ function DocumentsPage() {
         await supabase.from("documents").update({ status }).eq("id", doc.id);
 
         if (status === "extracted") {
-          const payload = isKhlcnt
-            ? KHLCNT_FIELDS.map((f, i) => ({
+          // Mọi hồ sơ đều dựng đủ bộ trường chuẩn; trường không có trong tài liệu để trống.
+          const payload = KHLCNT_FIELDS.map((f, i) => ({
                 document_id: doc.id,
                 field_key: f.key,
                 label: f.label,
@@ -147,22 +126,8 @@ function DocumentsPage() {
                 bbox_width: 58,
                 bbox_height: 4,
                 sort_order: i + 1,
-              }))
-            : SAMPLE_FIELDS.map((f, i) => ({
-                document_id: doc.id,
-                field_key: f.key,
-                label: f.label,
-                value: f.value || null,
-                confidence: f.conf,
-                needs_review: f.conf < 0.85,
-                field_group: null,
-                source_page: 1,
-                bbox_top: f.t,
-                bbox_left: 10,
-                bbox_width: 58,
-                bbox_height: 4,
-                sort_order: i + 1,
               }));
+
           // Với file Word, ưu tiên dữ liệu quét được thật từ nội dung tài liệu.
           const merged = payload.map((row) => {
             const hit = scanned[row.field_key];

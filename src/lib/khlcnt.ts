@@ -1,6 +1,8 @@
 /**
- * Bộ 39 trường dữ liệu của "Tờ trình phê duyệt Kế hoạch lựa chọn nhà thầu" (KHLCNT).
+ * Bộ trường dữ liệu chuẩn của hồ sơ đấu thầu, lấy theo bảng Data_input_column.
  * field_key trùng với placeholder trong mẫu Word thật (kiểu [[Ten_bien]]).
+ * Mẫu nào không dùng đến trường nào thì trường đó để trống, nhưng bảng dữ liệu
+ * của mọi hồ sơ luôn hiển thị đầy đủ các trường dưới đây.
  */
 export const KHLCNT_DOC_TYPE = "to_trinh_khlcnt";
 
@@ -8,6 +10,8 @@ export const KHLCNT_GROUPS = [
   "Căn cứ",
   "Thông tin gói thầu",
   "KHLCNT",
+  "Nhà thầu",
+  "Thương thảo",
   "KQLCNT",
   "Khác",
 ] as const;
@@ -22,8 +26,11 @@ export type KhlcntField = {
   conf: number;
 };
 
+/** Trường chưa có dữ liệu mẫu: để trống, độ tin cậy thấp để nhắc người dùng nhập tay. */
+const BLANK = { value: "", conf: 0.3 };
+
 export const KHLCNT_FIELDS: KhlcntField[] = [
-  // Nhóm "Căn cứ"
+  // Căn cứ
   { key: "Numb_CVCT", label: "Số công văn chủ trương", group: "Căn cứ", value: "13/KT", conf: 0.95 },
   {
     key: "Date_CVCT",
@@ -60,10 +67,10 @@ export const KHLCNT_FIELDS: KhlcntField[] = [
     value: "26/02/2025",
     conf: 0.91,
   },
-  { key: "Numb_TCG", label: "Số văn bản TCG", group: "Căn cứ", value: "", conf: 0.4 },
-  { key: "Date_TCG", label: "Ngày văn bản TCG", group: "Căn cứ", value: "", conf: 0.4 },
+  { key: "Numb_TCG", label: "Số văn bản TCG", group: "Căn cứ", ...BLANK },
+  { key: "Date_TCG", label: "Ngày văn bản TCG", group: "Căn cứ", ...BLANK },
 
-  // Nhóm "Thông tin gói thầu"
+  // Thông tin gói thầu
   {
     key: "Ten_goi_thau",
     label: "Tên gói thầu",
@@ -129,7 +136,7 @@ export const KHLCNT_FIELDS: KhlcntField[] = [
     conf: 0.87,
   },
 
-  // Nhóm "KHLCNT"
+  // KHLCNT
   {
     key: "Numb_totrinh_KH",
     label: "Số tờ trình KHLCNT",
@@ -172,38 +179,76 @@ export const KHLCNT_FIELDS: KhlcntField[] = [
     value: "21/3/2025",
     conf: 0.9,
   },
+  { key: "Num_tender", label: "Số hồ sơ mời thầu", group: "KHLCNT", ...BLANK },
+  { key: "Date_tender", label: "Ngày hồ sơ mời thầu", group: "KHLCNT", ...BLANK },
+
+  // Nhà thầu
+  {
+    key: "CV_moi_DPGKT",
+    label: "Số công văn mời đàm phán giá (kỹ thuật)",
+    group: "Nhà thầu",
+    ...BLANK,
+  },
+  {
+    key: "Date_CV_moi_DPGKT",
+    label: "Ngày công văn mời đàm phán giá (kỹ thuật)",
+    group: "Nhà thầu",
+    ...BLANK,
+  },
+  { key: "Name_NT1", label: "Nhà thầu mời 1", group: "Nhà thầu", ...BLANK },
+  { key: "Name_NT2", label: "Nhà thầu mời 2", group: "Nhà thầu", ...BLANK },
+  { key: "Name_NT3", label: "Nhà thầu mời 3", group: "Nhà thầu", ...BLANK },
+  {
+    key: "CV_moi_DPGTT",
+    label: "Số công văn mời đàm phán giá (trực tiếp)",
+    group: "Nhà thầu",
+    ...BLANK,
+  },
+  {
+    key: "Date_CV_moi_DPGTT",
+    label: "Ngày công văn mời đàm phán giá (trực tiếp)",
+    group: "Nhà thầu",
+    ...BLANK,
+  },
+  { key: "Name_NTDP1", label: "Nhà thầu đàm phán 1", group: "Nhà thầu", ...BLANK },
+  { key: "Name_NTDP2", label: "Nhà thầu đàm phán 2", group: "Nhà thầu", ...BLANK },
+  { key: "Name_NTDP3", label: "Nhà thầu đàm phán 3", group: "Nhà thầu", ...BLANK },
   {
     key: "CV_moi_TTHD",
     label: "Số công văn mời thương thảo HĐ",
-    group: "KHLCNT",
+    group: "Nhà thầu",
     value: "565/KVN-TMĐT",
     conf: 0.85,
   },
   {
     key: "Date_CV_moi_TTHD",
     label: "Ngày công văn mời thương thảo HĐ",
-    group: "KHLCNT",
+    group: "Nhà thầu",
     value: "21/3/2025",
     conf: 0.85,
   },
-  { key: "Num_tender", label: "Số hồ sơ mời thầu", group: "KHLCNT", value: "", conf: 0.35 },
-  { key: "Date_tender", label: "Ngày hồ sơ mời thầu", group: "KHLCNT", value: "", conf: 0.35 },
+
+  // Thương thảo
+  { key: "Numb_danhgia", label: "Số biên bản đánh giá", group: "Thương thảo", ...BLANK },
+  { key: "Date_danhgia", label: "Ngày biên bản đánh giá", group: "Thương thảo", ...BLANK },
+  { key: "Numb_DPG", label: "Số biên bản đàm phán giá", group: "Thương thảo", ...BLANK },
+  { key: "Date_DPG", label: "Ngày biên bản đàm phán giá", group: "Thương thảo", ...BLANK },
   {
     key: "Numb_BBTT",
     label: "Số biên bản thương thảo HĐ",
-    group: "KHLCNT",
+    group: "Thương thảo",
     value: "94/BB-KVN",
     conf: 0.89,
   },
   {
     key: "Date_BBTT",
     label: "Ngày biên bản thương thảo HĐ",
-    group: "KHLCNT",
+    group: "Thương thảo",
     value: "26/3/2025",
     conf: 0.89,
   },
 
-  // Nhóm "KQLCNT"
+  // KQLCNT
   {
     key: "Numb_Totrinh_KQ",
     label: "Số tờ trình kết quả LCNT",
@@ -222,15 +267,13 @@ export const KHLCNT_FIELDS: KhlcntField[] = [
     key: "Numb_Thamdinh_KQ",
     label: "Số văn bản thẩm định kết quả LCNT",
     group: "KQLCNT",
-    value: "",
-    conf: 0.3,
+    ...BLANK,
   },
   {
     key: "Date_Thamdinh_KQ",
     label: "Ngày văn bản thẩm định kết quả LCNT",
     group: "KQLCNT",
-    value: "",
-    conf: 0.3,
+    ...BLANK,
   },
   {
     key: "NT_trungthau",
@@ -254,7 +297,7 @@ export const KHLCNT_FIELDS: KhlcntField[] = [
     conf: 0.83,
   },
 
-  // Nhóm "Khác"
+  // Khác
   { key: "Ban_CM", label: "Ban chuyên môn", group: "Khác", value: "Ban Kế Toán", conf: 0.92 },
   { key: "Kyhieu_BanCM", label: "Ký hiệu ban chuyên môn", group: "Khác", value: "KT", conf: 0.9 },
   {

@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { DocsTabs } from "@/components/DocsTabs";
 import { EmptyState } from "@/components/EmptyState";
 import { FieldGroupEditor, type FieldRow } from "@/components/FieldGroupEditor";
+import { KHLCNT_FIELDS } from "@/lib/khlcnt";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { renderAndDownloadDocx, type DelimiterStyle } from "@/lib/docx";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ export const Route = createFileRoute("/_app/ho-so-dau-thau/du-lieu")({
 function DataPage() {
   const { doc } = Route.useSearch();
   const { canWrite } = useAuth();
+  const queryClient = useQueryClient();
   const [docId, setDocId] = useState<string | null>(null);
   const [method, setMethod] = useState<TenderMethod>(DEFAULT_METHOD);
   const [exporting, setExporting] = useState<string | null>(null);
@@ -86,6 +88,35 @@ function DataPage() {
   });
 
   const rows = useMemo(() => fields.data ?? [], [fields.data]);
+
+  /** Hồ sơ cũ chỉ có một phần trường: tự bổ sung các trường còn thiếu (để trống). */
+  useEffect(() => {
+    if (!currentId || !canWrite || fields.isLoading || rows.length === 0) return;
+    const have = new Set(rows.map((f) => f.field_key));
+    const missing = KHLCNT_FIELDS.filter((f) => !have.has(f.key));
+    if (missing.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      const { error } = await supabase.from("document_fields").insert(
+        missing.map((f, i) => ({
+          document_id: currentId,
+          field_key: f.key,
+          label: f.label,
+          value: null,
+          confidence: 0.3,
+          needs_review: true,
+          field_group: f.group as string,
+          sort_order: rows.length + i + 1,
+        })),
+      );
+      if (!error && !cancelled) {
+        void queryClient.invalidateQueries({ queryKey: ["document_fields", currentId] });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentId, canWrite, fields.isLoading, rows, queryClient]);
 
   async function exportTemplate(tpl: {
     id: string;
