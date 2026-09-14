@@ -11,7 +11,7 @@ import {
   Settings,
   Lock,
   Users,
-  Database,
+  
   IdCard,
   ShieldCheck,
   Workflow,
