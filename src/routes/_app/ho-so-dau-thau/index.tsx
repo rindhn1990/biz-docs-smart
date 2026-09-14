@@ -90,7 +90,14 @@ function DocumentsPage() {
       const isKhlcnt = docType === KHLCNT_DOC_TYPE;
       const prefix = TENDER_DOC_TYPES[docType]?.filePrefix ?? "Ho_so_du_thau";
       const fileName = file.name || `${prefix}_${stamp.getFullYear()}_${seq}.pdf`;
-      const storagePath = `uploads/${user?.id ?? "unknown"}/${stamp.getTime()}-${fileIndex}-${fileName}`;
+      const storagePath = `uploads/${user?.id ?? "unknown"}/${stamp.getTime()}-${fileIndex}-${toStorageKey(fileName)}`;
+      const isWord = /\.docx$/i.test(fileName);
+      const scanned = isWord
+        ? matchLabeledValues(
+            docxPlainText(await file.arrayBuffer()),
+            (isKhlcnt ? KHLCNT_FIELDS : SAMPLE_FIELDS).map((f) => ({ key: f.key, label: f.label })),
+          )
+        : {};
       const uploaded = await supabase.storage.from("documents").upload(storagePath, file);
       if (uploaded.error) throw uploaded.error;
 
