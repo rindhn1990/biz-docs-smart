@@ -14,6 +14,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { DOC_STATUS } from "@/lib/domain";
 import { KHLCNT_DOC_TYPE, KHLCNT_FIELDS, TENDER_DOC_TYPES } from "@/lib/khlcnt";
 import { formatDateTime } from "@/lib/format";
+import { docxPlainText, matchLabeledValues } from "@/lib/docx";
+import { toStorageKey } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/ho-so-dau-thau/")({
   head: () => ({
@@ -90,7 +92,14 @@ function DocumentsPage() {
       const isKhlcnt = docType === KHLCNT_DOC_TYPE;
       const prefix = TENDER_DOC_TYPES[docType]?.filePrefix ?? "Ho_so_du_thau";
       const fileName = file.name || `${prefix}_${stamp.getFullYear()}_${seq}.pdf`;
-      const storagePath = `uploads/${user?.id ?? "unknown"}/${stamp.getTime()}-${fileIndex}-${fileName}`;
+      const storagePath = `uploads/${user?.id ?? "unknown"}/${stamp.getTime()}-${fileIndex}-${toStorageKey(fileName)}`;
+      const isWord = /\.docx$/i.test(fileName);
+      const scanned = isWord
+        ? matchLabeledValues(
+            docxPlainText(await file.arrayBuffer()),
+            (isKhlcnt ? KHLCNT_FIELDS : SAMPLE_FIELDS).map((f) => ({ key: f.key, label: f.label })),
+          )
+        : {};
       const uploaded = await supabase.storage.from("documents").upload(storagePath, file);
       if (uploaded.error) throw uploaded.error;
 
@@ -153,7 +162,18 @@ function DocumentsPage() {
                 bbox_height: 4,
                 sort_order: i + 1,
               }));
-          await supabase.from("document_fields").insert(payload);
+          // Với file Word, ưu tiên dữ liệu quét được thật từ nội dung tài liệu.
+          const merged = payload.map((row) => {
+            const hit = scanned[row.field_key];
+            if (!hit) return row;
+            return {
+              ...row,
+              value: hit.value,
+              confidence: hit.confidence,
+              needs_review: hit.confidence < 0.85,
+            };
+          });
+          await supabase.from("document_fields").insert(merged);
         }
         void queryClient.invalidateQueries({ queryKey: ["documents"] });
       }
@@ -191,7 +211,7 @@ function DocumentsPage() {
             <input
               ref={fileInput}
               type="file"
-              accept="application/pdf,image/*"
+              accept="application/pdf,image/*,.docx"
               multiple
               className="hidden"
               onChange={(event) => {
@@ -222,7 +242,7 @@ function DocumentsPage() {
               ) : (
                 <Upload className="size-4" />
               )}
-              Tải lên nhiều tài liệu
+              Tải lên nhiều tài liệu (PDF, ảnh, Word)
             </button>
           </div>
         }
