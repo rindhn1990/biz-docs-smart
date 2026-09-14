@@ -87,6 +87,35 @@ function DataPage() {
 
   const rows = useMemo(() => fields.data ?? [], [fields.data]);
 
+  /** Hồ sơ cũ chỉ có một phần trường: tự bổ sung các trường còn thiếu (để trống). */
+  useEffect(() => {
+    if (!currentId || !canWrite || fields.isLoading || rows.length === 0) return;
+    const have = new Set(rows.map((f) => f.field_key));
+    const missing = KHLCNT_FIELDS.filter((f) => !have.has(f.key));
+    if (missing.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      const { error } = await supabase.from("document_fields").insert(
+        missing.map((f, i) => ({
+          document_id: currentId,
+          field_key: f.key,
+          label: f.label,
+          value: null,
+          confidence: 0.3,
+          needs_review: true,
+          field_group: f.group as string,
+          sort_order: rows.length + i + 1,
+        })),
+      );
+      if (!error && !cancelled) {
+        void queryClient.invalidateQueries({ queryKey: ["document_fields", currentId] });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentId, canWrite, fields.isLoading, rows, queryClient]);
+
   async function exportTemplate(tpl: {
     id: string;
     name: string;
