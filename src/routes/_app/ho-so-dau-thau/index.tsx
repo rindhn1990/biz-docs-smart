@@ -98,7 +98,7 @@ function DocumentsPage() {
       const scanned = isWord
         ? matchLabeledValues(
             docxPlainText(await file.arrayBuffer()),
-            (isKhlcnt ? KHLCNT_FIELDS : SAMPLE_FIELDS).map((f) => ({ key: f.key, label: f.label })),
+            KHLCNT_FIELDS.map((f) => ({ key: f.key, label: f.label })),
           )
         : {};
       const uploaded = await supabase.storage.from("documents").upload(storagePath, file);
@@ -132,8 +132,8 @@ function DocumentsPage() {
         await supabase.from("documents").update({ status }).eq("id", doc.id);
 
         if (status === "extracted") {
-          const payload = isKhlcnt
-            ? KHLCNT_FIELDS.map((f, i) => ({
+          // Mọi hồ sơ đều dựng đủ bộ trường chuẩn; trường không có trong tài liệu để trống.
+          const payload = KHLCNT_FIELDS.map((f, i) => ({
                 document_id: doc.id,
                 field_key: f.key,
                 label: f.label,
@@ -148,21 +148,7 @@ function DocumentsPage() {
                 bbox_height: 4,
                 sort_order: i + 1,
               }))
-            : SAMPLE_FIELDS.map((f, i) => ({
-                document_id: doc.id,
-                field_key: f.key,
-                label: f.label,
-                value: f.value || null,
-                confidence: f.conf,
-                needs_review: f.conf < 0.85,
-                field_group: null,
-                source_page: 1,
-                bbox_top: f.t,
-                bbox_left: 10,
-                bbox_width: 58,
-                bbox_height: 4,
-                sort_order: i + 1,
-              }));
+
           // Với file Word, ưu tiên dữ liệu quét được thật từ nội dung tài liệu.
           const merged = payload.map((row) => {
             const hit = scanned[row.field_key];
