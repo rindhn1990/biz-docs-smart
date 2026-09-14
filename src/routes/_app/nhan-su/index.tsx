@@ -14,6 +14,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { DOC_STATUS } from "@/lib/domain";
 import { EMPLOYEE_DOC_TYPES, EMPLOYEE_SAMPLE_FIELDS, type EmployeeDocType } from "@/lib/hr";
 import { formatDateTime } from "@/lib/format";
+import { docxPlainText, matchLabeledValues } from "@/lib/docx";
+import { toStorageKey } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/nhan-su/")({
@@ -70,7 +72,13 @@ function EmployeeDocumentsPage() {
       const seq = `${String(stamp.getTime()).slice(-5)}-${fileIndex + 1}`;
       const type = EMPLOYEE_DOC_TYPES[docType];
       const fileName = file.name || `${type.filePrefix}_${stamp.getFullYear()}_${seq}.pdf`;
-      const storagePath = `employee-uploads/${user?.id ?? "unknown"}/${stamp.getTime()}-${fileIndex}-${fileName}`;
+      const storagePath = `employee-uploads/${user?.id ?? "unknown"}/${stamp.getTime()}-${fileIndex}-${toStorageKey(fileName)}`;
+      const scanned = /\.docx$/i.test(fileName)
+        ? matchLabeledValues(
+            docxPlainText(await file.arrayBuffer()),
+            EMPLOYEE_SAMPLE_FIELDS[docType].map((f) => ({ key: f.key, label: f.label })),
+          )
+        : {};
       const uploaded = await supabase.storage.from("documents").upload(storagePath, file);
       if (uploaded.error) throw uploaded.error;
 
@@ -106,9 +114,9 @@ function EmployeeDocumentsPage() {
               document_id: doc.id,
               field_key: f.key,
               label: f.label,
-              value: f.value || null,
-              confidence: f.conf,
-              needs_review: f.conf < 0.85,
+              value: scanned[f.key]?.value ?? f.value ?? null,
+              confidence: scanned[f.key]?.confidence ?? f.conf,
+              needs_review: (scanned[f.key]?.confidence ?? f.conf) < 0.85,
               source_page: 1,
               bbox_top: 14 + i * 8,
               bbox_left: 10,
@@ -150,7 +158,7 @@ function EmployeeDocumentsPage() {
             <input
               ref={fileInput}
               type="file"
-              accept="application/pdf,image/*"
+              accept="application/pdf,image/*,.docx"
               multiple
               className="hidden"
               onChange={(event) => {

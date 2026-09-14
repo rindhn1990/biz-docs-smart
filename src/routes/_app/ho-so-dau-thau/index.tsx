@@ -211,7 +211,7 @@ function DocumentsPage() {
             <input
               ref={fileInput}
               type="file"
-              accept="application/pdf,image/*"
+              accept="application/pdf,image/*,.docx"
               multiple
               className="hidden"
               onChange={(event) => {
@@ -242,7 +242,7 @@ function DocumentsPage() {
               ) : (
                 <Upload className="size-4" />
               )}
-              Tải lên nhiều tài liệu
+              Tải lên nhiều tài liệu (PDF, ảnh, Word)
             </button>
           </div>
         }
