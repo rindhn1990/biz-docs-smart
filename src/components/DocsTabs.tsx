@@ -1,9 +1,10 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ListChecks, BarChart3 } from "lucide-react";
+import { ListChecks, BarChart3, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
   { to: "/ho-so-dau-thau", label: "Danh sách hồ sơ", icon: ListChecks },
+  { to: "/ho-so-dau-thau/du-lieu", label: "Dữ liệu", icon: Database },
   { to: "/ho-so-dau-thau/bao-cao", label: "Báo cáo", icon: BarChart3 },
 ] as const;
 

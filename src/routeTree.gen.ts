@@ -24,6 +24,7 @@ import { Route as AppGoiThauIndexRouteImport } from './routes/_app/goi-thau/inde
 import { Route as AppHoSoDauThauIndexRouteImport } from './routes/_app/ho-so-dau-thau/index'
 import { Route as AppHoSoDauThauDocumentIdRouteImport } from './routes/_app/ho-so-dau-thau/$documentId'
 import { Route as AppHoSoDauThauBaoCaoRouteImport } from './routes/_app/ho-so-dau-thau/bao-cao'
+import { Route as AppHoSoDauThauDuLieuRouteImport } from './routes/_app/ho-so-dau-thau/du-lieu'
 import { Route as AppNhanSuIndexRouteImport } from './routes/_app/nhan-su/index'
 import { Route as AppNhanSuDocumentIdRouteImport } from './routes/_app/nhan-su/$documentId'
 import { Route as AppNhanSuHopDongRouteImport } from './routes/_app/nhan-su/hop-dong'
@@ -105,6 +106,11 @@ const AppHoSoDauThauBaoCaoRoute = AppHoSoDauThauBaoCaoRouteImport.update({
   path: '/ho-so-dau-thau/bao-cao',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppHoSoDauThauDuLieuRoute = AppHoSoDauThauDuLieuRouteImport.update({
+  id: '/ho-so-dau-thau/du-lieu',
+  path: '/ho-so-dau-thau/du-lieu',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppNhanSuIndexRoute = AppNhanSuIndexRouteImport.update({
   id: '/nhan-su/',
   path: '/nhan-su/',
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/tong-quan': typeof AppTongQuanRoute
   '/ho-so-dau-thau/$documentId': typeof AppHoSoDauThauDocumentIdRoute
   '/ho-so-dau-thau/bao-cao': typeof AppHoSoDauThauBaoCaoRoute
+  '/ho-so-dau-thau/du-lieu': typeof AppHoSoDauThauDuLieuRoute
   '/nhan-su/$documentId': typeof AppNhanSuDocumentIdRoute
   '/nhan-su/hop-dong': typeof AppNhanSuHopDongRoute
   '/goi-thau/': typeof AppGoiThauIndexRoute
@@ -166,6 +173,7 @@ export interface FileRoutesByTo {
   '/tong-quan': typeof AppTongQuanRoute
   '/ho-so-dau-thau/$documentId': typeof AppHoSoDauThauDocumentIdRoute
   '/ho-so-dau-thau/bao-cao': typeof AppHoSoDauThauBaoCaoRoute
+  '/ho-so-dau-thau/du-lieu': typeof AppHoSoDauThauDuLieuRoute
   '/nhan-su/$documentId': typeof AppNhanSuDocumentIdRoute
   '/nhan-su/hop-dong': typeof AppNhanSuHopDongRoute
   '/goi-thau': typeof AppGoiThauIndexRoute
@@ -189,6 +197,7 @@ export interface FileRoutesById {
   '/_app/tong-quan': typeof AppTongQuanRoute
   '/_app/ho-so-dau-thau/$documentId': typeof AppHoSoDauThauDocumentIdRoute
   '/_app/ho-so-dau-thau/bao-cao': typeof AppHoSoDauThauBaoCaoRoute
+  '/_app/ho-so-dau-thau/du-lieu': typeof AppHoSoDauThauDuLieuRoute
   '/_app/nhan-su/$documentId': typeof AppNhanSuDocumentIdRoute
   '/_app/nhan-su/hop-dong': typeof AppNhanSuHopDongRoute
   '/_app/goi-thau/': typeof AppGoiThauIndexRoute
@@ -212,6 +221,7 @@ export interface FileRouteTypes {
     | '/tong-quan'
     | '/ho-so-dau-thau/$documentId'
     | '/ho-so-dau-thau/bao-cao'
+    | '/ho-so-dau-thau/du-lieu'
     | '/nhan-su/$documentId'
     | '/nhan-su/hop-dong'
     | '/goi-thau/'
@@ -233,6 +243,7 @@ export interface FileRouteTypes {
     | '/tong-quan'
     | '/ho-so-dau-thau/$documentId'
     | '/ho-so-dau-thau/bao-cao'
+    | '/ho-so-dau-thau/du-lieu'
     | '/nhan-su/$documentId'
     | '/nhan-su/hop-dong'
     | '/goi-thau'
@@ -255,6 +266,7 @@ export interface FileRouteTypes {
     | '/_app/tong-quan'
     | '/_app/ho-so-dau-thau/$documentId'
     | '/_app/ho-so-dau-thau/bao-cao'
+    | '/_app/ho-so-dau-thau/du-lieu'
     | '/_app/nhan-su/$documentId'
     | '/_app/nhan-su/hop-dong'
     | '/_app/goi-thau/'
@@ -377,6 +389,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppHoSoDauThauBaoCaoRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/_app/ho-so-dau-thau/du-lieu': {
+      id: '/_app/ho-so-dau-thau/du-lieu'
+      path: '/ho-so-dau-thau/du-lieu'
+      fullPath: '/ho-so-dau-thau/du-lieu'
+      preLoaderRoute: typeof AppHoSoDauThauDuLieuRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/_app/nhan-su/': {
       id: '/_app/nhan-su/'
       path: '/nhan-su'
@@ -426,6 +445,7 @@ interface AppRouteRouteChildren {
   AppTongQuanRoute: typeof AppTongQuanRoute
   AppHoSoDauThauDocumentIdRoute: typeof AppHoSoDauThauDocumentIdRoute
   AppHoSoDauThauBaoCaoRoute: typeof AppHoSoDauThauBaoCaoRoute
+  AppHoSoDauThauDuLieuRoute: typeof AppHoSoDauThauDuLieuRoute
   AppNhanSuDocumentIdRoute: typeof AppNhanSuDocumentIdRoute
   AppNhanSuHopDongRoute: typeof AppNhanSuHopDongRoute
   AppGoiThauIndexRoute: typeof AppGoiThauIndexRoute
@@ -446,6 +466,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppTongQuanRoute: AppTongQuanRoute,
   AppHoSoDauThauDocumentIdRoute: AppHoSoDauThauDocumentIdRoute,
   AppHoSoDauThauBaoCaoRoute: AppHoSoDauThauBaoCaoRoute,
+  AppHoSoDauThauDuLieuRoute: AppHoSoDauThauDuLieuRoute,
   AppNhanSuDocumentIdRoute: AppNhanSuDocumentIdRoute,
   AppNhanSuHopDongRoute: AppNhanSuHopDongRoute,
   AppGoiThauIndexRoute: AppGoiThauIndexRoute,

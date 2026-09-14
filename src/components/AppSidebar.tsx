@@ -11,7 +11,7 @@ import {
   Settings,
   Lock,
   Users,
-  Database,
+  
   IdCard,
   ShieldCheck,
   Workflow,
@@ -49,7 +49,7 @@ const tenderGroups: { title: string; items: Item[] }[] = [
       { to: "/tong-quan", label: "Tổng quan", icon: LayoutDashboard },
       { to: "/goi-thau", label: "Gói thầu", icon: Workflow },
       { to: "/ho-so-dau-thau", label: "Hồ sơ đấu thầu", icon: FileStack },
-      { to: "/du-lieu", label: "Dữ liệu", icon: Database },
+
       { to: "/nha-thau", label: "Nhà thầu", icon: Handshake },
       { to: "/mau-van-ban", label: "Mẫu văn bản", icon: FileText, search: { module: "tender" } },
       { to: "/hop-dong", label: "Hợp đồng", icon: FileSignature },

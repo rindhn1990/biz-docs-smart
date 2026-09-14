@@ -86,6 +86,7 @@ function DocumentsPage() {
   const upload = useMutation({
     mutationFn: async (files: File[]) => {
       let completed = 0;
+      let lastDocId: string | null = null;
       for (const [fileIndex, file] of files.entries()) {
       const stamp = new Date();
       const seq = `${String(stamp.getTime()).slice(-5)}-${fileIndex + 1}`;
@@ -179,15 +180,21 @@ function DocumentsPage() {
       }
 
       setProcessingId(null);
+      lastDocId = doc.id;
       completed++;
       }
-      return completed;
+      return { completed, lastDocId };
     },
-    onSuccess: (count) => {
-      toast.success(`Đã xử lý xong ${filesLabel(count)}`, {
+    onSuccess: ({ completed, lastDocId }) => {
+      toast.success(`Đã xử lý xong ${filesLabel(completed)}`, {
         description: "Dữ liệu đang chờ bạn kiểm tra.",
       });
       void queryClient.invalidateQueries({ queryKey: ["documents"] });
+      void queryClient.invalidateQueries({ queryKey: ["data_documents"] });
+      void navigate({
+        to: "/ho-so-dau-thau/du-lieu",
+        search: { doc: lastDocId ?? undefined },
+      });
     },
     onError: (e: Error) => {
       setProcessingId(null);
