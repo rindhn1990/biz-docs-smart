@@ -86,6 +86,7 @@ function DocumentsPage() {
   const upload = useMutation({
     mutationFn: async (files: File[]) => {
       let completed = 0;
+      let lastDocId: string | null = null;
       for (const [fileIndex, file] of files.entries()) {
       const stamp = new Date();
       const seq = `${String(stamp.getTime()).slice(-5)}-${fileIndex + 1}`;
