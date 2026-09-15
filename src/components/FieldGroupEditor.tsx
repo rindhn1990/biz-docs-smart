@@ -116,6 +116,7 @@ export function FieldRowEditor({
   readOnly,
   onFocusField,
   textField,
+  onChanged,
 }: {
   field: FieldRow;
   active: boolean;
@@ -123,9 +124,13 @@ export function FieldRowEditor({
   onFocusField: () => void;
   /** Trường "bằng chữ" đi kèm, sẽ tự điền khi nhập xong số tiền. */
   textField?: FieldRow | null;
+  /** Gọi lại sau khi đổi nhãn hoặc xoá trường. */
+  onChanged?: () => void;
 }) {
   const queryClient = useQueryClient();
   const [value, setValue] = useState(field.value ?? "");
+  const [label, setLabel] = useState(field.label);
+  const [renaming, setRenaming] = useState(false);
   const [saving, setSaving] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const conf = confidenceStyle(Number(field.confidence));
