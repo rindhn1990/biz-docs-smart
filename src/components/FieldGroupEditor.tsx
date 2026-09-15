@@ -82,11 +82,11 @@ export function FieldGroupEditor({
   }, [rows]);
   return (
     <div className="divide-y divide-border">
-      {grouped.map(([group, groupRows]) => (
+      {grouped.map(([group, groupRows], gi) => (
         <div key={group ?? "all"} className="divide-y divide-border">
           {group ? (
             <h3 className="bg-muted/60 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {group}
+              {groupHeading(group, gi)}
             </h3>
           ) : null}
           {groupRows.map((field) => (
@@ -101,6 +101,7 @@ export function FieldGroupEditor({
               active={activeField === field.id}
               readOnly={readOnly}
               onFocusField={() => onFocusField?.(field.id)}
+              onChanged={onChanged}
             />
           ))}
         </div>
