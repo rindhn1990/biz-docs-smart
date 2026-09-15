@@ -89,34 +89,130 @@ function DataPage() {
 
   const rows = useMemo(() => fields.data ?? [], [fields.data]);
 
-  /** Hồ sơ cũ chỉ có một phần trường: tự bổ sung các trường còn thiếu (để trống). */
+  /** Trường do quản trị viên tự khai báo thêm trên các mẫu Word (ngoài bộ chuẩn). */
+  const customFields = useQuery({
+    queryKey: ["template_custom_fields"],
+    queryFn: async () => {
+      const { data: tpls } = await supabase
+        .from("templates")
+        .select("id")
+        .eq("module", "tender");
+      const ids = (tpls ?? []).map((t) => t.id);
+      if (ids.length === 0) return [] as { key: string; label: string }[];
+      const { data } = await supabase
+        .from("template_mappings")
+        .select("placeholder,label,template_id")
+        .in("template_id", ids);
+      const map = new Map<string, string>();
+      for (const m of data ?? []) {
+        if (KHLCNT_FIELD_KEYS.has(m.placeholder)) continue;
+        if (!map.has(m.placeholder)) map.set(m.placeholder, m.label || m.placeholder);
+      }
+      return [...map.entries()].map(([key, label]) => ({ key, label }));
+    },
+  });
+
+  /** Các trường chuẩn + trường tự khai báo trên mẫu, dùng để bổ sung vào hồ sơ. */
+  const masterFields = useMemo(
+    () => [
+      ...KHLCNT_FIELDS.map((f) => ({ key: f.key, label: f.label, group: f.group as string })),
+      ...(customFields.data ?? []).map((f) => ({
+        key: f.key,
+        label: f.label,
+        group: "Khác" as string,
+      })),
+    ],
+    [customFields.data],
+  );
+
+  const missingFields = useMemo(() => {
+    const have = new Set(rows.map((f) => f.field_key));
+    return masterFields.filter((f) => !have.has(f.key));
+  }, [rows, masterFields]);
+
+  /** Trường bị lặp key trong cùng hồ sơ (do nhiều lần trích xuất). */
+  const duplicates = useMemo(() => {
+    const seen = new Map<string, FieldRow[]>();
+    for (const f of rows) {
+      const list = seen.get(f.field_key);
+      if (list) list.push(f);
+      else seen.set(f.field_key, [f]);
+    }
+    return [...seen.values()].filter((l) => l.length > 1);
+  }, [rows]);
+
+  async function addMissingFields(items: { key: string; label: string; group: string }[]) {
+    if (!currentId || items.length === 0) return;
+    const { error } = await supabase.from("document_fields").insert(
+      items.map((f, i) => ({
+        document_id: currentId,
+        field_key: f.key,
+        label: f.label,
+        value: null,
+        confidence: 0.3,
+        needs_review: true,
+        field_group: f.group,
+        sort_order: rows.length + i + 1,
+      })),
+    );
+    if (error) {
+      toast.error("Không bổ sung được trường", { description: error.message });
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["document_fields", currentId] });
+    toast.success(`Đã bổ sung ${items.length} trường dữ liệu`);
+  }
+
+  /** Giữ lại bản đầy đủ nhất, xoá các bản trùng còn lại. */
+  async function removeDuplicates() {
+    const drop: string[] = [];
+    for (const group of duplicates) {
+      const keep = [...group].sort(
+        (a, b) => (b.value ? 1 : 0) - (a.value ? 1 : 0) || a.sort_order - b.sort_order,
+      )[0]!;
+      for (const f of group) if (f.id !== keep.id) drop.push(f.id);
+    }
+    if (drop.length === 0) return;
+    const { error } = await supabase.from("document_fields").delete().in("id", drop);
+    if (error) {
+      toast.error("Không xoá được trường trùng", { description: error.message });
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["document_fields", currentId] });
+    toast.success(`Đã gộp ${drop.length} trường bị trùng`);
+  }
+
+  async function addManualField() {
+    if (!currentId) return;
+    const key = newKey.trim().replace(/^[[{]+|[\]}]+$/g, "");
+    if (!/^[A-Za-z0-9_]+$/.test(key)) {
+      toast.error("Mã trường chỉ gồm chữ, số và dấu gạch dưới");
+      return;
+    }
+    if (rows.some((r) => r.field_key === key)) {
+      toast.error("Trường này đã có trong hồ sơ");
+      return;
+    }
+    await addMissingFields([{ key, label: newLabel.trim() || key, group: newGroup }]);
+    setNewKey("");
+    setNewLabel("");
+    setAdding(false);
+  }
+
+  /** Hồ sơ cũ chỉ có một phần trường: tự bổ sung một lần, sau đó tôn trọng thao tác xoá tay. */
   useEffect(() => {
     if (!currentId || !canWrite || fields.isLoading || rows.length === 0) return;
-    const have = new Set(rows.map((f) => f.field_key));
-    const missing = KHLCNT_FIELDS.filter((f) => !have.has(f.key));
-    if (missing.length === 0) return;
-    let cancelled = false;
-    void (async () => {
-      const { error } = await supabase.from("document_fields").insert(
-        missing.map((f, i) => ({
-          document_id: currentId,
-          field_key: f.key,
-          label: f.label,
-          value: null,
-          confidence: 0.3,
-          needs_review: true,
-          field_group: f.group as string,
-          sort_order: rows.length + i + 1,
-        })),
-      );
-      if (!error && !cancelled) {
-        void queryClient.invalidateQueries({ queryKey: ["document_fields", currentId] });
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [currentId, canWrite, fields.isLoading, rows, queryClient]);
+    if (customFields.isLoading) return;
+    const mark = `officeflow:backfilled:${currentId}`;
+    if (typeof window !== "undefined" && window.localStorage.getItem(mark)) return;
+    if (missingFields.length === 0) {
+      window.localStorage.setItem(mark, "1");
+      return;
+    }
+    window.localStorage.setItem(mark, "1");
+    void addMissingFields(missingFields);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentId, canWrite, fields.isLoading, customFields.isLoading, missingFields.length]);
 
   async function exportTemplate(tpl: {
     id: string;
