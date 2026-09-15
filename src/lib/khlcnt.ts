@@ -309,6 +309,19 @@ export const KHLCNT_FIELDS: KhlcntField[] = [
   },
 ];
 
+/** Thứ tự hiển thị của nhóm; nhóm lạ (do người dùng tự thêm) xếp cuối. */
+export function groupOrder(group: string | null | undefined) {
+  const i = KHLCNT_GROUPS.indexOf((group ?? "Khác") as KhlcntGroup);
+  return i === -1 ? KHLCNT_GROUPS.length : i;
+}
+
+/** Tiêu đề nhóm có đánh số thứ tự: "1. Căn cứ". */
+export function groupHeading(group: string | null | undefined, index: number) {
+  return `${index + 1}. ${group ?? "Khác"}`;
+}
+
+export const KHLCNT_FIELD_KEYS = new Set(KHLCNT_FIELDS.map((f) => f.key));
+
 /** Nhãn hiển thị các loại hồ sơ đấu thầu có thể tải lên. */
 export const TENDER_DOC_TYPES: Record<string, { label: string; filePrefix: string }> = {
   ho_so_du_thau: { label: "Hồ sơ dự thầu", filePrefix: "Ho_so_du_thau" },
