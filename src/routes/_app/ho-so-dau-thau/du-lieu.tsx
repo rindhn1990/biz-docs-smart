@@ -303,8 +303,75 @@ function DataPage() {
               <h2 className="text-sm font-semibold">Dữ liệu hồ sơ ({rows.length} trường)</h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 Mọi chỉnh sửa được lưu ngay khi bạn rời khỏi ô nhập và dùng luôn cho phần xuất văn
-                bản bên dưới.
+                bản bên dưới. Bạn có thể đổi tên, xoá từng trường hoặc thêm trường mới.
               </p>
+              {canWrite ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAdding((v) => !v)}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+                  >
+                    <Plus className="size-3.5" />
+                    Thêm trường
+                  </button>
+                  {missingFields.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => void addMissingFields(missingFields)}
+                      className="rounded-md border border-input px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+                    >
+                      Bổ sung {missingFields.length} trường từ mẫu
+                    </button>
+                  ) : null}
+                  {duplicates.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => void removeDuplicates()}
+                      className="rounded-md border border-destructive/40 px-2.5 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+                    >
+                      Gộp {duplicates.length} trường bị trùng
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+              {adding && canWrite ? (
+                <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
+                  <input
+                    value={newKey}
+                    onChange={(e) => setNewKey(e.target.value)}
+                    aria-label="Mã trường"
+                    placeholder="Ma_truong"
+                    className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+                  />
+                  <input
+                    value={newLabel}
+                    onChange={(e) => setNewLabel(e.target.value)}
+                    aria-label="Tên hiển thị"
+                    placeholder="Tên hiển thị"
+                    className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+                  />
+                  <select
+                    value={newGroup}
+                    onChange={(e) => setNewGroup(e.target.value)}
+                    aria-label="Nhóm dữ liệu"
+                    className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+                  >
+                    {KHLCNT_GROUPS.map((g, i) => (
+                      <option key={g} value={g}>
+                        {i + 1}. {g}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => void addManualField()}
+                    className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                  >
+                    Lưu trường
+                  </button>
+                </div>
+              ) : null}
             </header>
             {fields.isLoading ? (
               <p className="px-4 py-10 text-center text-sm text-muted-foreground">Đang tải…</p>
