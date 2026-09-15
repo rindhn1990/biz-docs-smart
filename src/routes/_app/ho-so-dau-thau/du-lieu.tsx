@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { DocsTabs } from "@/components/DocsTabs";
 import { EmptyState } from "@/components/EmptyState";
 import { FieldGroupEditor, type FieldRow } from "@/components/FieldGroupEditor";
-import { KHLCNT_FIELDS } from "@/lib/khlcnt";
+import { KHLCNT_FIELDS, KHLCNT_FIELD_KEYS, KHLCNT_GROUPS } from "@/lib/khlcnt";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { renderAndDownloadDocx, type DelimiterStyle } from "@/lib/docx";
 import { cn } from "@/lib/utils";
@@ -43,6 +43,10 @@ function DataPage() {
   const [docId, setDocId] = useState<string | null>(null);
   const [method, setMethod] = useState<TenderMethod>(DEFAULT_METHOD);
   const [exporting, setExporting] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [newKey, setNewKey] = useState("");
+  const [newLabel, setNewLabel] = useState("");
+  const [newGroup, setNewGroup] = useState<string>(KHLCNT_GROUPS[0]);
 
   const docs = useQuery({
     queryKey: ["data_documents"],
