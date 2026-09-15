@@ -275,6 +275,7 @@ function TemplatesPage() {
     setNewSource("");
     setAdding(false);
     await queryClient.invalidateQueries({ queryKey: ["template_mappings", currentId] });
+    await queryClient.invalidateQueries({ queryKey: ["template_custom_fields"] });
     toast.success("Đã thêm chỗ trống", {
       description: `Nhớ chèn ${wrap[0]}${placeholder}${wrap[1]} vào file Word rồi tải lại.`,
     });
@@ -287,6 +288,7 @@ function TemplatesPage() {
       return;
     }
     await queryClient.invalidateQueries({ queryKey: ["template_mappings", currentId] });
+    await queryClient.invalidateQueries({ queryKey: ["template_custom_fields"] });
   }
 
   async function handleExport() {

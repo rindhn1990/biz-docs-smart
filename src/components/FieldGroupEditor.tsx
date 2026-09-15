@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, Pencil, Trash2 } from "lucide-react";
+import { groupHeading, groupOrder } from "@/lib/khlcnt";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -44,7 +45,7 @@ export function confidenceStyle(c: number) {
   } as const;
 }
 
-/** Gom các trường theo field_group; hồ sơ không khai báo nhóm giữ danh sách phẳng. */
+/** Gom các trường theo field_group, xếp đúng thứ tự nghiệp vụ (Căn cứ → Khác). */
 export function useGroupedFields(rows: FieldRow[]) {
   return useMemo<[string | null, FieldRow[]][]>(() => {
     if (!rows.some((f) => f.field_group)) return [[null, rows]];
@@ -55,7 +56,7 @@ export function useGroupedFields(rows: FieldRow[]) {
       if (list) list.push(f);
       else map.set(key, [f]);
     }
-    return [...map.entries()];
+    return [...map.entries()].sort((a, b) => groupOrder(a[0]) - groupOrder(b[0]));
   }, [rows]);
 }
 
@@ -64,11 +65,14 @@ export function FieldGroupEditor({
   readOnly,
   activeField,
   onFocusField,
+  onChanged,
 }: {
   rows: FieldRow[];
   readOnly: boolean;
   activeField?: string | null;
   onFocusField?: (id: string) => void;
+  /** Cho phép sửa nhãn và xoá trường thủ công. */
+  onChanged?: (() => void) | undefined;
 }) {
   const grouped = useGroupedFields(rows);
   const byKey = useMemo(() => {
@@ -78,11 +82,11 @@ export function FieldGroupEditor({
   }, [rows]);
   return (
     <div className="divide-y divide-border">
-      {grouped.map(([group, groupRows]) => (
+      {grouped.map(([group, groupRows], gi) => (
         <div key={group ?? "all"} className="divide-y divide-border">
           {group ? (
             <h3 className="bg-muted/60 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {group}
+              {groupHeading(group, gi)}
             </h3>
           ) : null}
           {groupRows.map((field) => (
@@ -97,6 +101,7 @@ export function FieldGroupEditor({
               active={activeField === field.id}
               readOnly={readOnly}
               onFocusField={() => onFocusField?.(field.id)}
+              onChanged={onChanged}
             />
           ))}
         </div>
@@ -111,6 +116,7 @@ export function FieldRowEditor({
   readOnly,
   onFocusField,
   textField,
+  onChanged,
 }: {
   field: FieldRow;
   active: boolean;
@@ -118,9 +124,13 @@ export function FieldRowEditor({
   onFocusField: () => void;
   /** Trường "bằng chữ" đi kèm, sẽ tự điền khi nhập xong số tiền. */
   textField?: FieldRow | null;
+  /** Gọi lại sau khi đổi nhãn hoặc xoá trường. */
+  onChanged?: (() => void) | undefined;
 }) {
   const queryClient = useQueryClient();
   const [value, setValue] = useState(field.value ?? "");
+  const [label, setLabel] = useState(field.label);
+  const [renaming, setRenaming] = useState(false);
   const [saving, setSaving] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const conf = confidenceStyle(Number(field.confidence));
@@ -155,6 +165,38 @@ export function FieldRowEditor({
     void queryClient.invalidateQueries({ queryKey: ["document_fields", field.document_id] });
   };
 
+  const renameField = async () => {
+    setRenaming(false);
+    const next = label.trim();
+    if (!next || next === field.label) {
+      setLabel(field.label);
+      return;
+    }
+    const { error } = await supabase
+      .from("document_fields")
+      .update({ label: next })
+      .eq("id", field.id);
+    if (error) {
+      toast.error("Không đổi được tên trường", { description: error.message });
+      setLabel(field.label);
+      return;
+    }
+    void queryClient.invalidateQueries({ queryKey: ["document_fields", field.document_id] });
+    onChanged?.();
+  };
+
+  const removeField = async () => {
+    if (!window.confirm(`Xoá trường "${field.label}" khỏi hồ sơ này?`)) return;
+    const { error } = await supabase.from("document_fields").delete().eq("id", field.id);
+    if (error) {
+      toast.error("Không xoá được trường", { description: error.message });
+      return;
+    }
+    void queryClient.invalidateQueries({ queryKey: ["document_fields", field.document_id] });
+    onChanged?.();
+    toast.success("Đã xoá trường dữ liệu");
+  };
+
   return (
     <div
       onMouseEnter={onFocusField}
@@ -162,9 +204,28 @@ export function FieldRowEditor({
       className={`px-4 py-3 transition-colors ${active ? "bg-accent/70" : "hover:bg-accent/40"}`}
     >
       <div className="mb-1.5 flex items-center justify-between gap-2">
-        <label htmlFor={field.id} className="text-xs font-medium text-muted-foreground">
-          {field.label}
-        </label>
+        {renaming ? (
+          <input
+            value={label}
+            autoFocus
+            aria-label="Tên trường dữ liệu"
+            onChange={(e) => setLabel(e.target.value)}
+            onBlur={() => void renameField()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void renameField();
+              if (e.key === "Escape") {
+                setLabel(field.label);
+                setRenaming(false);
+              }
+            }}
+            className="w-full max-w-[60%] rounded-md border border-input bg-background px-2 py-1 text-xs outline-none focus:border-primary"
+          />
+        ) : (
+          <label htmlFor={field.id} className="text-xs font-medium text-muted-foreground">
+            {field.label}
+            <span className="ml-1.5 text-[10px] opacity-60">{field.field_key}</span>
+          </label>
+        )}
         <span className="flex items-center gap-1.5">
           {saving ? <Loader2 className="size-3 animate-spin text-muted-foreground" /> : null}
           <span
@@ -172,6 +233,26 @@ export function FieldRowEditor({
           >
             {conf.pct}%{conf.warn ? " · Cần xác minh" : ""}
           </span>
+          {!readOnly ? (
+            <>
+              <button
+                type="button"
+                aria-label={`Sửa tên trường ${field.label}`}
+                onClick={() => setRenaming(true)}
+                className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <Pencil className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                aria-label={`Xoá trường ${field.label}`}
+                onClick={() => void removeField()}
+                className="rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            </>
+          ) : null}
         </span>
       </div>
       <input

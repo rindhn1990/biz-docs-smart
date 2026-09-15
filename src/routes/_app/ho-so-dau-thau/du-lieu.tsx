@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, FileText, Loader2 } from "lucide-react";
+import { Download, FileText, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { DocsTabs } from "@/components/DocsTabs";
 import { EmptyState } from "@/components/EmptyState";
 import { FieldGroupEditor, type FieldRow } from "@/components/FieldGroupEditor";
-import { KHLCNT_FIELDS } from "@/lib/khlcnt";
+import { KHLCNT_FIELDS, KHLCNT_FIELD_KEYS, KHLCNT_GROUPS } from "@/lib/khlcnt";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { renderAndDownloadDocx, type DelimiterStyle } from "@/lib/docx";
 import { cn } from "@/lib/utils";
@@ -43,6 +43,10 @@ function DataPage() {
   const [docId, setDocId] = useState<string | null>(null);
   const [method, setMethod] = useState<TenderMethod>(DEFAULT_METHOD);
   const [exporting, setExporting] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [newKey, setNewKey] = useState("");
+  const [newLabel, setNewLabel] = useState("");
+  const [newGroup, setNewGroup] = useState<string>(KHLCNT_GROUPS[0]);
 
   const docs = useQuery({
     queryKey: ["data_documents"],
@@ -89,34 +93,130 @@ function DataPage() {
 
   const rows = useMemo(() => fields.data ?? [], [fields.data]);
 
-  /** Hồ sơ cũ chỉ có một phần trường: tự bổ sung các trường còn thiếu (để trống). */
+  /** Trường do quản trị viên tự khai báo thêm trên các mẫu Word (ngoài bộ chuẩn). */
+  const customFields = useQuery({
+    queryKey: ["template_custom_fields"],
+    queryFn: async () => {
+      const { data: tpls } = await supabase
+        .from("templates")
+        .select("id")
+        .eq("module", "tender");
+      const ids = (tpls ?? []).map((t) => t.id);
+      if (ids.length === 0) return [] as { key: string; label: string }[];
+      const { data } = await supabase
+        .from("template_mappings")
+        .select("placeholder,label,template_id")
+        .in("template_id", ids);
+      const map = new Map<string, string>();
+      for (const m of data ?? []) {
+        if (KHLCNT_FIELD_KEYS.has(m.placeholder)) continue;
+        if (!map.has(m.placeholder)) map.set(m.placeholder, m.label || m.placeholder);
+      }
+      return [...map.entries()].map(([key, label]) => ({ key, label }));
+    },
+  });
+
+  /** Các trường chuẩn + trường tự khai báo trên mẫu, dùng để bổ sung vào hồ sơ. */
+  const masterFields = useMemo(
+    () => [
+      ...KHLCNT_FIELDS.map((f) => ({ key: f.key, label: f.label, group: f.group as string })),
+      ...(customFields.data ?? []).map((f) => ({
+        key: f.key,
+        label: f.label,
+        group: "Khác" as string,
+      })),
+    ],
+    [customFields.data],
+  );
+
+  const missingFields = useMemo(() => {
+    const have = new Set(rows.map((f) => f.field_key));
+    return masterFields.filter((f) => !have.has(f.key));
+  }, [rows, masterFields]);
+
+  /** Trường bị lặp key trong cùng hồ sơ (do nhiều lần trích xuất). */
+  const duplicates = useMemo(() => {
+    const seen = new Map<string, FieldRow[]>();
+    for (const f of rows) {
+      const list = seen.get(f.field_key);
+      if (list) list.push(f);
+      else seen.set(f.field_key, [f]);
+    }
+    return [...seen.values()].filter((l) => l.length > 1);
+  }, [rows]);
+
+  async function addMissingFields(items: { key: string; label: string; group: string }[]) {
+    if (!currentId || items.length === 0) return;
+    const { error } = await supabase.from("document_fields").insert(
+      items.map((f, i) => ({
+        document_id: currentId,
+        field_key: f.key,
+        label: f.label,
+        value: null,
+        confidence: 0.3,
+        needs_review: true,
+        field_group: f.group,
+        sort_order: rows.length + i + 1,
+      })),
+    );
+    if (error) {
+      toast.error("Không bổ sung được trường", { description: error.message });
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["document_fields", currentId] });
+    toast.success(`Đã bổ sung ${items.length} trường dữ liệu`);
+  }
+
+  /** Giữ lại bản đầy đủ nhất, xoá các bản trùng còn lại. */
+  async function removeDuplicates() {
+    const drop: string[] = [];
+    for (const group of duplicates) {
+      const keep = [...group].sort(
+        (a, b) => (b.value ? 1 : 0) - (a.value ? 1 : 0) || a.sort_order - b.sort_order,
+      )[0]!;
+      for (const f of group) if (f.id !== keep.id) drop.push(f.id);
+    }
+    if (drop.length === 0) return;
+    const { error } = await supabase.from("document_fields").delete().in("id", drop);
+    if (error) {
+      toast.error("Không xoá được trường trùng", { description: error.message });
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["document_fields", currentId] });
+    toast.success(`Đã gộp ${drop.length} trường bị trùng`);
+  }
+
+  async function addManualField() {
+    if (!currentId) return;
+    const key = newKey.trim().replace(/^[[{]+|[\]}]+$/g, "");
+    if (!/^[A-Za-z0-9_]+$/.test(key)) {
+      toast.error("Mã trường chỉ gồm chữ, số và dấu gạch dưới");
+      return;
+    }
+    if (rows.some((r) => r.field_key === key)) {
+      toast.error("Trường này đã có trong hồ sơ");
+      return;
+    }
+    await addMissingFields([{ key, label: newLabel.trim() || key, group: newGroup }]);
+    setNewKey("");
+    setNewLabel("");
+    setAdding(false);
+  }
+
+  /** Hồ sơ cũ chỉ có một phần trường: tự bổ sung một lần, sau đó tôn trọng thao tác xoá tay. */
   useEffect(() => {
     if (!currentId || !canWrite || fields.isLoading || rows.length === 0) return;
-    const have = new Set(rows.map((f) => f.field_key));
-    const missing = KHLCNT_FIELDS.filter((f) => !have.has(f.key));
-    if (missing.length === 0) return;
-    let cancelled = false;
-    void (async () => {
-      const { error } = await supabase.from("document_fields").insert(
-        missing.map((f, i) => ({
-          document_id: currentId,
-          field_key: f.key,
-          label: f.label,
-          value: null,
-          confidence: 0.3,
-          needs_review: true,
-          field_group: f.group as string,
-          sort_order: rows.length + i + 1,
-        })),
-      );
-      if (!error && !cancelled) {
-        void queryClient.invalidateQueries({ queryKey: ["document_fields", currentId] });
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [currentId, canWrite, fields.isLoading, rows, queryClient]);
+    if (customFields.isLoading) return;
+    const mark = `officeflow:backfilled:${currentId}`;
+    if (typeof window !== "undefined" && window.localStorage.getItem(mark)) return;
+    if (missingFields.length === 0) {
+      window.localStorage.setItem(mark, "1");
+      return;
+    }
+    window.localStorage.setItem(mark, "1");
+    void addMissingFields(missingFields);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentId, canWrite, fields.isLoading, customFields.isLoading, missingFields.length]);
 
   async function exportTemplate(tpl: {
     id: string;
@@ -203,8 +303,75 @@ function DataPage() {
               <h2 className="text-sm font-semibold">Dữ liệu hồ sơ ({rows.length} trường)</h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 Mọi chỉnh sửa được lưu ngay khi bạn rời khỏi ô nhập và dùng luôn cho phần xuất văn
-                bản bên dưới.
+                bản bên dưới. Bạn có thể đổi tên, xoá từng trường hoặc thêm trường mới.
               </p>
+              {canWrite ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAdding((v) => !v)}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+                  >
+                    <Plus className="size-3.5" />
+                    Thêm trường
+                  </button>
+                  {missingFields.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => void addMissingFields(missingFields)}
+                      className="rounded-md border border-input px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+                    >
+                      Bổ sung {missingFields.length} trường từ mẫu
+                    </button>
+                  ) : null}
+                  {duplicates.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => void removeDuplicates()}
+                      className="rounded-md border border-destructive/40 px-2.5 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+                    >
+                      Gộp {duplicates.length} trường bị trùng
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+              {adding && canWrite ? (
+                <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
+                  <input
+                    value={newKey}
+                    onChange={(e) => setNewKey(e.target.value)}
+                    aria-label="Mã trường"
+                    placeholder="Ma_truong"
+                    className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+                  />
+                  <input
+                    value={newLabel}
+                    onChange={(e) => setNewLabel(e.target.value)}
+                    aria-label="Tên hiển thị"
+                    placeholder="Tên hiển thị"
+                    className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+                  />
+                  <select
+                    value={newGroup}
+                    onChange={(e) => setNewGroup(e.target.value)}
+                    aria-label="Nhóm dữ liệu"
+                    className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+                  >
+                    {KHLCNT_GROUPS.map((g, i) => (
+                      <option key={g} value={g}>
+                        {i + 1}. {g}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => void addManualField()}
+                    className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                  >
+                    Lưu trường
+                  </button>
+                </div>
+              ) : null}
             </header>
             {fields.isLoading ? (
               <p className="px-4 py-10 text-center text-sm text-muted-foreground">Đang tải…</p>
