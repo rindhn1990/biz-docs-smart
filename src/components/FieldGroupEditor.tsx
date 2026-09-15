@@ -165,6 +165,38 @@ export function FieldRowEditor({
     void queryClient.invalidateQueries({ queryKey: ["document_fields", field.document_id] });
   };
 
+  const renameField = async () => {
+    setRenaming(false);
+    const next = label.trim();
+    if (!next || next === field.label) {
+      setLabel(field.label);
+      return;
+    }
+    const { error } = await supabase
+      .from("document_fields")
+      .update({ label: next })
+      .eq("id", field.id);
+    if (error) {
+      toast.error("Không đổi được tên trường", { description: error.message });
+      setLabel(field.label);
+      return;
+    }
+    void queryClient.invalidateQueries({ queryKey: ["document_fields", field.document_id] });
+    onChanged?.();
+  };
+
+  const removeField = async () => {
+    if (!window.confirm(`Xoá trường "${field.label}" khỏi hồ sơ này?`)) return;
+    const { error } = await supabase.from("document_fields").delete().eq("id", field.id);
+    if (error) {
+      toast.error("Không xoá được trường", { description: error.message });
+      return;
+    }
+    void queryClient.invalidateQueries({ queryKey: ["document_fields", field.document_id] });
+    onChanged?.();
+    toast.success("Đã xoá trường dữ liệu");
+  };
+
   return (
     <div
       onMouseEnter={onFocusField}
