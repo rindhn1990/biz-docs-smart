@@ -72,7 +72,7 @@ export function FieldGroupEditor({
   activeField?: string | null;
   onFocusField?: (id: string) => void;
   /** Cho phép sửa nhãn và xoá trường thủ công. */
-  onChanged?: () => void;
+  onChanged?: (() => void) | undefined;
 }) {
   const grouped = useGroupedFields(rows);
   const byKey = useMemo(() => {
@@ -125,7 +125,7 @@ export function FieldRowEditor({
   /** Trường "bằng chữ" đi kèm, sẽ tự điền khi nhập xong số tiền. */
   textField?: FieldRow | null;
   /** Gọi lại sau khi đổi nhãn hoặc xoá trường. */
-  onChanged?: () => void;
+  onChanged?: (() => void) | undefined;
 }) {
   const queryClient = useQueryClient();
   const [value, setValue] = useState(field.value ?? "");
