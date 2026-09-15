@@ -172,9 +172,28 @@ export function FieldRowEditor({
       className={`px-4 py-3 transition-colors ${active ? "bg-accent/70" : "hover:bg-accent/40"}`}
     >
       <div className="mb-1.5 flex items-center justify-between gap-2">
-        <label htmlFor={field.id} className="text-xs font-medium text-muted-foreground">
-          {field.label}
-        </label>
+        {renaming ? (
+          <input
+            value={label}
+            autoFocus
+            aria-label="Tên trường dữ liệu"
+            onChange={(e) => setLabel(e.target.value)}
+            onBlur={() => void renameField()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void renameField();
+              if (e.key === "Escape") {
+                setLabel(field.label);
+                setRenaming(false);
+              }
+            }}
+            className="w-full max-w-[60%] rounded-md border border-input bg-background px-2 py-1 text-xs outline-none focus:border-primary"
+          />
+        ) : (
+          <label htmlFor={field.id} className="text-xs font-medium text-muted-foreground">
+            {field.label}
+            <span className="ml-1.5 text-[10px] opacity-60">{field.field_key}</span>
+          </label>
+        )}
         <span className="flex items-center gap-1.5">
           {saving ? <Loader2 className="size-3 animate-spin text-muted-foreground" /> : null}
           <span
@@ -182,6 +201,26 @@ export function FieldRowEditor({
           >
             {conf.pct}%{conf.warn ? " · Cần xác minh" : ""}
           </span>
+          {!readOnly ? (
+            <>
+              <button
+                type="button"
+                aria-label={`Sửa tên trường ${field.label}`}
+                onClick={() => setRenaming(true)}
+                className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <Pencil className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                aria-label={`Xoá trường ${field.label}`}
+                onClick={() => void removeField()}
+                className="rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            </>
+          ) : null}
         </span>
       </div>
       <input
