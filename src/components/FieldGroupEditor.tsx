@@ -44,7 +44,7 @@ export function confidenceStyle(c: number) {
   } as const;
 }
 
-/** Gom các trường theo field_group; hồ sơ không khai báo nhóm giữ danh sách phẳng. */
+/** Gom các trường theo field_group, xếp đúng thứ tự nghiệp vụ (Căn cứ → Khác). */
 export function useGroupedFields(rows: FieldRow[]) {
   return useMemo<[string | null, FieldRow[]][]>(() => {
     if (!rows.some((f) => f.field_group)) return [[null, rows]];
@@ -55,7 +55,7 @@ export function useGroupedFields(rows: FieldRow[]) {
       if (list) list.push(f);
       else map.set(key, [f]);
     }
-    return [...map.entries()];
+    return [...map.entries()].sort((a, b) => groupOrder(a[0]) - groupOrder(b[0]));
   }, [rows]);
 }
 
@@ -64,11 +64,14 @@ export function FieldGroupEditor({
   readOnly,
   activeField,
   onFocusField,
+  onChanged,
 }: {
   rows: FieldRow[];
   readOnly: boolean;
   activeField?: string | null;
   onFocusField?: (id: string) => void;
+  /** Cho phép sửa nhãn và xoá trường thủ công. */
+  onChanged?: () => void;
 }) {
   const grouped = useGroupedFields(rows);
   const byKey = useMemo(() => {
