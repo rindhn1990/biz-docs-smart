@@ -1,13 +1,15 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Building2, Loader2, Pencil, Plus, ScanLine, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ScanFileDialog } from "@/components/ScanFileDialog";
+import { CONTRACTOR_SCAN_FIELDS } from "@/lib/contractor";
 
 export const Route = createFileRoute("/_app/nha-thau")({
   head: () => ({
@@ -61,6 +63,7 @@ function ContractorsPage() {
   const [form, setForm] = useState<Form | null>(null);
   const [saving, setSaving] = useState(false);
   const [q, setQ] = useState("");
+  const [scanning, setScanning] = useState(false);
 
   const contractors = useQuery({
     queryKey: ["contractors", "with-links"],
