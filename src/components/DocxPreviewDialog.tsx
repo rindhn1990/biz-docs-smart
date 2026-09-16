@@ -80,7 +80,7 @@ export function DocxPreviewDialog({
             </p>
           ) : (
             <article
-              className="docx-preview mx-auto max-w-[820px] rounded-md border border-border bg-background p-8 text-sm leading-relaxed shadow-sm"
+              className="docx-preview mx-auto max-w-[820px] rounded-md border border-border bg-background p-8 text-sm leading-relaxed shadow-sm [&_h1]:mb-3 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mb-2 [&_h2]:font-semibold [&_p]:mb-2 [&_table]:w-full [&_table_td]:border [&_table_td]:border-border [&_table_td]:p-1.5"
               dangerouslySetInnerHTML={{ __html: html }}
             />
           )}
