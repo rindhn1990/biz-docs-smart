@@ -408,6 +408,33 @@ function PaymentsPage() {
           </div>
         </section>
       </div>
+
+      {scanning ? (
+        <ScanFileDialog
+          title="Quét thông tin nhà thầu nhận thanh toán"
+          description="Chọn đề nghị thanh toán, hoá đơn, hợp đồng… dạng ảnh chụp, PDF hoặc Word. Thông tin đọc được sẽ dùng thay cho nhà thầu đang chọn."
+          fields={CONTRACTOR_SCAN_FIELDS.map((f) => ({ key: f.key, label: f.label }))}
+          note="Đây là đơn vị thụ hưởng khoản thanh toán."
+          onClose={() => setScanning(false)}
+          onApply={(v) => {
+            setScanned(v);
+            toast.success("Đã lấy thông tin nhà thầu từ tệp", {
+              description: "Thông tin này sẽ được điền vào mẫu thanh toán.",
+            });
+          }}
+        />
+      ) : null}
+
+      {preview ? (
+        <DocxPreviewDialog
+          title={preview.title}
+          fileName={preview.fileName}
+          source={preview.source}
+          style={preview.style}
+          data={preview.data}
+          onClose={() => setPreview(null)}
+        />
+      ) : null}
     </div>
   );
 }
