@@ -149,6 +149,15 @@ function ContractorsPage() {
             <button
               type="button"
               disabled={!canWrite}
+              onClick={() => setScanning(true)}
+              className="inline-flex items-center gap-2 rounded-md border border-input px-3.5 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+            >
+              <ScanLine className="size-4" />
+              Quét từ PDF / ảnh chụp
+            </button>
+            <button
+              type="button"
+              disabled={!canWrite}
               onClick={() => setForm({ ...empty })}
               className="inline-flex items-center gap-2 rounded-md bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
@@ -158,6 +167,23 @@ function ContractorsPage() {
           </div>
         }
       />
+
+      {scanning ? (
+        <ScanFileDialog
+          title="Quét thông tin nhà thầu"
+          description="Chọn giấy đăng ký kinh doanh, hồ sơ năng lực, đề nghị thanh toán… dạng ảnh chụp, PDF hoặc Word. Hệ thống đọc và điền sẵn vào biểu mẫu để bạn kiểm tra."
+          fields={CONTRACTOR_SCAN_FIELDS.map((f) => ({ key: f.key, label: f.label }))}
+          note="Đây là thông tin của một nhà thầu / đơn vị cung cấp hàng hoá, dịch vụ."
+          onClose={() => setScanning(false)}
+          onApply={(values) => {
+            setForm((current) => ({ ...(current ?? { ...empty }), ...values }));
+            toast.success("Đã điền thông tin vào biểu mẫu", {
+              description: "Kiểm tra lại rồi bấm Lưu để thêm nhà thầu.",
+            });
+          }}
+        />
+      ) : null}
+
 
       {form ? (
         <section className="panel mb-4 p-4">
