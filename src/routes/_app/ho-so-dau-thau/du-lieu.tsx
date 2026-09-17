@@ -514,6 +514,27 @@ function DataPage() {
           </section>
         </div>
       )}
+
+      {scanning && currentId ? (
+        <ScanFileDialog
+          title="Quét dữ liệu từ ảnh chụp / PDF / Word"
+          description="Chọn ảnh chụp, bản PDF hoặc tệp Word của hồ sơ; hệ thống đọc và đề xuất giá trị cho các trường bên dưới."
+          fields={rows.map((r) => ({ key: r.field_key, label: r.label }))}
+          onClose={() => setScanning(false)}
+          onApply={(v) => void applyScanned(v)}
+        />
+      ) : null}
+
+      {preview ? (
+        <DocxPreviewDialog
+          title={preview.title}
+          fileName={preview.fileName}
+          source={preview.source}
+          style={preview.style}
+          data={preview.data}
+          onClose={() => setPreview(null)}
+        />
+      ) : null}
     </div>
   );
 }
