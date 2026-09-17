@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, FileText, Loader2, Plus } from "lucide-react";
+import { Download, Eye, FileText, Loader2, Plus, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,6 +9,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { DocsTabs } from "@/components/DocsTabs";
 import { EmptyState } from "@/components/EmptyState";
 import { FieldGroupEditor, type FieldRow } from "@/components/FieldGroupEditor";
+import { ScanFileDialog } from "@/components/ScanFileDialog";
+import { DocxPreviewDialog } from "@/components/DocxPreviewDialog";
 import { KHLCNT_FIELDS, KHLCNT_FIELD_KEYS, KHLCNT_GROUPS } from "@/lib/khlcnt";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { renderAndDownloadDocx, type DelimiterStyle } from "@/lib/docx";
@@ -47,6 +49,14 @@ function DataPage() {
   const [newKey, setNewKey] = useState("");
   const [newLabel, setNewLabel] = useState("");
   const [newGroup, setNewGroup] = useState<string>(KHLCNT_GROUPS[0]);
+  const [scanning, setScanning] = useState(false);
+  const [preview, setPreview] = useState<{
+    title: string;
+    fileName: string;
+    source: ArrayBuffer;
+    style: DelimiterStyle;
+    data: Record<string, string>;
+  } | null>(null);
 
   const docs = useQuery({
     queryKey: ["data_documents"],
