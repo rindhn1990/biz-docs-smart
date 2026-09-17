@@ -364,6 +364,14 @@ function DataPage() {
                     <Plus className="size-3.5" />
                     Thêm trường
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setScanning(true)}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+                  >
+                    <ScanLine className="size-3.5" />
+                    Quét từ ảnh / PDF / Word
+                  </button>
                   {missingFields.length > 0 ? (
                     <button
                       type="button"
