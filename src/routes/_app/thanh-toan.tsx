@@ -1,17 +1,20 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Download, FileText, Loader2, Receipt } from "lucide-react";
+import { Download, Eye, FileText, Loader2, Receipt, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ScanFileDialog } from "@/components/ScanFileDialog";
+import { DocxPreviewDialog } from "@/components/DocxPreviewDialog";
 import { usePayments } from "@/hooks/useData";
 import { PAYMENT_STATUS } from "@/lib/domain";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { formatThousands, parseThousands, readVietnameseMoney } from "@/lib/money";
 import { renderAndDownloadDocx, type DelimiterStyle } from "@/lib/docx";
+import { CONTRACTOR_SCAN_FIELDS } from "@/lib/contractor";
 
 export const Route = createFileRoute("/_app/thanh-toan")({
   head: () => ({
