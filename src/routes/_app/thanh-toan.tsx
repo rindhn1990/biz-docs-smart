@@ -83,8 +83,28 @@ function PaymentsPage() {
   });
 
   const rows = payments.data ?? [];
-  const contractor = (contractors.data ?? []).find((c) => c.id === contractorId) ?? null;
+  const selected = (contractors.data ?? []).find((c) => c.id === contractorId) ?? null;
   const payment = rows.find((p) => p.id === paymentId) ?? null;
+
+  /** Nhà thầu nhận thanh toán: lấy từ danh bạ, thông tin quét từ PDF/ảnh được ưu tiên. */
+  const contractor = useMemo(() => {
+    const base = {
+      name: selected?.name ?? "",
+      tax_code: selected?.tax_code ?? "",
+      address: selected?.address ?? "",
+      representative: selected?.representative ?? "",
+      representative_title: selected?.representative_title ?? "",
+      phone: selected?.phone ?? "",
+      email: selected?.email ?? "",
+      bank_account: selected?.bank_account ?? "",
+      bank_name: selected?.bank_name ?? "",
+    };
+    const merged = { ...base };
+    for (const [key, value] of Object.entries(scanned)) {
+      if (value.trim()) merged[key as keyof typeof base] = value.trim();
+    }
+    return merged.name || selected ? merged : null;
+  }, [selected, scanned]);
 
   const amountNumber = parseThousands(amount) ?? Number(payment?.total_amount ?? 0);
 
@@ -115,52 +135,66 @@ function PaymentsPage() {
     };
   }, [contractor, payment, content, amountNumber]);
 
-  async function exportTemplate(tpl: {
+  type Template = {
     id: string;
     name: string;
     source_docx_path: string | null;
     delimiter_style: string | null;
-  }) {
+  };
+
+  /** Tải mẫu gốc và ghép dữ liệu — dùng chung cho xem trước và tải xuống. */
+  async function prepare(tpl: Template) {
     if (!tpl.source_docx_path) {
-      toast.error("Mẫu này chưa có tệp Word gốc", {
-        description: "Hãy tải lên tệp .docx trong kho mẫu Thanh toán.",
-      });
-      return;
+      throw new Error("Mẫu này chưa có tệp Word gốc. Hãy tải lên tệp .docx trong kho mẫu.");
     }
-    if (!contractor) {
-      toast.error("Hãy chọn nhà thầu trước khi xuất văn bản");
-      return;
+    if (!contractor) throw new Error("Hãy chọn nhà thầu hoặc quét thông tin nhà thầu trước.");
+
+    const { data: mappings } = await supabase
+      .from("template_mappings")
+      .select("placeholder,source_field,value")
+      .eq("template_id", tpl.id);
+
+    const filled: Record<string, string> = { ...values };
+    for (const m of mappings ?? []) {
+      const fromData = (m.source_field ? values[m.source_field] : values[m.placeholder])?.trim();
+      filled[m.placeholder] = fromData || (m.value?.trim() ?? "");
     }
+
+    const { data, error } = await supabase.storage.from("templates").download(tpl.source_docx_path);
+    if (error) throw error;
+    return {
+      source: await data.arrayBuffer(),
+      style: (tpl.delimiter_style as DelimiterStyle) ?? "curly",
+      data: filled,
+      fileName: `${tpl.name}.docx`,
+    };
+  }
+
+  async function exportTemplate(tpl: Template) {
     setExporting(tpl.id);
     try {
-      const { data: mappings } = await supabase
-        .from("template_mappings")
-        .select("placeholder,source_field,value")
-        .eq("template_id", tpl.id);
-
-      const filled: Record<string, string> = { ...values };
-      for (const m of mappings ?? []) {
-        const fromData = (m.source_field ? values[m.source_field] : values[m.placeholder])?.trim();
-        filled[m.placeholder] = fromData || (m.value?.trim() ?? "");
-      }
-
-      const { data, error } = await supabase.storage
-        .from("templates")
-        .download(tpl.source_docx_path);
-      if (error) throw error;
-      await renderAndDownloadDocx(
-        await data.arrayBuffer(),
-        (tpl.delimiter_style as DelimiterStyle) ?? "curly",
-        filled,
-        `${tpl.name}.docx`,
-      );
-      toast.success("Đã xuất hồ sơ thanh toán", { description: `${tpl.name}.docx` });
+      const ready = await prepare(tpl);
+      await renderAndDownloadDocx(ready.source, ready.style, ready.data, ready.fileName);
+      toast.success("Đã xuất hồ sơ thanh toán", { description: ready.fileName });
     } catch (e) {
       toast.error("Không xuất được file", { description: (e as Error).message });
     } finally {
       setExporting(null);
     }
   }
+
+  async function previewTemplate(tpl: Template) {
+    setExporting(tpl.id);
+    try {
+      const ready = await prepare(tpl);
+      setPreview({ title: tpl.name, ...ready });
+    } catch (e) {
+      toast.error("Không xem trước được", { description: (e as Error).message });
+    } finally {
+      setExporting(null);
+    }
+  }
+
 
   return (
     <div>
