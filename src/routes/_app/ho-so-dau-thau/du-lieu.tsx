@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, FileText, Loader2, Plus } from "lucide-react";
+import { Download, Eye, FileText, Loader2, Plus, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,6 +9,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { DocsTabs } from "@/components/DocsTabs";
 import { EmptyState } from "@/components/EmptyState";
 import { FieldGroupEditor, type FieldRow } from "@/components/FieldGroupEditor";
+import { ScanFileDialog } from "@/components/ScanFileDialog";
+import { DocxPreviewDialog } from "@/components/DocxPreviewDialog";
 import { KHLCNT_FIELDS, KHLCNT_FIELD_KEYS, KHLCNT_GROUPS } from "@/lib/khlcnt";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { renderAndDownloadDocx, type DelimiterStyle } from "@/lib/docx";
@@ -47,6 +49,14 @@ function DataPage() {
   const [newKey, setNewKey] = useState("");
   const [newLabel, setNewLabel] = useState("");
   const [newGroup, setNewGroup] = useState<string>(KHLCNT_GROUPS[0]);
+  const [scanning, setScanning] = useState(false);
+  const [preview, setPreview] = useState<{
+    title: string;
+    fileName: string;
+    source: ArrayBuffer;
+    style: DelimiterStyle;
+    data: Record<string, string>;
+  } | null>(null);
 
   const docs = useQuery({
     queryKey: ["data_documents"],
@@ -218,54 +228,93 @@ function DataPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentId, canWrite, fields.isLoading, customFields.isLoading, missingFields.length]);
 
-  async function exportTemplate(tpl: {
+  type Template = {
     id: string;
     name: string;
     source_docx_path: string | null;
     delimiter_style: string | null;
-  }) {
+  };
+
+  /** Tải mẫu gốc và ghép dữ liệu hồ sơ — dùng chung cho xem trước và tải xuống. */
+  async function prepare(tpl: Template) {
     if (!tpl.source_docx_path) {
-      toast.error("Mẫu này chưa có tệp Word gốc", {
-        description: "Hãy tải lên tệp .docx trong trang Mẫu văn bản.",
-      });
-      return;
+      throw new Error("Mẫu này chưa có tệp Word gốc. Hãy tải lên tệp .docx trong trang Mẫu văn bản.");
     }
+    const { data: mappings } = await supabase
+      .from("template_mappings")
+      .select("placeholder,source_field,value")
+      .eq("template_id", tpl.id);
+
+    const byKey: Record<string, string> = {};
+    for (const f of rows) if (f.value) byKey[f.field_key] = f.value;
+
+    /** Dữ liệu của hồ sơ đang chọn được ưu tiên; ánh xạ tay chỉ dùng khi hồ sơ trống. */
+    const values: Record<string, string> = {};
+    for (const m of mappings ?? []) {
+      const fromDoc = (m.source_field ? byKey[m.source_field] : byKey[m.placeholder])?.trim();
+      values[m.placeholder] = fromDoc || (m.value?.trim() ?? "");
+    }
+    for (const key of Object.keys(byKey)) values[key] ??= byKey[key]!;
+
+    const { data, error } = await supabase.storage.from("templates").download(tpl.source_docx_path);
+    if (error) throw error;
+    return {
+      source: await data.arrayBuffer(),
+      style: (tpl.delimiter_style as DelimiterStyle) ?? "curly",
+      data: values,
+      fileName: `${tpl.name}.docx`,
+    };
+  }
+
+  async function exportTemplate(tpl: Template) {
     setExporting(tpl.id);
     try {
-      const { data: mappings } = await supabase
-        .from("template_mappings")
-        .select("placeholder,source_field,value")
-        .eq("template_id", tpl.id);
-
-      const byKey: Record<string, string> = {};
-      for (const f of rows) if (f.value) byKey[f.field_key] = f.value;
-
-      /** Dữ liệu của hồ sơ đang chọn được ưu tiên; ánh xạ tay chỉ dùng khi hồ sơ trống. */
-      const values: Record<string, string> = {};
-      for (const m of mappings ?? []) {
-        const fromDoc = (m.source_field ? byKey[m.source_field] : byKey[m.placeholder])?.trim();
-        values[m.placeholder] = fromDoc || (m.value?.trim() ?? "");
-      }
-
-      for (const key of Object.keys(byKey)) values[key] ??= byKey[key]!;
-
-      const { data, error } = await supabase.storage
-        .from("templates")
-        .download(tpl.source_docx_path);
-      if (error) throw error;
-      await renderAndDownloadDocx(
-        await data.arrayBuffer(),
-        (tpl.delimiter_style as DelimiterStyle) ?? "curly",
-        values,
-        `${tpl.name}.docx`,
-      );
-      toast.success("Đã xuất file Word", { description: `${tpl.name}.docx` });
+      const ready = await prepare(tpl);
+      await renderAndDownloadDocx(ready.source, ready.style, ready.data, ready.fileName);
+      toast.success("Đã xuất file Word", { description: ready.fileName });
     } catch (e) {
       toast.error("Không xuất được file", { description: (e as Error).message });
     } finally {
       setExporting(null);
     }
   }
+
+  async function previewTemplate(tpl: Template) {
+    setExporting(tpl.id);
+    try {
+      const ready = await prepare(tpl);
+      setPreview({ title: tpl.name, ...ready });
+    } catch (e) {
+      toast.error("Không xem trước được", { description: (e as Error).message });
+    } finally {
+      setExporting(null);
+    }
+  }
+
+  /** Điền giá trị quét được từ ảnh/PDF vào các trường của hồ sơ đang mở. */
+  async function applyScanned(values: Record<string, string>) {
+    if (!currentId) return;
+    const updates = rows.filter((r) => values[r.field_key]?.trim());
+    if (updates.length === 0) {
+      toast.info("Không có trường nào được điền thêm");
+      return;
+    }
+    for (const row of updates) {
+      const { error } = await supabase
+        .from("document_fields")
+        .update({ value: values[row.field_key]!.trim(), needs_review: true })
+        .eq("id", row.id);
+      if (error) {
+        toast.error("Không lưu được dữ liệu quét", { description: error.message });
+        return;
+      }
+    }
+    await queryClient.invalidateQueries({ queryKey: ["document_fields", currentId] });
+    toast.success(`Đã điền ${updates.length} trường từ tệp`, {
+      description: "Hãy kiểm tra lại trước khi xác nhận.",
+    });
+  }
+
 
   return (
     <div>
@@ -314,6 +363,14 @@ function DataPage() {
                   >
                     <Plus className="size-3.5" />
                     Thêm trường
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScanning(true)}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+                  >
+                    <ScanLine className="size-3.5" />
+                    Quét từ ảnh / PDF / Word
                   </button>
                   {missingFields.length > 0 ? (
                     <button
@@ -438,6 +495,15 @@ function DataPage() {
                       <button
                         type="button"
                         disabled={exporting !== null}
+                        onClick={() => void previewTemplate(t)}
+                        className="inline-flex items-center gap-2 rounded-md border border-input px-3.5 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
+                      >
+                        <Eye className="size-4" />
+                        Xem trước
+                      </button>
+                      <button
+                        type="button"
+                        disabled={exporting !== null}
                         onClick={() => void exportTemplate(t)}
                         className="inline-flex items-center gap-2 rounded-md bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                       >
@@ -456,6 +522,27 @@ function DataPage() {
           </section>
         </div>
       )}
+
+      {scanning && currentId ? (
+        <ScanFileDialog
+          title="Quét dữ liệu từ ảnh chụp / PDF / Word"
+          description="Chọn ảnh chụp, bản PDF hoặc tệp Word của hồ sơ; hệ thống đọc và đề xuất giá trị cho các trường bên dưới."
+          fields={rows.map((r) => ({ key: r.field_key, label: r.label }))}
+          onClose={() => setScanning(false)}
+          onApply={(v) => void applyScanned(v)}
+        />
+      ) : null}
+
+      {preview ? (
+        <DocxPreviewDialog
+          title={preview.title}
+          fileName={preview.fileName}
+          source={preview.source}
+          style={preview.style}
+          data={preview.data}
+          onClose={() => setPreview(null)}
+        />
+      ) : null}
     </div>
   );
 }

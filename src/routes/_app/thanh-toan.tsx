@@ -1,17 +1,20 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Download, FileText, Loader2, Receipt } from "lucide-react";
+import { Download, Eye, FileText, Loader2, Receipt, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ScanFileDialog } from "@/components/ScanFileDialog";
+import { DocxPreviewDialog } from "@/components/DocxPreviewDialog";
 import { usePayments } from "@/hooks/useData";
 import { PAYMENT_STATUS } from "@/lib/domain";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { formatThousands, parseThousands, readVietnameseMoney } from "@/lib/money";
 import { renderAndDownloadDocx, type DelimiterStyle } from "@/lib/docx";
+import { CONTRACTOR_SCAN_FIELDS } from "@/lib/contractor";
 
 export const Route = createFileRoute("/_app/thanh-toan")({
   head: () => ({
@@ -41,6 +44,16 @@ function PaymentsPage() {
   const [amount, setAmount] = useState("");
   const [content, setContent] = useState("");
   const [exporting, setExporting] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+  /** Thông tin nhà thầu quét được từ PDF / ảnh, dùng đè lên nhà thầu đang chọn. */
+  const [scanned, setScanned] = useState<Record<string, string>>({});
+  const [preview, setPreview] = useState<{
+    title: string;
+    fileName: string;
+    source: ArrayBuffer;
+    style: DelimiterStyle;
+    data: Record<string, string>;
+  } | null>(null);
 
   const contractors = useQuery({
     queryKey: ["contractors", "for-payment"],
@@ -70,8 +83,28 @@ function PaymentsPage() {
   });
 
   const rows = payments.data ?? [];
-  const contractor = (contractors.data ?? []).find((c) => c.id === contractorId) ?? null;
+  const selected = (contractors.data ?? []).find((c) => c.id === contractorId) ?? null;
   const payment = rows.find((p) => p.id === paymentId) ?? null;
+
+  /** Nhà thầu nhận thanh toán: lấy từ danh bạ, thông tin quét từ PDF/ảnh được ưu tiên. */
+  const contractor = useMemo(() => {
+    const base = {
+      name: selected?.name ?? "",
+      tax_code: selected?.tax_code ?? "",
+      address: selected?.address ?? "",
+      representative: selected?.representative ?? "",
+      representative_title: selected?.representative_title ?? "",
+      phone: selected?.phone ?? "",
+      email: selected?.email ?? "",
+      bank_account: selected?.bank_account ?? "",
+      bank_name: selected?.bank_name ?? "",
+    };
+    const merged = { ...base };
+    for (const [key, value] of Object.entries(scanned)) {
+      if (value.trim()) merged[key as keyof typeof base] = value.trim();
+    }
+    return merged.name || selected ? merged : null;
+  }, [selected, scanned]);
 
   const amountNumber = parseThousands(amount) ?? Number(payment?.total_amount ?? 0);
 
@@ -102,52 +135,66 @@ function PaymentsPage() {
     };
   }, [contractor, payment, content, amountNumber]);
 
-  async function exportTemplate(tpl: {
+  type Template = {
     id: string;
     name: string;
     source_docx_path: string | null;
     delimiter_style: string | null;
-  }) {
+  };
+
+  /** Tải mẫu gốc và ghép dữ liệu — dùng chung cho xem trước và tải xuống. */
+  async function prepare(tpl: Template) {
     if (!tpl.source_docx_path) {
-      toast.error("Mẫu này chưa có tệp Word gốc", {
-        description: "Hãy tải lên tệp .docx trong kho mẫu Thanh toán.",
-      });
-      return;
+      throw new Error("Mẫu này chưa có tệp Word gốc. Hãy tải lên tệp .docx trong kho mẫu.");
     }
-    if (!contractor) {
-      toast.error("Hãy chọn nhà thầu trước khi xuất văn bản");
-      return;
+    if (!contractor) throw new Error("Hãy chọn nhà thầu hoặc quét thông tin nhà thầu trước.");
+
+    const { data: mappings } = await supabase
+      .from("template_mappings")
+      .select("placeholder,source_field,value")
+      .eq("template_id", tpl.id);
+
+    const filled: Record<string, string> = { ...values };
+    for (const m of mappings ?? []) {
+      const fromData = (m.source_field ? values[m.source_field] : values[m.placeholder])?.trim();
+      filled[m.placeholder] = fromData || (m.value?.trim() ?? "");
     }
+
+    const { data, error } = await supabase.storage.from("templates").download(tpl.source_docx_path);
+    if (error) throw error;
+    return {
+      source: await data.arrayBuffer(),
+      style: (tpl.delimiter_style as DelimiterStyle) ?? "curly",
+      data: filled,
+      fileName: `${tpl.name}.docx`,
+    };
+  }
+
+  async function exportTemplate(tpl: Template) {
     setExporting(tpl.id);
     try {
-      const { data: mappings } = await supabase
-        .from("template_mappings")
-        .select("placeholder,source_field,value")
-        .eq("template_id", tpl.id);
-
-      const filled: Record<string, string> = { ...values };
-      for (const m of mappings ?? []) {
-        const fromData = (m.source_field ? values[m.source_field] : values[m.placeholder])?.trim();
-        filled[m.placeholder] = fromData || (m.value?.trim() ?? "");
-      }
-
-      const { data, error } = await supabase.storage
-        .from("templates")
-        .download(tpl.source_docx_path);
-      if (error) throw error;
-      await renderAndDownloadDocx(
-        await data.arrayBuffer(),
-        (tpl.delimiter_style as DelimiterStyle) ?? "curly",
-        filled,
-        `${tpl.name}.docx`,
-      );
-      toast.success("Đã xuất hồ sơ thanh toán", { description: `${tpl.name}.docx` });
+      const ready = await prepare(tpl);
+      await renderAndDownloadDocx(ready.source, ready.style, ready.data, ready.fileName);
+      toast.success("Đã xuất hồ sơ thanh toán", { description: ready.fileName });
     } catch (e) {
       toast.error("Không xuất được file", { description: (e as Error).message });
     } finally {
       setExporting(null);
     }
   }
+
+  async function previewTemplate(tpl: Template) {
+    setExporting(tpl.id);
+    try {
+      const ready = await prepare(tpl);
+      setPreview({ title: tpl.name, ...ready });
+    } catch (e) {
+      toast.error("Không xem trước được", { description: (e as Error).message });
+    } finally {
+      setExporting(null);
+    }
+  }
+
 
   return (
     <div>
@@ -249,7 +296,17 @@ function PaymentsPage() {
 
           <div className="grid gap-3 border-b border-border p-4 md:grid-cols-2">
             <label className="text-xs font-medium text-muted-foreground">
-              Nhà thầu nhận thanh toán
+              <span className="flex flex-wrap items-center justify-between gap-2">
+                Nhà thầu nhận thanh toán
+                <button
+                  type="button"
+                  onClick={() => setScanning(true)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-input px-2 py-1 text-[11px] font-medium text-foreground hover:bg-accent"
+                >
+                  <ScanLine className="size-3.5" />
+                  Quét từ PDF / ảnh
+                </button>
+              </span>
               <select
                 value={contractorId}
                 onChange={(e) => setContractorId(e.target.value)}
@@ -325,6 +382,15 @@ function PaymentsPage() {
                     <button
                       type="button"
                       disabled={exporting !== null}
+                      onClick={() => void previewTemplate(t)}
+                      className="inline-flex items-center gap-2 rounded-md border border-input px-3.5 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
+                    >
+                      <Eye className="size-4" />
+                      Xem trước
+                    </button>
+                    <button
+                      type="button"
+                      disabled={exporting !== null}
                       onClick={() => void exportTemplate(t)}
                       className="inline-flex items-center gap-2 rounded-md bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                     >
@@ -342,6 +408,33 @@ function PaymentsPage() {
           </div>
         </section>
       </div>
+
+      {scanning ? (
+        <ScanFileDialog
+          title="Quét thông tin nhà thầu nhận thanh toán"
+          description="Chọn đề nghị thanh toán, hoá đơn, hợp đồng… dạng ảnh chụp, PDF hoặc Word. Thông tin đọc được sẽ dùng thay cho nhà thầu đang chọn."
+          fields={CONTRACTOR_SCAN_FIELDS.map((f) => ({ key: f.key, label: f.label }))}
+          note="Đây là đơn vị thụ hưởng khoản thanh toán."
+          onClose={() => setScanning(false)}
+          onApply={(v) => {
+            setScanned(v);
+            toast.success("Đã lấy thông tin nhà thầu từ tệp", {
+              description: "Thông tin này sẽ được điền vào mẫu thanh toán.",
+            });
+          }}
+        />
+      ) : null}
+
+      {preview ? (
+        <DocxPreviewDialog
+          title={preview.title}
+          fileName={preview.fileName}
+          source={preview.source}
+          style={preview.style}
+          data={preview.data}
+          onClose={() => setPreview(null)}
+        />
+      ) : null}
     </div>
   );
 }
