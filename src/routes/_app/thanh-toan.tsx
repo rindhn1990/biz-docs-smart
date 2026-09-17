@@ -44,6 +44,16 @@ function PaymentsPage() {
   const [amount, setAmount] = useState("");
   const [content, setContent] = useState("");
   const [exporting, setExporting] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+  /** Thông tin nhà thầu quét được từ PDF / ảnh, dùng đè lên nhà thầu đang chọn. */
+  const [scanned, setScanned] = useState<Record<string, string>>({});
+  const [preview, setPreview] = useState<{
+    title: string;
+    fileName: string;
+    source: ArrayBuffer;
+    style: DelimiterStyle;
+    data: Record<string, string>;
+  } | null>(null);
 
   const contractors = useQuery({
     queryKey: ["contractors", "for-payment"],
