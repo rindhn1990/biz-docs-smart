@@ -382,6 +382,15 @@ function PaymentsPage() {
                     <button
                       type="button"
                       disabled={exporting !== null}
+                      onClick={() => void previewTemplate(t)}
+                      className="inline-flex items-center gap-2 rounded-md border border-input px-3.5 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
+                    >
+                      <Eye className="size-4" />
+                      Xem trước
+                    </button>
+                    <button
+                      type="button"
+                      disabled={exporting !== null}
                       onClick={() => void exportTemplate(t)}
                       className="inline-flex items-center gap-2 rounded-md bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                     >
