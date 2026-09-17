@@ -296,7 +296,17 @@ function PaymentsPage() {
 
           <div className="grid gap-3 border-b border-border p-4 md:grid-cols-2">
             <label className="text-xs font-medium text-muted-foreground">
-              Nhà thầu nhận thanh toán
+              <span className="flex flex-wrap items-center justify-between gap-2">
+                Nhà thầu nhận thanh toán
+                <button
+                  type="button"
+                  onClick={() => setScanning(true)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-input px-2 py-1 text-[11px] font-medium text-foreground hover:bg-accent"
+                >
+                  <ScanLine className="size-3.5" />
+                  Quét từ PDF / ảnh
+                </button>
+              </span>
               <select
                 value={contractorId}
                 onChange={(e) => setContractorId(e.target.value)}
