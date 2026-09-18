@@ -841,6 +841,79 @@ export type Database = {
         }
         Relationships: []
       }
+      export_history: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data: Json
+          document_id: string | null
+          exported_by: string | null
+          exported_by_email: string | null
+          file_name: string
+          id: string
+          module: string
+          template_id: string | null
+          template_name: string | null
+          tender_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          document_id?: string | null
+          exported_by?: string | null
+          exported_by_email?: string | null
+          file_name: string
+          id?: string
+          module?: string
+          template_id?: string | null
+          template_name?: string | null
+          tender_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          document_id?: string | null
+          exported_by?: string | null
+          exported_by_email?: string | null
+          file_name?: string
+          id?: string
+          module?: string
+          template_id?: string | null
+          template_name?: string | null
+          tender_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "export_history_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "export_history_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "export_history_tender_id_fkey"
+            columns: ["tender_id"]
+            isOneToOne: false
+            referencedRelation: "tenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           body: string | null
