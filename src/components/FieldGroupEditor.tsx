@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { groupHeading, groupOrder } from "@/lib/khlcnt";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { ConfirmDelete } from "@/components/ConfirmDelete";
+import { DateField, isDateField } from "@/components/DateField";
 import {
   formatThousands,
   isMoneyNumberField,
@@ -75,11 +78,27 @@ export function FieldGroupEditor({
   onChanged?: (() => void) | undefined;
 }) {
   const grouped = useGroupedFields(rows);
+  /** Số tiền bằng chữ hiển thị ngay khi người dùng đang gõ ở ô số tiền. */
+  const [liveWords, setLiveWords] = useState<Record<string, string>>({});
   const byKey = useMemo(() => {
     const map = new Map<string, FieldRow>();
     for (const f of rows) map.set(f.field_key, f);
     return map;
   }, [rows]);
+  const textFieldIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const f of rows) {
+      if (!isMoneyNumberField(f.field_key, f.label)) continue;
+      const paired = byKey.get(moneyTextKey(f.field_key));
+      if (paired && paired.id !== f.id) ids.add(paired.id);
+    }
+    return ids;
+  }, [rows, byKey]);
+
+  const publishWords = useCallback((textFieldId: string, words: string) => {
+    setLiveWords((prev) => (prev[textFieldId] === words ? prev : { ...prev, [textFieldId]: words }));
+  }, []);
+
   return (
     <div className="divide-y divide-border">
       {grouped.map(([group, groupRows], gi) => (
@@ -98,6 +117,9 @@ export function FieldGroupEditor({
                   ? (byKey.get(moneyTextKey(field.field_key)) ?? null)
                   : null
               }
+              derivedValue={textFieldIds.has(field.id) ? (liveWords[field.id] ?? null) : null}
+              autoFilled={textFieldIds.has(field.id)}
+              onWords={publishWords}
               active={activeField === field.id}
               readOnly={readOnly}
               onFocusField={() => onFocusField?.(field.id)}
@@ -116,6 +138,9 @@ export function FieldRowEditor({
   readOnly,
   onFocusField,
   textField,
+  derivedValue,
+  autoFilled,
+  onWords,
   onChanged,
 }: {
   field: FieldRow;
@@ -124,10 +149,16 @@ export function FieldRowEditor({
   onFocusField: () => void;
   /** Trường "bằng chữ" đi kèm, sẽ tự điền khi nhập xong số tiền. */
   textField?: FieldRow | null;
+  /** Giá trị chữ do ô số tiền sinh ra (chỉ dùng cho ô "bằng chữ"). */
+  derivedValue?: string | null;
+  /** Ô "bằng chữ" tự sinh: chỉ đọc để không lệch với số. */
+  autoFilled?: boolean;
+  onWords?: (textFieldId: string, words: string) => void;
   /** Gọi lại sau khi đổi nhãn hoặc xoá trường. */
   onChanged?: (() => void) | undefined;
 }) {
   const queryClient = useQueryClient();
+  const { isAdmin } = useAuth();
   const [value, setValue] = useState(field.value ?? "");
   const [label, setLabel] = useState(field.label);
   const [renaming, setRenaming] = useState(false);
@@ -135,8 +166,11 @@ export function FieldRowEditor({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const conf = confidenceStyle(Number(field.confidence));
   const isMoney = isMoneyNumberField(field.field_key, field.label) && !!textField;
+  const isDate = isDateField(field.field_key, field.label);
 
   useEffect(() => setValue(field.value ?? ""), [field.value]);
+
+  const shownValue = autoFilled ? (derivedValue ?? value) : value;
 
   const save = async (next: string) => {
     if ((field.value ?? "") === next) return;
@@ -165,6 +199,15 @@ export function FieldRowEditor({
     void queryClient.invalidateQueries({ queryKey: ["document_fields", field.document_id] });
   };
 
+  /** Cập nhật giá trị và hẹn giờ lưu; ô tiền còn phát ngay phần "bằng chữ". */
+  const change = (raw: string) => {
+    const next = isMoney ? formatThousands(raw) : raw;
+    setValue(next);
+    if (isMoney && textField && onWords) onWords(textField.id, readVietnameseMoney(next));
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => void save(next), 800);
+  };
+
   const renameField = async () => {
     setRenaming(false);
     const next = label.trim();
@@ -186,7 +229,6 @@ export function FieldRowEditor({
   };
 
   const removeField = async () => {
-    if (!window.confirm(`Xoá trường "${field.label}" khỏi hồ sơ này?`)) return;
     const { error } = await supabase.from("document_fields").delete().eq("id", field.id);
     if (error) {
       toast.error("Không xoá được trường", { description: error.message });
@@ -234,46 +276,67 @@ export function FieldRowEditor({
             {conf.pct}%{conf.warn ? " · Cần xác minh" : ""}
           </span>
           {!readOnly ? (
-            <>
-              <button
-                type="button"
-                aria-label={`Sửa tên trường ${field.label}`}
-                onClick={() => setRenaming(true)}
-                className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <Pencil className="size-3.5" />
-              </button>
+            <button
+              type="button"
+              aria-label={`Sửa tên trường ${field.label}`}
+              onClick={() => setRenaming(true)}
+              className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+          ) : null}
+          {isAdmin ? (
+            <ConfirmDelete
+              title={`Xoá trường "${field.label}"?`}
+              description="Trường dữ liệu này sẽ bị xoá khỏi hồ sơ. Thao tác không thể hoàn tác."
+              onConfirm={removeField}
+            >
               <button
                 type="button"
                 aria-label={`Xoá trường ${field.label}`}
-                onClick={() => void removeField()}
                 className="rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
               >
                 <Trash2 className="size-3.5" />
               </button>
-            </>
+            </ConfirmDelete>
           ) : null}
         </span>
       </div>
-      <input
-        id={field.id}
-        value={value}
-        readOnly={readOnly}
-        inputMode={isMoney ? "numeric" : undefined}
-        placeholder={conf.warn ? "Chưa đọc được — vui lòng nhập tay" : "—"}
-        onChange={(e) => {
-          const next = isMoney ? formatThousands(e.target.value) : e.target.value;
-          setValue(next);
-          if (timer.current) clearTimeout(timer.current);
-          timer.current = setTimeout(() => void save(next), 800);
-        }}
-        onFocus={onFocusField}
-        onBlur={() => {
-          if (timer.current) clearTimeout(timer.current);
-          void save(value);
-        }}
-        className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30 read-only:bg-muted"
-      />
+
+      {isDate ? (
+        <DateField
+          id={field.id}
+          value={value}
+          readOnly={readOnly}
+          onChange={(next) => {
+            setValue(next);
+            void save(next);
+          }}
+        />
+      ) : (
+        <input
+          id={field.id}
+          value={shownValue}
+          readOnly={readOnly || autoFilled}
+          inputMode={isMoney ? "numeric" : undefined}
+          placeholder={
+            autoFilled
+              ? "Tự sinh từ số tiền"
+              : conf.warn
+                ? "Chưa đọc được — vui lòng nhập tay"
+                : "—"
+          }
+          onChange={(e) => change(e.target.value)}
+          onFocus={onFocusField}
+          onBlur={() => {
+            if (autoFilled) return;
+            if (timer.current) clearTimeout(timer.current);
+            void save(value);
+          }}
+          className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30 read-only:bg-muted"
+        />
+      )}
+
       {isMoney && value ? (
         <p className="mt-1 text-[11px] italic text-muted-foreground">
           Bằng chữ: {readVietnameseMoney(value)}
@@ -282,4 +345,3 @@ export function FieldRowEditor({
     </div>
   );
 }
-
