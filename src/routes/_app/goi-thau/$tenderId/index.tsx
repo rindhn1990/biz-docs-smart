@@ -148,7 +148,15 @@ function TenderCaseDetail() {
 
 /* ---------------------------------- Bước ---------------------------------- */
 
-function Checklist({ tenderId, canWrite }: { tenderId: string; canWrite: boolean }) {
+function Checklist({
+  tenderId,
+  canWrite,
+  isAdmin,
+}: {
+  tenderId: string;
+  canWrite: boolean;
+  isAdmin: boolean;
+}) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
