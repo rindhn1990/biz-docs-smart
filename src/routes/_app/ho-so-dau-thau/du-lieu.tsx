@@ -52,7 +52,9 @@ function DataPage() {
   const [newLabel, setNewLabel] = useState("");
   const [newGroup, setNewGroup] = useState<string>(KHLCNT_GROUPS[0]);
   const [scanning, setScanning] = useState(false);
+  const [resetAsk, setResetAsk] = useState<string | null>(null);
   const [preview, setPreview] = useState<{
+    templateId: string;
     title: string;
     fileName: string;
     source: ArrayBuffer;
