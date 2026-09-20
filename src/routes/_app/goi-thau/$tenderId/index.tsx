@@ -19,6 +19,9 @@ import {
 } from "@/lib/tender";
 
 import { formatDateTime } from "@/lib/format";
+import { ConfirmDelete } from "@/components/ConfirmDelete";
+import { DateField, isDateField } from "@/components/DateField";
+import { formatThousands, readVietnameseMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/goi-thau/$tenderId/")({
@@ -51,7 +54,7 @@ const TABS = [
 
 function TenderCaseDetail() {
   const { tenderId } = Route.useParams();
-  const { canWrite } = useAuth();
+  const { canWrite, isAdmin } = useAuth();
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("checklist");
 
   const tender = useQuery({
@@ -131,11 +134,11 @@ function TenderCaseDetail() {
       </div>
 
       {tab === "checklist" ? (
-        <Checklist tenderId={tenderId} canWrite={canWrite} />
+        <Checklist tenderId={tenderId} canWrite={canWrite} isAdmin={isAdmin} />
       ) : tab === "sources" ? (
-        <Sources tenderId={tenderId} canWrite={canWrite} />
+        <Sources tenderId={tenderId} canWrite={canWrite} isAdmin={isAdmin} />
       ) : tab === "data" ? (
-        <DataCenter tenderId={tenderId} canWrite={canWrite} />
+        <DataCenter tenderId={tenderId} canWrite={canWrite} isAdmin={isAdmin} />
       ) : (
         <Info tender={t} />
       )}
@@ -145,7 +148,15 @@ function TenderCaseDetail() {
 
 /* ---------------------------------- Bước ---------------------------------- */
 
-function Checklist({ tenderId, canWrite }: { tenderId: string; canWrite: boolean }) {
+function Checklist({
+  tenderId,
+  canWrite,
+  isAdmin,
+}: {
+  tenderId: string;
+  canWrite: boolean;
+  isAdmin: boolean;
+}) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
@@ -266,7 +277,15 @@ function Checklist({ tenderId, canWrite }: { tenderId: string; canWrite: boolean
 
 /* ------------------------------ Nguồn dữ liệu ------------------------------ */
 
-function Sources({ tenderId, canWrite }: { tenderId: string; canWrite: boolean }) {
+function Sources({
+  tenderId,
+  canWrite,
+  isAdmin,
+}: {
+  tenderId: string;
+  canWrite: boolean;
+  isAdmin: boolean;
+}) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [uploading, setUploading] = useState<string | null>(null);
@@ -397,7 +416,15 @@ function Sources({ tenderId, canWrite }: { tenderId: string; canWrite: boolean }
 
 /* ------------------------------- Dữ liệu chung ------------------------------ */
 
-function DataCenter({ tenderId, canWrite }: { tenderId: string; canWrite: boolean }) {
+function DataCenter({
+  tenderId,
+  canWrite,
+  isAdmin,
+}: {
+  tenderId: string;
+  canWrite: boolean;
+  isAdmin: boolean;
+}) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [values, setValues] = useState<Record<string, string>>({});

@@ -11,9 +11,21 @@ import { EmptyState } from "@/components/EmptyState";
 import { FieldGroupEditor, type FieldRow } from "@/components/FieldGroupEditor";
 import { ScanFileDialog } from "@/components/ScanFileDialog";
 import { DocxPreviewDialog } from "@/components/DocxPreviewDialog";
+import { ConfirmDelete } from "@/components/ConfirmDelete";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { KHLCNT_FIELDS, KHLCNT_FIELD_KEYS, KHLCNT_GROUPS } from "@/lib/khlcnt";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { renderAndDownloadDocx, type DelimiterStyle } from "@/lib/docx";
+import { recordExport } from "@/lib/export-history";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/ho-so-dau-thau/du-lieu")({
@@ -40,7 +52,7 @@ export const Route = createFileRoute("/_app/ho-so-dau-thau/du-lieu")({
 
 function DataPage() {
   const { doc } = Route.useSearch();
-  const { canWrite } = useAuth();
+  const { canWrite, isAdmin, user, profile } = useAuth();
   const queryClient = useQueryClient();
   const [docId, setDocId] = useState<string | null>(null);
   const [method, setMethod] = useState<TenderMethod>(DEFAULT_METHOD);
@@ -50,7 +62,9 @@ function DataPage() {
   const [newLabel, setNewLabel] = useState("");
   const [newGroup, setNewGroup] = useState<string>(KHLCNT_GROUPS[0]);
   const [scanning, setScanning] = useState(false);
+  const [resetAsk, setResetAsk] = useState<string | null>(null);
   const [preview, setPreview] = useState<{
+    templateId: string;
     title: string;
     fileName: string;
     source: ArrayBuffer;
@@ -266,12 +280,29 @@ function DataPage() {
     };
   }
 
+  /** Ghi lịch sử mỗi lần xuất và hỏi người dùng có làm mới biểu mẫu không. */
+  async function afterExport(tpl: Template, ready: { fileName: string; data: Record<string, string> }) {
+    await recordExport({
+      fileName: ready.fileName,
+      module: "tender",
+      data: ready.data,
+      documentId: currentId,
+      templateId: tpl.id,
+      templateName: tpl.name,
+      userId: user?.id ?? null,
+      userEmail: profile?.email ?? user?.email ?? null,
+    });
+    void queryClient.invalidateQueries({ queryKey: ["export_history"] });
+    if (canWrite && rows.some((r) => r.value)) setResetAsk(ready.fileName);
+  }
+
   async function exportTemplate(tpl: Template) {
     setExporting(tpl.id);
     try {
       const ready = await prepare(tpl);
       await renderAndDownloadDocx(ready.source, ready.style, ready.data, ready.fileName);
       toast.success("Đã xuất file Word", { description: ready.fileName });
+      await afterExport(tpl, ready);
     } catch (e) {
       toast.error("Không xuất được file", { description: (e as Error).message });
     } finally {
@@ -283,12 +314,29 @@ function DataPage() {
     setExporting(tpl.id);
     try {
       const ready = await prepare(tpl);
-      setPreview({ title: tpl.name, ...ready });
+      setPreview({ templateId: tpl.id, title: tpl.name, ...ready });
     } catch (e) {
       toast.error("Không xem trước được", { description: (e as Error).message });
     } finally {
       setExporting(null);
     }
+  }
+
+  /** Đưa toàn bộ giá trị của hồ sơ về trống để chuẩn bị nhập hồ sơ mới. */
+  async function resetForm() {
+    if (!currentId) return;
+    const { error } = await supabase
+      .from("document_fields")
+      .update({ value: null })
+      .eq("document_id", currentId);
+    if (error) {
+      toast.error("Không làm mới được biểu mẫu", { description: error.message });
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["document_fields", currentId] });
+    toast.success("Đã làm mới biểu mẫu", {
+      description: "Dữ liệu vừa xuất vẫn được lưu trong Lịch sử xuất file.",
+    });
   }
 
   /** Điền giá trị quét được từ ảnh/PDF vào các trường của hồ sơ đang mở. */
@@ -381,14 +429,20 @@ function DataPage() {
                       Bổ sung {missingFields.length} trường từ mẫu
                     </button>
                   ) : null}
-                  {duplicates.length > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => void removeDuplicates()}
-                      className="rounded-md border border-destructive/40 px-2.5 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+                  {duplicates.length > 0 && isAdmin ? (
+                    <ConfirmDelete
+                      title={`Gộp ${duplicates.length} trường bị trùng?`}
+                      description="Hệ thống giữ lại bản có dữ liệu đầy đủ nhất và xoá các bản trùng còn lại."
+                      confirmLabel="Gộp và xoá"
+                      onConfirm={removeDuplicates}
                     >
-                      Gộp {duplicates.length} trường bị trùng
-                    </button>
+                      <button
+                        type="button"
+                        className="rounded-md border border-destructive/40 px-2.5 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+                      >
+                        Gộp {duplicates.length} trường bị trùng
+                      </button>
+                    </ConfirmDelete>
                   ) : null}
                 </div>
               ) : null}
@@ -541,8 +595,40 @@ function DataPage() {
           style={preview.style}
           data={preview.data}
           onClose={() => setPreview(null)}
+          onExported={() => {
+            const tpl = (templates.data ?? []).find((t) => t.id === preview.templateId);
+            if (tpl)
+              void afterExport(tpl as Template, {
+                fileName: preview.fileName,
+                data: preview.data,
+              });
+          }}
         />
       ) : null}
+
+      <AlertDialog open={resetAsk !== null} onOpenChange={(o) => !o && setResetAsk(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Đã xuất xong — làm mới biểu mẫu?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Toàn bộ ô dữ liệu của hồ sơ sẽ về trống để bạn nhập hồ sơ mới. Bản vừa xuất
+              {resetAsk ? ` (${resetAsk})` : ""} đã được lưu trong Lịch sử xuất file nên không mất
+              dữ liệu.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Giữ nguyên dữ liệu</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setResetAsk(null);
+                void resetForm();
+              }}
+            >
+              Làm mới biểu mẫu
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -15,6 +15,7 @@ export function DocxPreviewDialog({
   style,
   data,
   onClose,
+  onExported,
 }: {
   title: string;
   fileName: string;
@@ -22,6 +23,8 @@ export function DocxPreviewDialog({
   style: DelimiterStyle;
   data: Record<string, string>;
   onClose: () => void;
+  /** Gọi sau khi người dùng tải file thành công (ghi lịch sử, làm mới biểu mẫu…). */
+  onExported?: () => void;
 }) {
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +49,8 @@ export function DocxPreviewDialog({
     try {
       await renderAndDownloadDocx(source, style, data, fileName);
       toast.success("Đã tải file Word", { description: fileName });
+      onExported?.();
+      onClose();
     } catch (e) {
       toast.error("Không tải được file", { description: (e as Error).message });
     } finally {

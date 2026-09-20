@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, Loader2, Plus, Gavel } from "lucide-react";
+import { ChevronRight, Loader2, Plus, Gavel, Trash2 } from "lucide-react";
+import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -55,7 +56,30 @@ const emptyCase: NewCase = {
 function TenderCasesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { canWrite, user } = useAuth();
+  const { canWrite, isAdmin, user } = useAuth();
+
+  /** Xoá gói thầu kèm toàn bộ dữ liệu con — chỉ quản trị viên. */
+  async function removeCase(id: string) {
+    for (const table of [
+      "tender_steps",
+      "tender_sources",
+      "tender_contractors",
+      "tender_data",
+    ] as const) {
+      const { error } = await supabase.from(table).delete().eq("tender_id", id);
+      if (error) {
+        toast.error("Không xoá được dữ liệu của gói thầu", { description: error.message });
+        return;
+      }
+    }
+    const { error } = await supabase.from("tenders").delete().eq("id", id);
+    if (error) {
+      toast.error("Không xoá được gói thầu", { description: error.message });
+      return;
+    }
+    void queryClient.invalidateQueries({ queryKey: ["tender_cases"] });
+    toast.success("Đã xoá gói thầu");
+  }
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<NewCase>(emptyCase);
   const [methodFilter, setMethodFilter] = useState<string>("all");
@@ -311,8 +335,28 @@ function TenderCasesPage() {
                         {TENDER_STATUS[row.status]?.label ?? row.status}
                       </StatusBadge>
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <ChevronRight className="ml-auto size-4 text-muted-foreground" />
+                    <td className="px-4 py-3">
+                      <div
+                        className="flex items-center justify-end gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {isAdmin ? (
+                          <ConfirmDelete
+                            title={`Xoá gói thầu "${row.name}"?`}
+                            description="Toàn bộ bước, tài liệu nguồn, dữ liệu chung và nhà thầu của gói thầu này sẽ bị xoá."
+                            onConfirm={() => removeCase(row.id)}
+                          >
+                            <button
+                              type="button"
+                              aria-label={`Xoá gói thầu ${row.name}`}
+                              className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
+                          </ConfirmDelete>
+                        ) : null}
+                        <ChevronRight className="size-4 text-muted-foreground" />
+                      </div>
                     </td>
                   </tr>
                 );
