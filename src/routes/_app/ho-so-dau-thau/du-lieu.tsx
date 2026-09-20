@@ -11,9 +11,11 @@ import { EmptyState } from "@/components/EmptyState";
 import { FieldGroupEditor, type FieldRow } from "@/components/FieldGroupEditor";
 import { ScanFileDialog } from "@/components/ScanFileDialog";
 import { DocxPreviewDialog } from "@/components/DocxPreviewDialog";
+import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { KHLCNT_FIELDS, KHLCNT_FIELD_KEYS, KHLCNT_GROUPS } from "@/lib/khlcnt";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { renderAndDownloadDocx, type DelimiterStyle } from "@/lib/docx";
+import { recordExport } from "@/lib/export-history";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/ho-so-dau-thau/du-lieu")({
