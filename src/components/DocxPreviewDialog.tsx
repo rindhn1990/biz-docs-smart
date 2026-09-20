@@ -49,6 +49,8 @@ export function DocxPreviewDialog({
     try {
       await renderAndDownloadDocx(source, style, data, fileName);
       toast.success("Đã tải file Word", { description: fileName });
+      onExported?.();
+      onClose();
     } catch (e) {
       toast.error("Không tải được file", { description: (e as Error).message });
     } finally {
