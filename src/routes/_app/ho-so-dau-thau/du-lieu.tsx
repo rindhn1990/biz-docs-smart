@@ -12,6 +12,16 @@ import { FieldGroupEditor, type FieldRow } from "@/components/FieldGroupEditor";
 import { ScanFileDialog } from "@/components/ScanFileDialog";
 import { DocxPreviewDialog } from "@/components/DocxPreviewDialog";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { KHLCNT_FIELDS, KHLCNT_FIELD_KEYS, KHLCNT_GROUPS } from "@/lib/khlcnt";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { renderAndDownloadDocx, type DelimiterStyle } from "@/lib/docx";
@@ -419,14 +429,20 @@ function DataPage() {
                       Bổ sung {missingFields.length} trường từ mẫu
                     </button>
                   ) : null}
-                  {duplicates.length > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => void removeDuplicates()}
-                      className="rounded-md border border-destructive/40 px-2.5 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+                  {duplicates.length > 0 && isAdmin ? (
+                    <ConfirmDelete
+                      title={`Gộp ${duplicates.length} trường bị trùng?`}
+                      description="Hệ thống giữ lại bản có dữ liệu đầy đủ nhất và xoá các bản trùng còn lại."
+                      confirmLabel="Gộp và xoá"
+                      onConfirm={removeDuplicates}
                     >
-                      Gộp {duplicates.length} trường bị trùng
-                    </button>
+                      <button
+                        type="button"
+                        className="rounded-md border border-destructive/40 px-2.5 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+                      >
+                        Gộp {duplicates.length} trường bị trùng
+                      </button>
+                    </ConfirmDelete>
                   ) : null}
                 </div>
               ) : null}
@@ -579,8 +595,40 @@ function DataPage() {
           style={preview.style}
           data={preview.data}
           onClose={() => setPreview(null)}
+          onExported={() => {
+            const tpl = (templates.data ?? []).find((t) => t.id === preview.templateId);
+            if (tpl)
+              void afterExport(tpl as Template, {
+                fileName: preview.fileName,
+                data: preview.data,
+              });
+          }}
         />
       ) : null}
+
+      <AlertDialog open={resetAsk !== null} onOpenChange={(o) => !o && setResetAsk(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Đã xuất xong — làm mới biểu mẫu?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Toàn bộ ô dữ liệu của hồ sơ sẽ về trống để bạn nhập hồ sơ mới. Bản vừa xuất
+              {resetAsk ? ` (${resetAsk})` : ""} đã được lưu trong Lịch sử xuất file nên không mất
+              dữ liệu.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Giữ nguyên dữ liệu</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setResetAsk(null);
+                void resetForm();
+              }}
+            >
+              Làm mới biểu mẫu
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
