@@ -416,7 +416,15 @@ function Sources({
 
 /* ------------------------------- Dữ liệu chung ------------------------------ */
 
-function DataCenter({ tenderId, canWrite }: { tenderId: string; canWrite: boolean }) {
+function DataCenter({
+  tenderId,
+  canWrite,
+  isAdmin,
+}: {
+  tenderId: string;
+  canWrite: boolean;
+  isAdmin: boolean;
+}) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [values, setValues] = useState<Record<string, string>>({});
