@@ -42,7 +42,7 @@ export const Route = createFileRoute("/_app/ho-so-dau-thau/du-lieu")({
 
 function DataPage() {
   const { doc } = Route.useSearch();
-  const { canWrite } = useAuth();
+  const { canWrite, isAdmin, user, profile } = useAuth();
   const queryClient = useQueryClient();
   const [docId, setDocId] = useState<string | null>(null);
   const [method, setMethod] = useState<TenderMethod>(DEFAULT_METHOD);
