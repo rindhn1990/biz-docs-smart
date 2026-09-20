@@ -54,7 +54,7 @@ const TABS = [
 
 function TenderCaseDetail() {
   const { tenderId } = Route.useParams();
-  const { canWrite } = useAuth();
+  const { canWrite, isAdmin } = useAuth();
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("checklist");
 
   const tender = useQuery({
