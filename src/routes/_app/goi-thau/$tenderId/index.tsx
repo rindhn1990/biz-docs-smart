@@ -134,11 +134,11 @@ function TenderCaseDetail() {
       </div>
 
       {tab === "checklist" ? (
-        <Checklist tenderId={tenderId} canWrite={canWrite} />
+        <Checklist tenderId={tenderId} canWrite={canWrite} isAdmin={isAdmin} />
       ) : tab === "sources" ? (
-        <Sources tenderId={tenderId} canWrite={canWrite} />
+        <Sources tenderId={tenderId} canWrite={canWrite} isAdmin={isAdmin} />
       ) : tab === "data" ? (
-        <DataCenter tenderId={tenderId} canWrite={canWrite} />
+        <DataCenter tenderId={tenderId} canWrite={canWrite} isAdmin={isAdmin} />
       ) : (
         <Info tender={t} />
       )}
