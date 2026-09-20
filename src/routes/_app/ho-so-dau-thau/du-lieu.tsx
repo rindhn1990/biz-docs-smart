@@ -270,12 +270,29 @@ function DataPage() {
     };
   }
 
+  /** Ghi lịch sử mỗi lần xuất và hỏi người dùng có làm mới biểu mẫu không. */
+  async function afterExport(tpl: Template, ready: { fileName: string; data: Record<string, string> }) {
+    await recordExport({
+      fileName: ready.fileName,
+      module: "tender",
+      data: ready.data,
+      documentId: currentId,
+      templateId: tpl.id,
+      templateName: tpl.name,
+      userId: user?.id ?? null,
+      userEmail: profile?.email ?? user?.email ?? null,
+    });
+    void queryClient.invalidateQueries({ queryKey: ["export_history"] });
+    if (canWrite && rows.some((r) => r.value)) setResetAsk(ready.fileName);
+  }
+
   async function exportTemplate(tpl: Template) {
     setExporting(tpl.id);
     try {
       const ready = await prepare(tpl);
       await renderAndDownloadDocx(ready.source, ready.style, ready.data, ready.fileName);
       toast.success("Đã xuất file Word", { description: ready.fileName });
+      await afterExport(tpl, ready);
     } catch (e) {
       toast.error("Không xuất được file", { description: (e as Error).message });
     } finally {
@@ -287,12 +304,29 @@ function DataPage() {
     setExporting(tpl.id);
     try {
       const ready = await prepare(tpl);
-      setPreview({ title: tpl.name, ...ready });
+      setPreview({ templateId: tpl.id, title: tpl.name, ...ready });
     } catch (e) {
       toast.error("Không xem trước được", { description: (e as Error).message });
     } finally {
       setExporting(null);
     }
+  }
+
+  /** Đưa toàn bộ giá trị của hồ sơ về trống để chuẩn bị nhập hồ sơ mới. */
+  async function resetForm() {
+    if (!currentId) return;
+    const { error } = await supabase
+      .from("document_fields")
+      .update({ value: null })
+      .eq("document_id", currentId);
+    if (error) {
+      toast.error("Không làm mới được biểu mẫu", { description: error.message });
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["document_fields", currentId] });
+    toast.success("Đã làm mới biểu mẫu", {
+      description: "Dữ liệu vừa xuất vẫn được lưu trong Lịch sử xuất file.",
+    });
   }
 
   /** Điền giá trị quét được từ ảnh/PDF vào các trường của hồ sơ đang mở. */
