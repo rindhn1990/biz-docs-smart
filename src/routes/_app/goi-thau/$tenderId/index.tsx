@@ -277,7 +277,15 @@ function Checklist({
 
 /* ------------------------------ Nguồn dữ liệu ------------------------------ */
 
-function Sources({ tenderId, canWrite }: { tenderId: string; canWrite: boolean }) {
+function Sources({
+  tenderId,
+  canWrite,
+  isAdmin,
+}: {
+  tenderId: string;
+  canWrite: boolean;
+  isAdmin: boolean;
+}) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [uploading, setUploading] = useState<string | null>(null);
