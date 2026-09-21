@@ -52,6 +52,7 @@ function StepEditor() {
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [resetAsk, setResetAsk] = useState(false);
 
   const step = useQuery({
     queryKey: ["tender_step", stepId],
