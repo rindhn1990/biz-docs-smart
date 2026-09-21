@@ -268,6 +268,21 @@ function Checklist({
                 </option>
               ))}
             </select>
+            {isAdmin ? (
+              <ConfirmDelete
+                title={`Xoá bước "${s.name}"?`}
+                description="Bước này và dữ liệu đã nhập trong bước sẽ bị xoá khỏi gói thầu."
+                onConfirm={() => removeStep(s.id)}
+              >
+                <button
+                  type="button"
+                  aria-label={`Xoá bước ${s.name}`}
+                  className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </ConfirmDelete>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -392,15 +407,20 @@ function Sources({
                           {Math.max(1, Math.round((f.file_size ?? 0) / 1024))} KB
                         </span>
                       </span>
-                      {canWrite ? (
-                        <button
-                          type="button"
-                          onClick={() => void remove(f.id, f.storage_path)}
-                          className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                          aria-label="Xoá tệp"
+                      {isAdmin ? (
+                        <ConfirmDelete
+                          title={`Xoá tệp "${f.file_name}"?`}
+                          description="Tệp sẽ bị xoá khỏi gói thầu và khỏi kho lưu trữ."
+                          onConfirm={() => remove(f.id, f.storage_path)}
                         >
-                          <Trash2 className="size-4" />
-                        </button>
+                          <button
+                            type="button"
+                            className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                            aria-label="Xoá tệp"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </ConfirmDelete>
                       ) : null}
                     </li>
                   ))}
@@ -577,15 +597,21 @@ function DataCenter({
                     <span className="whitespace-nowrap text-muted-foreground">
                       {formatMoney(l.price)}
                     </span>
-                    {canWrite ? (
-                      <button
-                        type="button"
-                        onClick={() => void removeLink(l.id)}
-                        className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        aria-label="Bỏ nhà thầu"
+                    {isAdmin ? (
+                      <ConfirmDelete
+                        title={`Bỏ nhà thầu "${l.contractors?.name ?? ""}" khỏi gói thầu?`}
+                        description="Nhà thầu vẫn còn trong danh bạ, chỉ gỡ khỏi gói thầu này."
+                        confirmLabel="Bỏ khỏi gói thầu"
+                        onConfirm={() => removeLink(l.id)}
                       >
-                        <Trash2 className="size-4" />
-                      </button>
+                        <button
+                          type="button"
+                          className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          aria-label="Bỏ nhà thầu"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </ConfirmDelete>
                     ) : null}
                   </li>
                 ))}
