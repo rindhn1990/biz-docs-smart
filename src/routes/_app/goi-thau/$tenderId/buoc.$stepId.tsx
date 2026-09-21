@@ -9,6 +9,9 @@ import { EmptyState } from "@/components/EmptyState";
 import { StatusBadge } from "@/components/StatusBadge";
 import { STEP_STATUS } from "@/lib/tender";
 import { renderAndDownloadDocx, renderDocxToHtml, type DelimiterStyle } from "@/lib/docx";
+import { DateField, isDateField } from "@/components/DateField";
+import { formatThousands, isMoneyNumberField, moneyTextKey, readVietnameseMoney } from "@/lib/money";
+import { recordExport } from "@/lib/export-history";
 
 export const Route = createFileRoute("/_app/goi-thau/$tenderId/buoc/$stepId")({
   head: () => ({
@@ -42,7 +45,7 @@ type Mapping = {
 
 function StepEditor() {
   const { tenderId, stepId } = Route.useParams();
-  const { canWrite, user } = useAuth();
+  const { canWrite, user, profile } = useAuth();
   const queryClient = useQueryClient();
   const [values, setValues] = useState<Record<string, string>>({});
   const [html, setHtml] = useState<string>("");
