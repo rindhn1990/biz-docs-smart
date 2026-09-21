@@ -553,19 +553,45 @@ function DataCenter({
             <h2 className="text-sm font-semibold">{group.title}</h2>
           </header>
           <div className="grid gap-3 p-4 md:grid-cols-2">
-            {group.fields.map((f) => (
-              <label key={f.key} className={f.wide ? "md:col-span-2" : undefined}>
-                <span className="mb-1 block text-xs font-medium text-muted-foreground">
-                  {f.label}
-                </span>
-                <input
-                  value={values[f.key] ?? ""}
-                  readOnly={!canWrite}
-                  onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}
-                  className="input read-only:bg-muted"
-                />
-              </label>
-            ))}
+            {group.fields.map((f) => {
+              const isDate = isDateField(f.key, f.label) || /^ngay_/.test(f.key);
+              const isMoney = f.key === "gia_goi_thau";
+              const isWords = f.key === "gia_bang_chu";
+              return (
+                <label key={f.key} className={f.wide ? "md:col-span-2" : undefined}>
+                  <span className="mb-1 block text-xs font-medium text-muted-foreground">
+                    {f.label}
+                  </span>
+                  {isDate ? (
+                    <DateField
+                      value={values[f.key] ?? ""}
+                      readOnly={!canWrite}
+                      onChange={(next) => setValues({ ...values, [f.key]: next })}
+                    />
+                  ) : (
+                    <input
+                      value={values[f.key] ?? ""}
+                      readOnly={!canWrite || isWords}
+                      inputMode={isMoney ? "numeric" : undefined}
+                      placeholder={isWords ? "Tự sinh từ giá gói thầu" : undefined}
+                      onChange={(e) => {
+                        if (isMoney) {
+                          const next = formatThousands(e.target.value);
+                          setValues({
+                            ...values,
+                            gia_goi_thau: next,
+                            gia_bang_chu: readVietnameseMoney(next),
+                          });
+                          return;
+                        }
+                        setValues({ ...values, [f.key]: e.target.value });
+                      }}
+                      className="input read-only:bg-muted"
+                    />
+                  )}
+                </label>
+              );
+            })}
           </div>
         </section>
       ))}
