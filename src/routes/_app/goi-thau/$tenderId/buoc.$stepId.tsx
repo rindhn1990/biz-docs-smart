@@ -394,6 +394,29 @@ function StepEditor() {
           </div>
         </section>
       </div>
+
+      <AlertDialog open={resetAsk} onOpenChange={setResetAsk}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Đã xuất xong — làm mới biểu mẫu?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Toàn bộ ô dữ liệu của bước này sẽ về trống để bạn soạn văn bản mới. Bản vừa xuất đã
+              được lưu trong Lịch sử xuất file nên không mất dữ liệu.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Giữ nguyên dữ liệu</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setResetAsk(false);
+                void resetForm();
+              }}
+            >
+              Làm mới biểu mẫu
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
