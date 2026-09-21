@@ -177,6 +177,18 @@ function Checklist({
   const list = steps.data ?? [];
   const done = list.filter((s) => s.status === "approved").length;
 
+  /** Xoá một bước khỏi gói thầu — chỉ quản trị viên. */
+  async function removeStep(id: string) {
+    const { error } = await supabase.from("tender_steps").delete().eq("id", id);
+    if (error) {
+      toast.error("Không xoá được bước", { description: error.message });
+      return;
+    }
+    void queryClient.invalidateQueries({ queryKey: ["tender_steps", tenderId] });
+    void queryClient.invalidateQueries({ queryKey: ["tender_cases"] });
+    toast.success("Đã xoá bước");
+  }
+
   async function setStatus(id: string, status: string) {
     setBusy(id);
     const { error } = await supabase
@@ -268,6 +280,21 @@ function Checklist({
                 </option>
               ))}
             </select>
+            {isAdmin ? (
+              <ConfirmDelete
+                title={`Xoá bước "${s.name}"?`}
+                description="Bước này và dữ liệu đã nhập trong bước sẽ bị xoá khỏi gói thầu."
+                onConfirm={() => removeStep(s.id)}
+              >
+                <button
+                  type="button"
+                  aria-label={`Xoá bước ${s.name}`}
+                  className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </ConfirmDelete>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -392,15 +419,20 @@ function Sources({
                           {Math.max(1, Math.round((f.file_size ?? 0) / 1024))} KB
                         </span>
                       </span>
-                      {canWrite ? (
-                        <button
-                          type="button"
-                          onClick={() => void remove(f.id, f.storage_path)}
-                          className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                          aria-label="Xoá tệp"
+                      {isAdmin ? (
+                        <ConfirmDelete
+                          title={`Xoá tệp "${f.file_name}"?`}
+                          description="Tệp sẽ bị xoá khỏi gói thầu và khỏi kho lưu trữ."
+                          onConfirm={() => remove(f.id, f.storage_path)}
                         >
-                          <Trash2 className="size-4" />
-                        </button>
+                          <button
+                            type="button"
+                            className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                            aria-label="Xoá tệp"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </ConfirmDelete>
                       ) : null}
                     </li>
                   ))}
@@ -521,19 +553,45 @@ function DataCenter({
             <h2 className="text-sm font-semibold">{group.title}</h2>
           </header>
           <div className="grid gap-3 p-4 md:grid-cols-2">
-            {group.fields.map((f) => (
-              <label key={f.key} className={f.wide ? "md:col-span-2" : undefined}>
-                <span className="mb-1 block text-xs font-medium text-muted-foreground">
-                  {f.label}
-                </span>
-                <input
-                  value={values[f.key] ?? ""}
-                  readOnly={!canWrite}
-                  onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}
-                  className="input read-only:bg-muted"
-                />
-              </label>
-            ))}
+            {group.fields.map((f) => {
+              const isDate = isDateField(f.key, f.label) || /^ngay_/.test(f.key);
+              const isMoney = f.key === "gia_goi_thau";
+              const isWords = f.key === "gia_bang_chu";
+              return (
+                <label key={f.key} className={f.wide ? "md:col-span-2" : undefined}>
+                  <span className="mb-1 block text-xs font-medium text-muted-foreground">
+                    {f.label}
+                  </span>
+                  {isDate ? (
+                    <DateField
+                      value={values[f.key] ?? ""}
+                      readOnly={!canWrite}
+                      onChange={(next) => setValues({ ...values, [f.key]: next })}
+                    />
+                  ) : (
+                    <input
+                      value={values[f.key] ?? ""}
+                      readOnly={!canWrite || isWords}
+                      inputMode={isMoney ? "numeric" : undefined}
+                      placeholder={isWords ? "Tự sinh từ giá gói thầu" : undefined}
+                      onChange={(e) => {
+                        if (isMoney) {
+                          const next = formatThousands(e.target.value);
+                          setValues({
+                            ...values,
+                            gia_goi_thau: next,
+                            gia_bang_chu: readVietnameseMoney(next),
+                          });
+                          return;
+                        }
+                        setValues({ ...values, [f.key]: e.target.value });
+                      }}
+                      className="input read-only:bg-muted"
+                    />
+                  )}
+                </label>
+              );
+            })}
           </div>
         </section>
       ))}
@@ -577,15 +635,21 @@ function DataCenter({
                     <span className="whitespace-nowrap text-muted-foreground">
                       {formatMoney(l.price)}
                     </span>
-                    {canWrite ? (
-                      <button
-                        type="button"
-                        onClick={() => void removeLink(l.id)}
-                        className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        aria-label="Bỏ nhà thầu"
+                    {isAdmin ? (
+                      <ConfirmDelete
+                        title={`Bỏ nhà thầu "${l.contractors?.name ?? ""}" khỏi gói thầu?`}
+                        description="Nhà thầu vẫn còn trong danh bạ, chỉ gỡ khỏi gói thầu này."
+                        confirmLabel="Bỏ khỏi gói thầu"
+                        onConfirm={() => removeLink(l.id)}
                       >
-                        <Trash2 className="size-4" />
-                      </button>
+                        <button
+                          type="button"
+                          className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          aria-label="Bỏ nhà thầu"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </ConfirmDelete>
                     ) : null}
                   </li>
                 ))}

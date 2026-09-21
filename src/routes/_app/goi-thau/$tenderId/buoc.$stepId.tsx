@@ -9,6 +9,19 @@ import { EmptyState } from "@/components/EmptyState";
 import { StatusBadge } from "@/components/StatusBadge";
 import { STEP_STATUS } from "@/lib/tender";
 import { renderAndDownloadDocx, renderDocxToHtml, type DelimiterStyle } from "@/lib/docx";
+import { DateField, isDateField } from "@/components/DateField";
+import { formatThousands, isMoneyNumberField, moneyTextKey, readVietnameseMoney } from "@/lib/money";
+import { recordExport } from "@/lib/export-history";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_app/goi-thau/$tenderId/buoc/$stepId")({
   head: () => ({
@@ -42,13 +55,14 @@ type Mapping = {
 
 function StepEditor() {
   const { tenderId, stepId } = Route.useParams();
-  const { canWrite, user } = useAuth();
+  const { canWrite, user, profile } = useAuth();
   const queryClient = useQueryClient();
   const [values, setValues] = useState<Record<string, string>>({});
   const [html, setHtml] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [resetAsk, setResetAsk] = useState(false);
 
   const step = useQuery({
     queryKey: ["tender_step", stepId],
@@ -178,17 +192,40 @@ function StepEditor() {
     void queryClient.invalidateQueries({ queryKey: ["tender_cases"] });
   }
 
+  /** Xoá trắng biểu mẫu của bước để chuẩn bị nhập hồ sơ mới. */
+  async function resetForm() {
+    const cleared: Record<string, string> = {};
+    for (const m of mappings.data ?? []) cleared[m.placeholder] = "";
+    setValues(cleared);
+    await supabase.from("tender_steps").update({ data: {} }).eq("id", stepId);
+    void queryClient.invalidateQueries({ queryKey: ["tender_step", stepId] });
+    toast.success("Đã làm mới biểu mẫu");
+  }
+
   async function exportDocx() {
     setExporting(true);
     try {
       const { buffer, tpl } = await loadSource();
+      const fileName = `${step.data?.name ?? "Van_ban"}.docx`;
       await renderAndDownloadDocx(
         buffer,
         (tpl.delimiter_style as DelimiterStyle) ?? "curly",
         values,
-        `${step.data?.name ?? "Van_ban"}.docx`,
+        fileName,
       );
+      await recordExport({
+        fileName,
+        module: "tender",
+        data: values,
+        tenderId,
+        templateId: tpl.id,
+        templateName: tpl.name,
+        userId: user?.id ?? null,
+        userEmail: profile?.email ?? user?.email ?? null,
+      });
+      void queryClient.invalidateQueries({ queryKey: ["export_history"] });
       toast.success("Đã xuất file Word");
+      setResetAsk(true);
     } catch (e) {
       toast.error("Không xuất được file", { description: (e as Error).message });
     } finally {
@@ -283,24 +320,53 @@ function StepEditor() {
             />
           ) : (
             <div className="max-h-[70vh] divide-y divide-border overflow-y-auto">
-              {(mappings.data ?? []).map((m) => (
-                <div key={m.id} className="px-4 py-3">
-                  <label
-                    htmlFor={m.id}
-                    className="mb-1.5 block text-xs font-medium text-muted-foreground"
-                  >
-                    {m.label}
-                  </label>
-                  <input
-                    id={m.id}
-                    value={values[m.placeholder] ?? ""}
-                    readOnly={!canWrite}
-                    onChange={(e) => setValues({ ...values, [m.placeholder]: e.target.value })}
-                    placeholder="Chưa có dữ liệu"
-                    className="input read-only:bg-muted"
-                  />
-                </div>
-              ))}
+              {(mappings.data ?? []).map((m) => {
+                const isDate = isDateField(m.placeholder, m.label);
+                const isMoney = isMoneyNumberField(m.placeholder, m.label);
+                return (
+                  <div key={m.id} className="px-4 py-3">
+                    <label
+                      htmlFor={m.id}
+                      className="mb-1.5 block text-xs font-medium text-muted-foreground"
+                    >
+                      {m.label}
+                    </label>
+                    {isDate ? (
+                      <DateField
+                        value={values[m.placeholder] ?? ""}
+                        readOnly={!canWrite}
+                        onChange={(next) => setValues({ ...values, [m.placeholder]: next })}
+                      />
+                    ) : (
+                      <input
+                        id={m.id}
+                        value={values[m.placeholder] ?? ""}
+                        readOnly={!canWrite}
+                        inputMode={isMoney ? "numeric" : undefined}
+                        onChange={(e) => {
+                          if (isMoney) {
+                            const next = formatThousands(e.target.value);
+                            setValues({
+                              ...values,
+                              [m.placeholder]: next,
+                              [moneyTextKey(m.placeholder)]: readVietnameseMoney(next),
+                            });
+                            return;
+                          }
+                          setValues({ ...values, [m.placeholder]: e.target.value });
+                        }}
+                        placeholder="Chưa có dữ liệu"
+                        className="input read-only:bg-muted"
+                      />
+                    )}
+                    {isMoney && values[m.placeholder] ? (
+                      <p className="mt-1 text-[11px] italic text-muted-foreground">
+                        Bằng chữ: {readVietnameseMoney(values[m.placeholder] ?? "")}
+                      </p>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>
@@ -328,6 +394,29 @@ function StepEditor() {
           </div>
         </section>
       </div>
+
+      <AlertDialog open={resetAsk} onOpenChange={setResetAsk}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Đã xuất xong — làm mới biểu mẫu?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Toàn bộ ô dữ liệu của bước này sẽ về trống để bạn soạn văn bản mới. Bản vừa xuất đã
+              được lưu trong Lịch sử xuất file nên không mất dữ liệu.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Giữ nguyên dữ liệu</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setResetAsk(false);
+                void resetForm();
+              }}
+            >
+              Làm mới biểu mẫu
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

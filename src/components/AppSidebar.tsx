@@ -54,6 +54,7 @@ const tenderGroups: { title: string; items: Item[] }[] = [
       { to: "/mau-van-ban", label: "Mẫu văn bản", icon: FileText, search: { module: "tender" } },
       { to: "/hop-dong", label: "Hợp đồng", icon: FileSignature },
       { to: "/thanh-toan", label: "Thanh toán", icon: Receipt },
+      { to: "/lich-su-xuat", label: "Lịch sử xuất file", icon: History },
     ],
   },
   lockedGroup,
