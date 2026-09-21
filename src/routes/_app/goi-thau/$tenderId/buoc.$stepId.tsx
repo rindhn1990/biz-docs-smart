@@ -181,17 +181,40 @@ function StepEditor() {
     void queryClient.invalidateQueries({ queryKey: ["tender_cases"] });
   }
 
+  /** Xoá trắng biểu mẫu của bước để chuẩn bị nhập hồ sơ mới. */
+  async function resetForm() {
+    const cleared: Record<string, string> = {};
+    for (const m of mappings.data ?? []) cleared[m.placeholder] = "";
+    setValues(cleared);
+    await supabase.from("tender_steps").update({ data: {} }).eq("id", stepId);
+    void queryClient.invalidateQueries({ queryKey: ["tender_step", stepId] });
+    toast.success("Đã làm mới biểu mẫu");
+  }
+
   async function exportDocx() {
     setExporting(true);
     try {
       const { buffer, tpl } = await loadSource();
+      const fileName = `${step.data?.name ?? "Van_ban"}.docx`;
       await renderAndDownloadDocx(
         buffer,
         (tpl.delimiter_style as DelimiterStyle) ?? "curly",
         values,
-        `${step.data?.name ?? "Van_ban"}.docx`,
+        fileName,
       );
+      await recordExport({
+        fileName,
+        module: "tender",
+        data: values,
+        tenderId,
+        templateId: tpl.id,
+        templateName: tpl.name,
+        userId: user?.id ?? null,
+        userEmail: profile?.email ?? user?.email ?? null,
+      });
+      void queryClient.invalidateQueries({ queryKey: ["export_history"] });
       toast.success("Đã xuất file Word");
+      setResetAsk(true);
     } catch (e) {
       toast.error("Không xuất được file", { description: (e as Error).message });
     } finally {
