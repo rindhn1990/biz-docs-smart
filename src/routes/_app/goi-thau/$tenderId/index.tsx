@@ -177,6 +177,18 @@ function Checklist({
   const list = steps.data ?? [];
   const done = list.filter((s) => s.status === "approved").length;
 
+  /** Xoá một bước khỏi gói thầu — chỉ quản trị viên. */
+  async function removeStep(id: string) {
+    const { error } = await supabase.from("tender_steps").delete().eq("id", id);
+    if (error) {
+      toast.error("Không xoá được bước", { description: error.message });
+      return;
+    }
+    void queryClient.invalidateQueries({ queryKey: ["tender_steps", tenderId] });
+    void queryClient.invalidateQueries({ queryKey: ["tender_cases"] });
+    toast.success("Đã xoá bước");
+  }
+
   async function setStatus(id: string, status: string) {
     setBusy(id);
     const { error } = await supabase
