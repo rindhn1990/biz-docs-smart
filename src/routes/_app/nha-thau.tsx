@@ -5,6 +5,7 @@ import { Building2, Loader2, Pencil, Plus, ScanLine, Search, Trash2 } from "luci
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -59,7 +60,7 @@ const empty: Form = {
 
 function ContractorsPage() {
   const queryClient = useQueryClient();
-  const { canWrite, user } = useAuth();
+  const { canWrite, isAdmin, user } = useAuth();
   const [form, setForm] = useState<Form | null>(null);
   const [saving, setSaving] = useState(false);
   const [q, setQ] = useState("");
@@ -313,14 +314,21 @@ function ContractorsPage() {
                           >
                             <Pencil className="size-4" />
                           </button>
-                          <button
-                            type="button"
-                            aria-label="Xoá"
-                            onClick={() => void remove(c.id)}
-                            className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                          >
-                            <Trash2 className="size-4" />
-                          </button>
+                          {isAdmin ? (
+                            <ConfirmDelete
+                              title={`Xoá nhà thầu "${c.name}"?`}
+                              description="Nhà thầu sẽ bị xoá khỏi danh bạ dùng chung của toàn hệ thống."
+                              onConfirm={() => remove(c.id)}
+                            >
+                              <button
+                                type="button"
+                                aria-label="Xoá"
+                                className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                              >
+                                <Trash2 className="size-4" />
+                              </button>
+                            </ConfirmDelete>
+                          ) : null}
                         </span>
                       ) : null}
                     </td>
