@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/PageHeader";
+import { Switch } from "@/components/ui/switch";
 import type { AppRole } from "@/lib/domain";
 
 export const Route = createFileRoute("/_app/quan-tri")({
@@ -39,7 +40,7 @@ function RolesPage() {
     enabled: isAdmin,
     queryFn: async () => {
       const [{ data: profiles, error }, { data: roles }] = await Promise.all([
-        supabase.from("profiles").select("id,email,full_name,department").order("email"),
+        supabase.from("profiles").select("id,email,full_name,department,is_active").order("email"),
         supabase.from("user_roles").select("user_id,role"),
       ]);
       if (error) throw error;
@@ -50,6 +51,23 @@ function RolesPage() {
       return (profiles ?? []).map((p) => ({ ...p, roles: byUser.get(p.id) ?? [] }));
     },
   });
+
+  async function setActive(userId: string, active: boolean) {
+    setSaving(userId);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_active: active })
+        .eq("id", userId);
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ["admin", "people"] });
+      toast.success(active ? "Đã kích hoạt tài khoản" : "Đã vô hiệu hoá tài khoản");
+    } catch (e) {
+      toast.error("Không cập nhật được trạng thái", { description: (e as Error).message });
+    } finally {
+      setSaving(null);
+    }
+  }
 
   async function setRole(userId: string, role: AppRole) {
     setSaving(userId);
@@ -97,6 +115,7 @@ function RolesPage() {
                 <th className="px-4 py-2.5 font-medium">Email</th>
                 <th className="px-4 py-2.5 font-medium">Họ tên</th>
                 <th className="px-4 py-2.5 font-medium">Vai trò</th>
+                <th className="px-4 py-2.5 font-medium">Trạng thái</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -123,6 +142,19 @@ function RolesPage() {
                         </option>
                       ))}
                     </select>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={p.is_active === true}
+                        disabled={saving === p.id || p.id === user?.id}
+                        onCheckedChange={(v) => void setActive(p.id, v)}
+                        aria-label={`Kích hoạt tài khoản ${p.email ?? p.id}`}
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        {p.is_active ? "Đã kích hoạt" : "Chờ kích hoạt"}
+                      </span>
+                    </div>
                   </td>
                 </tr>
               ))}
