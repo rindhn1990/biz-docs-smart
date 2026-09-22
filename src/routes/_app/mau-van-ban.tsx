@@ -396,7 +396,6 @@ function TemplatesPage() {
 
   async function handleDeleteTemplate() {
     if (!current) return;
-    if (!window.confirm(`Xoá mẫu "${current.name}"? Thao tác này không thể hoàn tác.`)) return;
     setBusy("delete");
     try {
       await supabase.from("template_mappings").delete().eq("template_id", current.id);
