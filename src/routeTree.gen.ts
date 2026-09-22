@@ -14,6 +14,7 @@ import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AppDuLieuRouteImport } from './routes/_app/du-lieu'
 import { Route as AppHopDongRouteImport } from './routes/_app/hop-dong'
+import { Route as AppLichSuXuatRouteImport } from './routes/_app/lich-su-xuat'
 import { Route as AppMauVanBanRouteImport } from './routes/_app/mau-van-ban'
 import { Route as AppNhaThauRouteImport } from './routes/_app/nha-thau'
 import { Route as AppQuanTriRouteImport } from './routes/_app/quan-tri'
@@ -53,6 +54,11 @@ const AppDuLieuRoute = AppDuLieuRouteImport.update({
 const AppHopDongRoute = AppHopDongRouteImport.update({
   id: '/hop-dong',
   path: '/hop-dong',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppLichSuXuatRoute = AppLichSuXuatRouteImport.update({
+  id: '/lich-su-xuat',
+  path: '/lich-su-xuat',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppMauVanBanRoute = AppMauVanBanRouteImport.update({
@@ -143,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/du-lieu': typeof AppDuLieuRoute
   '/hop-dong': typeof AppHopDongRoute
+  '/lich-su-xuat': typeof AppLichSuXuatRoute
   '/mau-van-ban': typeof AppMauVanBanRoute
   '/nha-thau': typeof AppNhaThauRoute
   '/quan-tri': typeof AppQuanTriRoute
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/du-lieu': typeof AppDuLieuRoute
   '/hop-dong': typeof AppHopDongRoute
+  '/lich-su-xuat': typeof AppLichSuXuatRoute
   '/mau-van-ban': typeof AppMauVanBanRoute
   '/nha-thau': typeof AppNhaThauRoute
   '/quan-tri': typeof AppQuanTriRoute
@@ -189,6 +197,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_app/du-lieu': typeof AppDuLieuRoute
   '/_app/hop-dong': typeof AppHopDongRoute
+  '/_app/lich-su-xuat': typeof AppLichSuXuatRoute
   '/_app/mau-van-ban': typeof AppMauVanBanRoute
   '/_app/nha-thau': typeof AppNhaThauRoute
   '/_app/quan-tri': typeof AppQuanTriRoute
@@ -213,6 +222,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/du-lieu'
     | '/hop-dong'
+    | '/lich-su-xuat'
     | '/mau-van-ban'
     | '/nha-thau'
     | '/quan-tri'
@@ -235,6 +245,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/du-lieu'
     | '/hop-dong'
+    | '/lich-su-xuat'
     | '/mau-van-ban'
     | '/nha-thau'
     | '/quan-tri'
@@ -258,6 +269,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_app/du-lieu'
     | '/_app/hop-dong'
+    | '/_app/lich-su-xuat'
     | '/_app/mau-van-ban'
     | '/_app/nha-thau'
     | '/_app/quan-tri'
@@ -317,6 +329,13 @@ declare module '@tanstack/react-router' {
       path: '/hop-dong'
       fullPath: '/hop-dong'
       preLoaderRoute: typeof AppHopDongRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/_app/lich-su-xuat': {
+      id: '/_app/lich-su-xuat'
+      path: '/lich-su-xuat'
+      fullPath: '/lich-su-xuat'
+      preLoaderRoute: typeof AppLichSuXuatRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/_app/mau-van-ban': {
@@ -437,6 +456,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteRouteChildren {
   AppDuLieuRoute: typeof AppDuLieuRoute
   AppHopDongRoute: typeof AppHopDongRoute
+  AppLichSuXuatRoute: typeof AppLichSuXuatRoute
   AppMauVanBanRoute: typeof AppMauVanBanRoute
   AppNhaThauRoute: typeof AppNhaThauRoute
   AppQuanTriRoute: typeof AppQuanTriRoute
@@ -458,6 +478,7 @@ interface AppRouteRouteChildren {
 const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppDuLieuRoute: AppDuLieuRoute,
   AppHopDongRoute: AppHopDongRoute,
+  AppLichSuXuatRoute: AppLichSuXuatRoute,
   AppMauVanBanRoute: AppMauVanBanRoute,
   AppNhaThauRoute: AppNhaThauRoute,
   AppQuanTriRoute: AppQuanTriRoute,
