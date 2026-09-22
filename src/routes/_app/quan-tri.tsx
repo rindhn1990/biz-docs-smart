@@ -160,7 +160,7 @@ function RolesPage() {
               ))}
               {people.isLoading ? (
                 <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
                     Đang tải…
                   </td>
                 </tr>
