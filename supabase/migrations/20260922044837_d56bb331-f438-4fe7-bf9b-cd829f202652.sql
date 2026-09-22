@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.guard_profile_is_active() FROM PUBLIC, anon, authenticated;

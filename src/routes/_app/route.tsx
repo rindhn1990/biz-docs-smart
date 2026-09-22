@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Loader2, LogOut, Menu, UserRound } from "lucide-react";
+import { Clock, Loader2, LogOut, Menu, UserRound } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { AppSidebar } from "@/components/AppSidebar";
 import { GlobalSearch } from "@/components/GlobalSearch";
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_app")({
 });
 
 function AppLayout() {
-  const { loading, session, profile, roles, signOut } = useAuth();
+  const { loading, session, profile, roles, isActive, signOut } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
@@ -34,10 +34,39 @@ function AppLayout() {
     }
   }, [loading, session, navigate, pathname]);
 
-  if (loading || !session) {
+  if (loading || !session || !profile) {
     return (
       <div className="grid min-h-screen place-items-center bg-background">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!isActive) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background px-4">
+        <div className="panel max-w-md space-y-4 p-6 text-center">
+          <div className="mx-auto grid size-11 place-items-center rounded-full bg-muted">
+            <Clock className="size-5 text-muted-foreground" />
+          </div>
+          <div className="space-y-1.5">
+            <h1 className="text-lg font-semibold">Tài khoản của bạn đang chờ quản trị viên kích hoạt</h1>
+            <p className="text-sm text-muted-foreground">
+              Tài khoản {profile.email ?? session.user.email} đã đăng ký thành công. Vui lòng liên hệ
+              quản trị viên để được kích hoạt và cấp quyền sử dụng hệ thống.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={async () => {
+              await signOut();
+              void navigate({ to: "/auth", search: { next: undefined } });
+            }}
+          >
+            <LogOut className="mr-2 size-4" />
+            Đăng xuất
+          </Button>
+        </div>
       </div>
     );
   }
