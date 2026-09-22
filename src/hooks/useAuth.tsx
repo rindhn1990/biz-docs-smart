@@ -10,6 +10,7 @@ type Profile = {
   department: string | null;
   position: string | null;
   phone: string | null;
+  is_active: boolean | null;
 };
 
 type AuthState = {
@@ -18,6 +19,7 @@ type AuthState = {
   user: User | null;
   profile: Profile | null;
   roles: AppRole[];
+  isActive: boolean;
   isAdmin: boolean;
   canWrite: boolean;
   refresh: () => Promise<void>;
@@ -69,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       profile,
       roles,
+      isActive: profile?.is_active === true,
       isAdmin: roles.includes("admin"),
       canWrite: roles.some((r) => r !== "viewer"),
       refresh: async () => {
