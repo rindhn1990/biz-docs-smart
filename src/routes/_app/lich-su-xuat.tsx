@@ -38,7 +38,7 @@ export const Route = createFileRoute("/_app/lich-su-xuat")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: ExportHistoryPage;
+  component: ExportHistoryPage,
 });
 
 type HistoryRow = {
