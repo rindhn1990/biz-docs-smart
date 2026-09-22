@@ -14,6 +14,7 @@ import { PAYMENT_STATUS } from "@/lib/domain";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { formatThousands, parseThousands, readVietnameseMoney } from "@/lib/money";
 import { renderAndDownloadDocx, type DelimiterStyle } from "@/lib/docx";
+import { recordExport } from "@/lib/export-history";
 import { CONTRACTOR_SCAN_FIELDS } from "@/lib/contractor";
 
 export const Route = createFileRoute("/_app/thanh-toan")({
@@ -175,6 +176,13 @@ function PaymentsPage() {
     try {
       const ready = await prepare(tpl);
       await renderAndDownloadDocx(ready.source, ready.style, ready.data, ready.fileName);
+      await recordExport({
+        fileName: ready.fileName,
+        module: "payment",
+        data: ready.data,
+        templateId: tpl.id,
+        templateName: tpl.name,
+      });
       toast.success("Đã xuất hồ sơ thanh toán", { description: ready.fileName });
     } catch (e) {
       toast.error("Không xuất được file", { description: (e as Error).message });

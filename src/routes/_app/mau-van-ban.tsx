@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { TemplateRegionPicker } from "@/components/TemplateRegionPicker";
@@ -395,7 +396,6 @@ function TemplatesPage() {
 
   async function handleDeleteTemplate() {
     if (!current) return;
-    if (!window.confirm(`Xoá mẫu "${current.name}"? Thao tác này không thể hoàn tác.`)) return;
     setBusy("delete");
     try {
       await supabase.from("template_mappings").delete().eq("template_id", current.id);
@@ -600,19 +600,26 @@ function TemplatesPage() {
                   <FileSearch />
                   Quét file hoàn chỉnh
                 </Button>
-                <button
-                  type="button"
-                  disabled={busy !== null}
-                  onClick={() => void handleDeleteTemplate()}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-destructive/40 px-2.5 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
-                >
-                  {busy === "delete" ? (
-                    <Loader2 className="size-3.5 animate-spin" />
-                  ) : (
-                    <Trash2 className="size-3.5" />
-                  )}
-                  Xoá mẫu
-                </button>
+                {isAdmin ? (
+                  <ConfirmDelete
+                    title={`Xoá mẫu "${current.name}"?`}
+                    description="Mẫu, các vùng dữ liệu đã khai báo và tệp Word gốc sẽ bị xoá. Thao tác này không thể hoàn tác."
+                    onConfirm={() => handleDeleteTemplate()}
+                  >
+                    <button
+                      type="button"
+                      disabled={busy !== null}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-destructive/40 px-2.5 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+                    >
+                      {busy === "delete" ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="size-3.5" />
+                      )}
+                      Xoá mẫu
+                    </button>
+                  </ConfirmDelete>
+                ) : null}
               </div>
 
               {editing ? (
