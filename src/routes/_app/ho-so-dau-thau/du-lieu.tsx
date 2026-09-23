@@ -519,6 +519,27 @@ function DataPage() {
                   ) : null}
                 </div>
               ) : null}
+              {addingGroup && isAdmin ? (
+                <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+                  <input
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") addGroup();
+                    }}
+                    aria-label="Tên nhóm dữ liệu mới"
+                    placeholder="Tên nhóm mới, ví dụ: Nghiệm thu"
+                    className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={addGroup}
+                    className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                  >
+                    Lưu nhóm
+                  </button>
+                </div>
+              ) : null}
               {adding && canWrite ? (
                 <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
                   <input
