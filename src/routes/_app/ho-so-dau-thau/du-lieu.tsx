@@ -63,6 +63,10 @@ function DataPage() {
   const [newGroup, setNewGroup] = useState<string>(KHLCNT_GROUPS[0]);
   const [scanning, setScanning] = useState(false);
   const [resetAsk, setResetAsk] = useState<string | null>(null);
+  const [addingGroup, setAddingGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  /** Nhóm lớn do quản trị viên tự tạo, giữ lại đến khi có trường đầu tiên. */
+  const [extraGroups, setExtraGroups] = useState<string[]>([]);
   const [preview, setPreview] = useState<{
     templateId: string;
     title: string;
