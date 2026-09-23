@@ -80,6 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isActive: profile?.is_active === true,
       isAdmin: roles.includes("admin"),
       canWrite: roles.some((r) => r !== "viewer"),
+      canTender: roles.includes("admin") || profile?.can_access_tender !== false,
+      canHr: roles.includes("admin") || profile?.can_access_hr !== false,
       refresh: async () => {
         if (session?.user) await loadMeta(session.user.id);
       },
