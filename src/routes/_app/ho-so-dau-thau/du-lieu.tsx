@@ -587,7 +587,12 @@ function DataPage() {
               />
             ) : (
               <div className="max-h-[60vh] overflow-y-auto">
-                <FieldGroupEditor rows={rows} readOnly={!canWrite} />
+                <FieldGroupEditor
+                  rows={rows}
+                  readOnly={!canWrite}
+                  onRenameGroup={renameGroup}
+                  onDeleteGroup={deleteGroup}
+                />
               </div>
             )}
           </section>
