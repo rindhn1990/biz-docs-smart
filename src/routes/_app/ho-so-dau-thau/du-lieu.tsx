@@ -231,6 +231,65 @@ function DataPage() {
     setAdding(false);
   }
 
+  /** Danh sách nhóm lớn: bộ chuẩn + nhóm đang có trong hồ sơ + nhóm vừa tạo tay. */
+  const groupOptions = useMemo(() => {
+    const list: string[] = [...KHLCNT_GROUPS];
+    for (const r of rows) if (r.field_group && !list.includes(r.field_group)) list.push(r.field_group);
+    for (const g of extraGroups) if (!list.includes(g)) list.push(g);
+    return list;
+  }, [rows, extraGroups]);
+
+  function addGroup() {
+    const name = newGroupName.trim();
+    if (!name) return;
+    if (groupOptions.includes(name)) {
+      toast.error("Nhóm này đã có trong danh sách");
+      return;
+    }
+    setExtraGroups((prev) => [...prev, name]);
+    setNewGroupName("");
+    setAddingGroup(false);
+    setNewGroup(name);
+    setAdding(true);
+    toast.success(`Đã thêm nhóm "${name}"`, {
+      description: "Hãy thêm ít nhất một trường vào nhóm để nhóm hiển thị trong bảng dữ liệu.",
+    });
+  }
+
+  async function renameGroup(oldName: string, nextName: string) {
+    if (!currentId) return;
+    const { error } = await supabase
+      .from("document_fields")
+      .update({ field_group: nextName })
+      .eq("document_id", currentId)
+      .eq("field_group", oldName);
+    if (error) {
+      toast.error("Không đổi được tên nhóm", { description: error.message });
+      return;
+    }
+    setExtraGroups((prev) => prev.map((g) => (g === oldName ? nextName : g)));
+    await queryClient.invalidateQueries({ queryKey: ["document_fields", currentId] });
+    toast.success(`Đã đổi tên nhóm thành "${nextName}"`);
+  }
+
+  async function deleteGroup(name: string, count: number) {
+    if (!currentId) return;
+    const { error } = await supabase
+      .from("document_fields")
+      .delete()
+      .eq("document_id", currentId)
+      .eq("field_group", name);
+    if (error) {
+      toast.error("Không xoá được nhóm", { description: error.message });
+      return;
+    }
+    setExtraGroups((prev) => prev.filter((g) => g !== name));
+    await queryClient.invalidateQueries({ queryKey: ["document_fields", currentId] });
+    toast.success(`Đã xoá nhóm "${name}" cùng ${count} trường dữ liệu`);
+  }
+
+
+
   /** Hồ sơ cũ chỉ có một phần trường: tự bổ sung một lần, sau đó tôn trọng thao tác xoá tay. */
   useEffect(() => {
     if (!currentId || !canWrite || fields.isLoading || rows.length === 0) return;
