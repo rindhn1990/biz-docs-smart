@@ -475,6 +475,16 @@ function DataPage() {
                     <Plus className="size-3.5" />
                     Thêm trường
                   </button>
+                  {isAdmin ? (
+                    <button
+                      type="button"
+                      onClick={() => setAddingGroup((v) => !v)}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+                    >
+                      <Plus className="size-3.5" />
+                      Thêm nhóm
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => setScanning(true)}
