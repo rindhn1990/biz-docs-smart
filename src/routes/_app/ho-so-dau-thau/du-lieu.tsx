@@ -562,7 +562,7 @@ function DataPage() {
                     aria-label="Nhóm dữ liệu"
                     className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
                   >
-                    {KHLCNT_GROUPS.map((g, i) => (
+                    {groupOptions.map((g, i) => (
                       <option key={g} value={g}>
                         {i + 1}. {g}
                       </option>
