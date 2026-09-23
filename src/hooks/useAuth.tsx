@@ -11,6 +11,8 @@ type Profile = {
   position: string | null;
   phone: string | null;
   is_active: boolean | null;
+  can_access_tender: boolean | null;
+  can_access_hr: boolean | null;
 };
 
 type AuthState = {
@@ -22,6 +24,10 @@ type AuthState = {
   isActive: boolean;
   isAdmin: boolean;
   canWrite: boolean;
+  /** Được dùng phân hệ Đấu thầu */
+  canTender: boolean;
+  /** Được dùng phân hệ Hợp đồng nhân sự */
+  canHr: boolean;
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
 };
