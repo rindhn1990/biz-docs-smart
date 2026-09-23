@@ -63,6 +63,10 @@ function DataPage() {
   const [newGroup, setNewGroup] = useState<string>(KHLCNT_GROUPS[0]);
   const [scanning, setScanning] = useState(false);
   const [resetAsk, setResetAsk] = useState<string | null>(null);
+  const [addingGroup, setAddingGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  /** Nhóm lớn do quản trị viên tự tạo, giữ lại đến khi có trường đầu tiên. */
+  const [extraGroups, setExtraGroups] = useState<string[]>([]);
   const [preview, setPreview] = useState<{
     templateId: string;
     title: string;
@@ -226,6 +230,65 @@ function DataPage() {
     setNewLabel("");
     setAdding(false);
   }
+
+  /** Danh sách nhóm lớn: bộ chuẩn + nhóm đang có trong hồ sơ + nhóm vừa tạo tay. */
+  const groupOptions = useMemo(() => {
+    const list: string[] = [...KHLCNT_GROUPS];
+    for (const r of rows) if (r.field_group && !list.includes(r.field_group)) list.push(r.field_group);
+    for (const g of extraGroups) if (!list.includes(g)) list.push(g);
+    return list;
+  }, [rows, extraGroups]);
+
+  function addGroup() {
+    const name = newGroupName.trim();
+    if (!name) return;
+    if (groupOptions.includes(name)) {
+      toast.error("Nhóm này đã có trong danh sách");
+      return;
+    }
+    setExtraGroups((prev) => [...prev, name]);
+    setNewGroupName("");
+    setAddingGroup(false);
+    setNewGroup(name);
+    setAdding(true);
+    toast.success(`Đã thêm nhóm "${name}"`, {
+      description: "Hãy thêm ít nhất một trường vào nhóm để nhóm hiển thị trong bảng dữ liệu.",
+    });
+  }
+
+  async function renameGroup(oldName: string, nextName: string) {
+    if (!currentId) return;
+    const { error } = await supabase
+      .from("document_fields")
+      .update({ field_group: nextName })
+      .eq("document_id", currentId)
+      .eq("field_group", oldName);
+    if (error) {
+      toast.error("Không đổi được tên nhóm", { description: error.message });
+      return;
+    }
+    setExtraGroups((prev) => prev.map((g) => (g === oldName ? nextName : g)));
+    await queryClient.invalidateQueries({ queryKey: ["document_fields", currentId] });
+    toast.success(`Đã đổi tên nhóm thành "${nextName}"`);
+  }
+
+  async function deleteGroup(name: string, count: number) {
+    if (!currentId) return;
+    const { error } = await supabase
+      .from("document_fields")
+      .delete()
+      .eq("document_id", currentId)
+      .eq("field_group", name);
+    if (error) {
+      toast.error("Không xoá được nhóm", { description: error.message });
+      return;
+    }
+    setExtraGroups((prev) => prev.filter((g) => g !== name));
+    await queryClient.invalidateQueries({ queryKey: ["document_fields", currentId] });
+    toast.success(`Đã xoá nhóm "${name}" cùng ${count} trường dữ liệu`);
+  }
+
+
 
   /** Hồ sơ cũ chỉ có một phần trường: tự bổ sung một lần, sau đó tôn trọng thao tác xoá tay. */
   useEffect(() => {
@@ -412,6 +475,16 @@ function DataPage() {
                     <Plus className="size-3.5" />
                     Thêm trường
                   </button>
+                  {isAdmin ? (
+                    <button
+                      type="button"
+                      onClick={() => setAddingGroup((v) => !v)}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+                    >
+                      <Plus className="size-3.5" />
+                      Thêm nhóm
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => setScanning(true)}
@@ -446,6 +519,27 @@ function DataPage() {
                   ) : null}
                 </div>
               ) : null}
+              {addingGroup && isAdmin ? (
+                <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+                  <input
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") addGroup();
+                    }}
+                    aria-label="Tên nhóm dữ liệu mới"
+                    placeholder="Tên nhóm mới, ví dụ: Nghiệm thu"
+                    className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={addGroup}
+                    className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                  >
+                    Lưu nhóm
+                  </button>
+                </div>
+              ) : null}
               {adding && canWrite ? (
                 <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
                   <input
@@ -468,7 +562,7 @@ function DataPage() {
                     aria-label="Nhóm dữ liệu"
                     className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
                   >
-                    {KHLCNT_GROUPS.map((g, i) => (
+                    {groupOptions.map((g, i) => (
                       <option key={g} value={g}>
                         {i + 1}. {g}
                       </option>
@@ -493,7 +587,12 @@ function DataPage() {
               />
             ) : (
               <div className="max-h-[60vh] overflow-y-auto">
-                <FieldGroupEditor rows={rows} readOnly={!canWrite} />
+                <FieldGroupEditor
+                  rows={rows}
+                  readOnly={!canWrite}
+                  onRenameGroup={renameGroup}
+                  onDeleteGroup={deleteGroup}
+                />
               </div>
             )}
           </section>

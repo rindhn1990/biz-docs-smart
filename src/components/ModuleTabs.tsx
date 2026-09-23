@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Gavel, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 export const MODULE_TABS = [
   { key: "dau-thau", label: "Đấu thầu", to: "/tong-quan", icon: Gavel },
@@ -11,9 +12,29 @@ export function currentModule(pathname: string, module?: unknown): "dau-thau" | 
   return pathname.startsWith("/nhan-su") || module === "hr" ? "nhan-su" : "dau-thau";
 }
 
+/** Chỉ giữ lại phân hệ mà tài khoản được cấp quyền sử dụng. */
+export function allowedModuleTabs(canTender: boolean, canHr: boolean) {
+  return MODULE_TABS.filter((t) => (t.key === "dau-thau" ? canTender : canHr));
+}
+
+/** Các đường dẫn thuộc phân hệ Đấu thầu (ngoài /nhan-su là phân hệ nhân sự). */
+export const TENDER_PATHS = [
+  "/tong-quan",
+  "/goi-thau",
+  "/ho-so-dau-thau",
+  "/nha-thau",
+  "/hop-dong",
+  "/thanh-toan",
+  "/lich-su-xuat",
+  "/quy-trinh",
+];
+
 export function ModuleTabs({ className }: { className?: string }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const active = currentModule(pathname);
+  const { canTender, canHr } = useAuth();
+  const tabs = allowedModuleTabs(canTender, canHr);
+  if (tabs.length < 2) return null;
 
   return (
     <div

@@ -11,6 +11,8 @@ type Profile = {
   position: string | null;
   phone: string | null;
   is_active: boolean | null;
+  can_access_tender: boolean | null;
+  can_access_hr: boolean | null;
 };
 
 type AuthState = {
@@ -22,6 +24,10 @@ type AuthState = {
   isActive: boolean;
   isAdmin: boolean;
   canWrite: boolean;
+  /** Được dùng phân hệ Đấu thầu */
+  canTender: boolean;
+  /** Được dùng phân hệ Hợp đồng nhân sự */
+  canHr: boolean;
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -74,6 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isActive: profile?.is_active === true,
       isAdmin: roles.includes("admin"),
       canWrite: roles.some((r) => r !== "viewer"),
+      canTender: roles.includes("admin") || profile?.can_access_tender !== false,
+      canHr: roles.includes("admin") || profile?.can_access_hr !== false,
       refresh: async () => {
         if (session?.user) await loadMeta(session.user.id);
       },
