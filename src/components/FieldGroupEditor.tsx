@@ -69,6 +69,8 @@ export function FieldGroupEditor({
   activeField,
   onFocusField,
   onChanged,
+  onRenameGroup,
+  onDeleteGroup,
 }: {
   rows: FieldRow[];
   readOnly: boolean;
@@ -76,8 +78,13 @@ export function FieldGroupEditor({
   onFocusField?: (id: string) => void;
   /** Cho phép sửa nhãn và xoá trường thủ công. */
   onChanged?: (() => void) | undefined;
+  /** Đổi tên nhóm lớn (cập nhật cho toàn bộ trường trong nhóm). */
+  onRenameGroup?: ((oldName: string, newName: string) => void | Promise<void>) | undefined;
+  /** Xoá cả nhóm lớn cùng toàn bộ trường bên trong. */
+  onDeleteGroup?: ((name: string, count: number) => void | Promise<void>) | undefined;
 }) {
   const grouped = useGroupedFields(rows);
+  const { isAdmin } = useAuth();
   /** Số tiền bằng chữ hiển thị ngay khi người dùng đang gõ ở ô số tiền. */
   const [liveWords, setLiveWords] = useState<Record<string, string>>({});
   const byKey = useMemo(() => {
@@ -104,9 +111,14 @@ export function FieldGroupEditor({
       {grouped.map(([group, groupRows], gi) => (
         <div key={group ?? "all"} className="divide-y divide-border">
           {group ? (
-            <h3 className="bg-muted/60 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {groupHeading(group, gi)}
-            </h3>
+            <GroupHeading
+              name={group}
+              heading={groupHeading(group, gi)}
+              count={groupRows.length}
+              canManage={isAdmin}
+              onRenameGroup={onRenameGroup}
+              onDeleteGroup={onDeleteGroup}
+            />
           ) : null}
           {groupRows.map((field) => (
             <FieldRowEditor
@@ -128,6 +140,91 @@ export function FieldGroupEditor({
           ))}
         </div>
       ))}
+    </div>
+  );
+}
+
+/** Tiêu đề nhóm lớn kèm nút đổi tên và xoá nhóm (chỉ quản trị viên). */
+function GroupHeading({
+  name,
+  heading,
+  count,
+  canManage,
+  onRenameGroup,
+  onDeleteGroup,
+}: {
+  name: string;
+  heading: string;
+  count: number;
+  canManage: boolean;
+  onRenameGroup?: ((oldName: string, newName: string) => void | Promise<void>) | undefined;
+  onDeleteGroup?: ((name: string, count: number) => void | Promise<void>) | undefined;
+}) {
+  const [renaming, setRenaming] = useState(false);
+  const [draft, setDraft] = useState(name);
+
+  useEffect(() => setDraft(name), [name]);
+
+  const commit = () => {
+    setRenaming(false);
+    const next = draft.trim();
+    if (!next || next === name) {
+      setDraft(name);
+      return;
+    }
+    void onRenameGroup?.(name, next);
+  };
+
+  return (
+    <div className="flex items-center gap-2 bg-muted/60 px-4 py-2">
+      {renaming ? (
+        <input
+          value={draft}
+          autoFocus
+          aria-label={`Tên nhóm ${name}`}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") {
+              setDraft(name);
+              setRenaming(false);
+            }
+          }}
+          className="w-full max-w-xs rounded-md border border-input bg-background px-2 py-1 text-xs outline-none focus:border-primary"
+        />
+      ) : (
+        <h3 className="flex-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {heading}
+          <span className="ml-2 normal-case opacity-60">({count} trường)</span>
+        </h3>
+      )}
+      {canManage && onRenameGroup ? (
+        <button
+          type="button"
+          aria-label={`Đổi tên nhóm ${name}`}
+          onClick={() => setRenaming(true)}
+          className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <Pencil className="size-3.5" />
+        </button>
+      ) : null}
+      {canManage && onDeleteGroup ? (
+        <ConfirmDelete
+          title={`Xoá nhóm "${name}"?`}
+          description={`Toàn bộ ${count} trường dữ liệu thuộc nhóm này sẽ bị xoá khỏi hồ sơ. Thao tác không thể hoàn tác.`}
+          confirmLabel="Xoá nhóm"
+          onConfirm={() => void onDeleteGroup(name, count)}
+        >
+          <button
+            type="button"
+            aria-label={`Xoá nhóm ${name}`}
+            className="rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        </ConfirmDelete>
+      ) : null}
     </div>
   );
 }
