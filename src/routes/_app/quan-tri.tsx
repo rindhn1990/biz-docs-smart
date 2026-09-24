@@ -81,7 +81,7 @@ function RolesPage() {
   async function setModule(userId: string, col: "can_access_tender" | "can_access_hr", v: boolean) {
     setSaving(userId);
     try {
-      const { error } = await supabase.from("profiles").update({ [col]: v }).eq("id", userId);
+      const { error } = await supabase.from("profiles").update(col === "can_access_tender" ? { can_access_tender: v } : { can_access_hr: v }).eq("id", userId);
       if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: ["admin", "people"] });
       toast.success("Đã cập nhật quyền phân hệ");
