@@ -85,7 +85,7 @@ function AuthPage() {
       );
       return;
     }
-    toast.success("Đã tạo tài khoản. Nếu cần xác nhận email, hãy kiểm tra hộp thư.");
+    toast.success("Đã tạo tài khoản. Bạn có thể đăng nhập ngay, nhưng cần quản trị viên kích hoạt trước khi sử dụng hệ thống.", { duration: 8000 });
   };
 
   return (
