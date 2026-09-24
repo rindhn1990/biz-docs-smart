@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, MousePointerClick, X } from "lucide-react";
+import { Loader2, MousePointerClick, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { docxToHtml, replacePhraseWithToken, type DelimiterStyle } from "@/lib/docx";
@@ -7,6 +7,22 @@ import { KHLCNT_FIELDS } from "@/lib/khlcnt";
 import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
 import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
 import { prettifyPlaceholder } from "@/lib/docx";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+
+type Suggestion = {
+  placeholder: string;
+  label: string;
+  source_field: string | null;
+  module: string;
+};
 
 type Props = {
   templateId: string;
@@ -42,7 +58,75 @@ export function TemplateRegionPicker({
   const [label, setLabel] = useState("");
   const [source, setSource] = useState("");
   const [saving, setSaving] = useState(false);
+  const [phTouched, setPhTouched] = useState(false);
+  const [labelTouched, setLabelTouched] = useState(false);
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const bodyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const { data } = await supabase
+        .from("template_mappings")
+        .select("placeholder,label,source_field,created_at,templates(module)")
+        .order("created_at", { ascending: false })
+        .limit(2000);
+      if (!alive || !data) return;
+      const seen = new Map<string, Suggestion>();
+      for (const r of data as unknown as {
+        placeholder: string;
+        label: string;
+        source_field: string | null;
+        templates: { module: string | null } | null;
+      }[]) {
+        if (seen.has(r.placeholder)) continue;
+        seen.set(r.placeholder, {
+          placeholder: r.placeholder,
+          label: r.label,
+          source_field: r.source_field,
+          module: r.templates?.module ?? "tender",
+        });
+      }
+      setSuggestions([...seen.values()]);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  async function chooseSource(next: string) {
+    setSource(next);
+    if (!next) return;
+    const { data } = await supabase
+      .from("template_mappings")
+      .select("placeholder,label")
+      .eq("source_field", next)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!data) return;
+    if (!phTouched || !placeholder.trim()) setPlaceholder(data.placeholder);
+    if (!labelTouched || !label.trim()) setLabel(data.label);
+  }
+
+  function applySuggestion(s: Suggestion) {
+    setPlaceholder(s.placeholder);
+    setLabel(s.label);
+    setSource(s.source_field ?? "");
+    setPhTouched(false);
+    setLabelTouched(false);
+    setSuggestOpen(false);
+  }
+
+  const MODULE_NAMES: Record<string, string> = {
+    tender: "Đấu thầu",
+    hr: "Hợp đồng nhân sự",
+    payment: "Thanh toán",
+  };
+  const suggestionGroups = [module, ...["tender", "hr", "payment"].filter((m) => m !== module)]
+    .map((m) => ({ m, items: suggestions.filter((s) => s.module === m) }))
+    .filter((g) => g.items.length > 0);
 
   useEffect(() => {
     let alive = true;
@@ -128,6 +212,13 @@ export function TemplateRegionPicker({
       setPlaceholder("");
       setLabel("");
       setSource("");
+      setPhTouched(false);
+      setLabelTouched(false);
+      setSuggestions((prev) =>
+        prev.some((s) => s.placeholder === key)
+          ? prev
+          : [{ placeholder: key, label: label.trim() || prettifyPlaceholder(key), source_field: source || null, module }, ...prev],
+      );
       onSaved();
       toast.success("Đã đánh dấu vùng dữ liệu", {
         description: `Đoạn chữ đã được thay bằng ${wrap[0]}${key}${wrap[1]} trong file Word.`,
@@ -187,28 +278,54 @@ export function TemplateRegionPicker({
                 )}
               </p>
             </div>
-            <label className="block text-xs font-medium">
-              Tên vùng dữ liệu
-              <input
-                value={placeholder}
-                onChange={(e) => setPlaceholder(e.target.value)}
-                placeholder="TEN_GOI_THAU"
-                className="num mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
-              />
-            </label>
-            <label className="block text-xs font-medium">
-              Nhãn hiển thị
-              <input
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
-              />
-            </label>
+            <div>
+              <p className="text-xs font-medium">Dùng lại vùng dữ liệu đã có</p>
+              <Popover open={suggestOpen} onOpenChange={setSuggestOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="mt-1 inline-flex w-full items-center gap-2 rounded-md border border-input bg-background px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent"
+                  >
+                    <Search className="size-3.5" />
+                    {suggestions.length
+                      ? `Tìm trong ${suggestions.length} vùng đã dùng…`
+                      : "Chưa có vùng dữ liệu nào được dùng"}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Tên vùng, nhãn hoặc trường nguồn…" />
+                    <CommandList>
+                      <CommandEmpty>Không tìm thấy vùng phù hợp.</CommandEmpty>
+                      {suggestionGroups.map((g) => (
+                        <CommandGroup key={g.m} heading={MODULE_NAMES[g.m] ?? g.m}>
+                          {g.items.map((s) => (
+                            <CommandItem
+                              key={`${g.m}-${s.placeholder}`}
+                              value={`${s.placeholder} ${s.label} ${s.source_field ?? ""}`}
+                              onSelect={() => applySuggestion(s)}
+                            >
+                              <div className="min-w-0">
+                                <p className="num truncate text-sm">{s.placeholder}</p>
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {s.label}
+                                  {s.source_field ? ` · ${s.source_field}` : ""}
+                                </p>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      ))}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
             <label className="block text-xs font-medium">
               Lấy dữ liệu từ
               <select
                 value={source}
-                onChange={(e) => setSource(e.target.value)}
+                onChange={(e) => void chooseSource(e.target.value)}
                 className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
               >
                 <option value="">Nhập tay</option>
@@ -218,6 +335,29 @@ export function TemplateRegionPicker({
                   </option>
                 ))}
               </select>
+            </label>
+            <label className="block text-xs font-medium">
+              Tên vùng dữ liệu
+              <input
+                value={placeholder}
+                onChange={(e) => {
+                  setPlaceholder(e.target.value);
+                  setPhTouched(true);
+                }}
+                placeholder="TEN_GOI_THAU"
+                className="num mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+              />
+            </label>
+            <label className="block text-xs font-medium">
+              Nhãn hiển thị
+              <input
+                value={label}
+                onChange={(e) => {
+                  setLabel(e.target.value);
+                  setLabelTouched(true);
+                }}
+                className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+              />
             </label>
             <button
               type="button"
