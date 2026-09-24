@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { MODULE_TABS, currentModule } from "@/components/ModuleTabs";
+import { allowedModuleTabs, currentModule } from "@/components/ModuleTabs";
 
 type ActiveItem = {
   to: string;
@@ -77,8 +77,10 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const location = useRouterState({ select: (s) => s.location });
   const pathname = location.pathname;
   const activeModule = currentModule(pathname, (location.search as { module?: unknown }).module);
-  const { isAdmin } = useAuth();
-  const baseGroups = activeModule === "nhan-su" ? hrGroups : tenderGroups;
+  const { isAdmin, canTender, canHr } = useAuth();
+  const tabs = allowedModuleTabs(canTender, canHr);
+  const effModule = activeModule === "nhan-su" ? (canHr ? "nhan-su" : "dau-thau") : canTender ? "dau-thau" : "nhan-su";
+  const baseGroups = !canTender && !canHr ? [] : effModule === "nhan-su" ? hrGroups : tenderGroups;
   const groups = isAdmin
     ? [
         ...baseGroups,
@@ -110,14 +112,17 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
           Phân hệ
         </p>
         <div className="grid gap-1">
-          {MODULE_TABS.map((tab) => (
+          {tabs.length === 0 ? (
+            <p className="px-1 text-xs text-sidebar-foreground/60">Chưa được cấp quyền phân hệ nào.</p>
+          ) : null}
+          {tabs.map((tab) => (
             <Link
               key={tab.key}
               to={tab.to}
               onClick={onNavigate}
               className={cn(
                 "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
-                tab.key === activeModule
+                tab.key === effModule
                   ? "bg-sidebar-primary font-medium text-sidebar-primary-foreground"
                   : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
               )}
