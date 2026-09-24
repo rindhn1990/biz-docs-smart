@@ -212,6 +212,13 @@ export function TemplateRegionPicker({
       setPlaceholder("");
       setLabel("");
       setSource("");
+      setPhTouched(false);
+      setLabelTouched(false);
+      setSuggestions((prev) =>
+        prev.some((s) => s.placeholder === key)
+          ? prev
+          : [{ placeholder: key, label: label.trim() || prettifyPlaceholder(key), source_field: source || null, module }, ...prev],
+      );
       onSaved();
       toast.success("Đã đánh dấu vùng dữ liệu", {
         description: `Đoạn chữ đã được thay bằng ${wrap[0]}${key}${wrap[1]} trong file Word.`,
@@ -271,28 +278,54 @@ export function TemplateRegionPicker({
                 )}
               </p>
             </div>
-            <label className="block text-xs font-medium">
-              Tên vùng dữ liệu
-              <input
-                value={placeholder}
-                onChange={(e) => setPlaceholder(e.target.value)}
-                placeholder="TEN_GOI_THAU"
-                className="num mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
-              />
-            </label>
-            <label className="block text-xs font-medium">
-              Nhãn hiển thị
-              <input
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
-              />
-            </label>
+            <div>
+              <p className="text-xs font-medium">Dùng lại vùng dữ liệu đã có</p>
+              <Popover open={suggestOpen} onOpenChange={setSuggestOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="mt-1 inline-flex w-full items-center gap-2 rounded-md border border-input bg-background px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent"
+                  >
+                    <Search className="size-3.5" />
+                    {suggestions.length
+                      ? `Tìm trong ${suggestions.length} vùng đã dùng…`
+                      : "Chưa có vùng dữ liệu nào được dùng"}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Tên vùng, nhãn hoặc trường nguồn…" />
+                    <CommandList>
+                      <CommandEmpty>Không tìm thấy vùng phù hợp.</CommandEmpty>
+                      {suggestionGroups.map((g) => (
+                        <CommandGroup key={g.m} heading={MODULE_NAMES[g.m] ?? g.m}>
+                          {g.items.map((s) => (
+                            <CommandItem
+                              key={`${g.m}-${s.placeholder}`}
+                              value={`${s.placeholder} ${s.label} ${s.source_field ?? ""}`}
+                              onSelect={() => applySuggestion(s)}
+                            >
+                              <div className="min-w-0">
+                                <p className="num truncate text-sm">{s.placeholder}</p>
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {s.label}
+                                  {s.source_field ? ` · ${s.source_field}` : ""}
+                                </p>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      ))}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
             <label className="block text-xs font-medium">
               Lấy dữ liệu từ
               <select
                 value={source}
-                onChange={(e) => setSource(e.target.value)}
+                onChange={(e) => void chooseSource(e.target.value)}
                 className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
               >
                 <option value="">Nhập tay</option>
@@ -302,6 +335,29 @@ export function TemplateRegionPicker({
                   </option>
                 ))}
               </select>
+            </label>
+            <label className="block text-xs font-medium">
+              Tên vùng dữ liệu
+              <input
+                value={placeholder}
+                onChange={(e) => {
+                  setPlaceholder(e.target.value);
+                  setPhTouched(true);
+                }}
+                placeholder="TEN_GOI_THAU"
+                className="num mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+              />
+            </label>
+            <label className="block text-xs font-medium">
+              Nhãn hiển thị
+              <input
+                value={label}
+                onChange={(e) => {
+                  setLabel(e.target.value);
+                  setLabelTouched(true);
+                }}
+                className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+              />
             </label>
             <button
               type="button"
