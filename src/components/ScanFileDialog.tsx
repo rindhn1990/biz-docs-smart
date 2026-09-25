@@ -5,6 +5,12 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { scanFileFields } from "@/lib/scan.functions";
 import { buildScanPayload } from "@/lib/scan-client";
+import { extractFieldsLocally } from "@/lib/field-extract";
+
+async function extractLocalText(file: File, onProgress: (msg: string) => void) {
+  const mod = await import("@/lib/local-ocr");
+  return mod.extractLocalText(file, onProgress);
+}
 
 export type ScanField = { key: string; label: string };
 type Row = ScanField & { value: string; confidence: number; selected: boolean };
@@ -33,41 +39,84 @@ export function ScanFileDialog({
   const [fileName, setFileName] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState<"local" | "ai">("local");
+  const [progress, setProgress] = useState("");
 
   async function handleFile(file: File) {
     setBusy(true);
     setFileName(file.name);
     setRows([]);
     try {
-      const payload = await buildScanPayload(file);
-      const result = await scan({
-        data: { ...payload, fields, ...(note ? { note } : {}) },
-      });
-      const found = new Map(result.values.map((v) => [v.key, v]));
-      const next = fields.map((field) => {
-        const hit = found.get(field.key);
-        return {
-          ...field,
-          value: hit?.value ?? "",
-          confidence: hit?.confidence ?? 0,
-          selected: Boolean(hit?.value),
-        };
-      });
-      setRows(next);
-      const count = next.filter((r) => r.value).length;
-      if (count === 0) {
+      if (file.size === 0) throw new Error("Tệp rỗng, không đọc được nội dung.");
+      if (file.size > 10 * 1024 * 1024) throw new Error("Tệp lớn hơn 10MB. Hãy giảm dung lượng rồi thử lại.");
+
+      // Bước 1: đọc chữ cục bộ (0 token)
+      let text = "";
+      try {
+        const local = await extractLocalText(file, setProgress);
+        text = local.text;
+      } catch (err) {
+        if (mode === "local") throw err;
+      }
+      const found = new Map<string, { value: string; confidence: number }>();
+      for (const v of extractFieldsLocally(text, fields)) found.set(v.key, v);
+      const localCount = found.size;
+
+      const build = () =>
+        fields.map((field) => {
+          const hit = found.get(field.key);
+          return {
+            ...field,
+            value: hit?.value ?? "",
+            confidence: hit?.confidence ?? 0,
+            selected: Boolean(hit?.value),
+          };
+        });
+      setRows(build());
+
+      // Bước 2: chỉ gửi AI các trường còn thiếu
+      let aiCount = 0;
+      const missing = fields.filter((f) => !found.has(f.key));
+      if (mode === "ai" && missing.length) {
+        const usable = text.replace(/\s/g, "").length >= 30;
+        let payload: { fileName: string; mimeType: string; content: string };
+        if (usable || file.name.toLowerCase().endsWith(".docx")) {
+          payload = { fileName: file.name, mimeType: "text/plain", content: text.slice(0, 120_000) || " " };
+        } else {
+          setProgress("Chữ quá mờ, gửi ảnh gốc cho AI đọc…");
+          payload = await buildScanPayload(file);
+        }
+        setProgress(`AI đang bổ sung ${missing.length} trường còn thiếu…`);
+        const result = await scan({
+          data: { ...payload, fields: missing, ...(note ? { note } : {}) },
+        });
+        for (const v of result.values) {
+          if (!found.has(v.key) && v.value) {
+            found.set(v.key, v);
+            aiCount++;
+          }
+        }
+        setRows(build());
+      }
+
+      if (localCount + aiCount === 0) {
         toast.warning("Không tìm thấy thông tin nào trong tệp này", {
-          description: "Hãy thử ảnh rõ nét hơn hoặc nhập tay.",
+          description:
+            mode === "local" ? "Hãy thử \"Quét bằng AI\" hoặc nhập tay." : "Hãy thử ảnh rõ nét hơn hoặc nhập tay.",
         });
       } else {
-        toast.success(`Đã nhận diện ${count}/${fields.length} thông tin`, {
-          description: "Kiểm tra lại trước khi xác nhận.",
+        toast.success(`Đã nhận diện ${localCount + aiCount}/${fields.length} thông tin`, {
+          description:
+            `Quét thường (0 token AI): ${localCount} trường` +
+            (mode === "ai" ? ` · Bổ sung nhờ AI: ${aiCount} trường` : "") +
+            ". Kiểm tra lại trước khi xác nhận.",
         });
       }
     } catch (error) {
       toast.error("Không quét được tệp", { description: (error as Error).message });
     } finally {
       setBusy(false);
+      setProgress("");
     }
   }
 
@@ -110,12 +159,36 @@ export function ScanFileDialog({
               if (file) void handleFile(file);
             }}
           />
+          <div role="radiogroup" className="mb-3 grid gap-2 sm:grid-cols-2">
+            {(
+              [
+                ["local", "Quét thường", "Nhanh, không dùng AI (0 token)"],
+                ["ai", "Quét bằng AI", "Bổ sung các trường mà quét thường không đọc được"],
+              ] as const
+            ).map(([value, label, desc]) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={mode === value}
+                disabled={busy}
+                onClick={() => setMode(value)}
+                className={`rounded-md border px-3 py-2 text-left transition-colors ${
+                  mode === value ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
+                }`}
+              >
+                <span className="block text-sm font-medium">{label}</span>
+                <span className="block text-xs text-muted-foreground">{desc}</span>
+              </button>
+            ))}
+          </div>
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <Button variant="outline" disabled={busy} onClick={() => inputRef.current?.click()}>
               {busy ? <Loader2 className="animate-spin" /> : <ScanLine />}
               Chọn ảnh chụp, PDF hoặc Word
             </Button>
             {fileName ? <span className="text-sm text-muted-foreground">{fileName}</span> : null}
+            {progress ? <span className="text-xs text-muted-foreground">{progress}</span> : null}
           </div>
 
           {rows.length ? (
