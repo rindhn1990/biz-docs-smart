@@ -52,11 +52,16 @@ export function ScanFileDialog({
 
       // Bước 1: đọc chữ cục bộ (0 token)
       let text = "";
+      let techError: string | null = null;
       try {
         const local = await extractLocalText(file, setProgress);
         text = local.text;
+        if (text.replace(/\s/g, "").length < 5) techError = "Bộ đọc chữ không trả về nội dung nào (ảnh quá mờ hoặc trang trắng).";
       } catch (err) {
-        if (mode === "local") throw err;
+        techError = `Lỗi hệ thống khi đọc tệp: ${(err as Error).message || "không rõ nguyên nhân"}`;
+      }
+      if (techError && mode === "local") {
+        throw new Error(`${techError} Đây là lỗi đọc chữ, không phải do tài liệu thiếu thông tin — hãy thử lại hoặc dùng "Quét bằng AI".`);
       }
       const found = new Map<string, { value: string; confidence: number }>();
       for (const v of extractFieldsLocally(text, fields)) found.set(v.key, v);

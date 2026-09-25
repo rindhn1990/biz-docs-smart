@@ -421,11 +421,17 @@ function PaymentsPage() {
         <ScanFileDialog
           title="Quét thông tin nhà thầu nhận thanh toán"
           description="Chọn đề nghị thanh toán, hoá đơn, hợp đồng… dạng ảnh chụp, PDF hoặc Word. Thông tin đọc được sẽ dùng thay cho nhà thầu đang chọn."
-          fields={CONTRACTOR_SCAN_FIELDS.map((f) => ({ key: f.key, label: f.label }))}
+          fields={[
+            ...CONTRACTOR_SCAN_FIELDS.map((f) => ({ key: f.key, label: f.label })),
+            { key: "pay_amount", label: "Số tiền thanh toán" },
+            { key: "pay_amount_text", label: "Số tiền bằng chữ" },
+          ]}
           note="Đây là đơn vị thụ hưởng khoản thanh toán."
           onClose={() => setScanning(false)}
           onApply={(v) => {
-            setScanned(v);
+            const { pay_amount, pay_amount_text: _text, ...rest } = v;
+            setScanned(rest);
+            if (pay_amount) setAmount(formatThousands(pay_amount.replace(/[^\d]/g, "")));
             toast.success("Đã lấy thông tin nhà thầu từ tệp", {
               description: "Thông tin này sẽ được điền vào mẫu thanh toán.",
             });
