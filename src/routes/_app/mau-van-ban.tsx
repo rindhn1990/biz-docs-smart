@@ -13,6 +13,7 @@ import {
   MousePointerClick,
   RefreshCw,
   FileSearch,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -727,7 +728,7 @@ function TemplatesPage() {
                   aria-label="Trường nguồn"
                   className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
                 >
-                  <option value="">Nhập tay</option>
+                  <option value="">Nhập tay (giá trị cố định, không đổi mỗi lần xuất)</option>
                   {sourceFields.map((f) => (
                     <option key={f.key} value={f.key}>
                       {f.label} ({f.key})
@@ -735,6 +736,12 @@ function TemplatesPage() {
                   ))}
                 </select>
               </div>
+              {!newSource ? (
+                <p className="text-xs text-muted-foreground">
+                  Giá trị nhập tay sẽ giữ nguyên mỗi lần xuất file, không lấy theo dữ liệu nhập ở
+                  màn xuất.
+                </p>
+              ) : null}
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -779,7 +786,7 @@ function TemplatesPage() {
                       <span className="mt-1 block text-xs text-muted-foreground">{m.label}</span>
                     </td>
                     <td className="num px-4 py-2.5 text-xs text-muted-foreground">
-                      {m.source_field ?? "Nhập tay"}
+                      {m.source_field ?? "Nhập tay · cố định"}
                     </td>
                     <td className="px-4 py-2.5">
                       <input
@@ -802,6 +809,20 @@ function TemplatesPage() {
                         }}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30 read-only:bg-muted"
                       />
+                      {!m.source_field ? (
+                        m.value?.trim() ? (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Giá trị này giữ nguyên mỗi lần xuất file, không lấy theo dữ liệu nhập ở
+                            màn xuất.
+                          </p>
+                        ) : (
+                          <p className="mt-1 flex items-start gap-1.5 text-xs text-warning-foreground">
+                            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                            Vùng này sẽ luôn trống khi xuất file. Hãy nhập giá trị cố định hoặc chọn
+                            một trường nguồn có sẵn.
+                          </p>
+                        )
+                      ) : null}
                     </td>
                     {isAdmin ? (
                       <td className="px-2 py-2.5">
