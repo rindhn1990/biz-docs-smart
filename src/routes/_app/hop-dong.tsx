@@ -8,6 +8,13 @@ import { useContracts } from "@/hooks/useData";
 import { CONTRACT_STATUS } from "@/lib/domain";
 import { formatCurrency, formatDate, daysUntil } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { ConfirmDelete } from "@/components/ConfirmDelete";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { usePayments } from "@/hooks/useData";
 
 export const Route = createFileRoute("/_app/hop-dong")({
   head: () => ({
@@ -38,6 +45,28 @@ const FILTERS = [
 
 function ContractsPage() {
   const contracts = useContracts();
+  const { isAdmin } = useAuth();
+  const qc = useQueryClient();
+  const payments = usePayments();
+  const payCount = (id: string) =>
+    (payments.data ?? []).filter((p) => p.contract_id === id).length;
+
+  const removeContract = async (id: string, label: string) => {
+    const { count, error: cErr } = await supabase
+      .from("payments")
+      .select("id", { count: "exact", head: true })
+      .eq("contract_id", id);
+    if (cErr) return toast.error(cErr.message);
+    if ((count ?? 0) > 0) {
+      return toast.error(
+        `Không thể xoá hợp đồng ${label}: còn ${count} đợt thanh toán liên quan. Hãy xoá các đợt thanh toán ở trang Thanh toán trước.`,
+      );
+    }
+    const { error } = await supabase.from("contracts").delete().eq("id", id);
+    if (error) return toast.error(`Xoá thất bại: ${error.message}`);
+    await qc.invalidateQueries({ queryKey: ["contracts"] });
+    toast.success(`Đã xoá hợp đồng ${label}`);
+  };
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["key"]>("all");
 
   const rows = contracts.data ?? [];
@@ -117,6 +146,7 @@ function ContractsPage() {
                 <th className="px-4 py-3 font-medium">Ngày kết thúc</th>
                 <th className="px-4 py-3 font-medium">Trạng thái</th>
                 <th className="px-4 py-3 font-medium">Cảnh báo hạn</th>
+                {isAdmin && <th className="w-12 px-4 py-3" />}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -157,6 +187,27 @@ function ContractsPage() {
                     <td className="px-4 py-3">
                       <DeadlineBadge endDate={c.end_date} status={c.status} />
                     </td>
+                    {isAdmin && (
+                      <td className="px-4 py-3 text-right">
+                        <ConfirmDelete
+                          title={`Xoá hợp đồng ${c.contract_number}${c.customers?.name ? ` — ${c.customers.name}` : ""}?`}
+                          description={
+                            payCount(c.id) > 0
+                              ? `Hợp đồng này đang có ${payCount(c.id)} đợt thanh toán liên quan nên sẽ không được xoá. Hãy xoá các đợt thanh toán trước.`
+                              : "Hợp đồng sẽ bị xoá vĩnh viễn. Thao tác này không thể hoàn tác. Hồ sơ đính kèm (nếu có) được giữ lại nhưng bỏ liên kết với hợp đồng."
+                          }
+                          onConfirm={() => removeContract(c.id, c.contract_number)}
+                        >
+                          <button
+                            type="button"
+                            aria-label="Xoá hợp đồng"
+                            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </ConfirmDelete>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
