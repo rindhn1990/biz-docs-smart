@@ -51,19 +51,20 @@ function ContractsPage() {
   const payCount = (id: string) =>
     (payments.data ?? []).filter((p) => p.contract_id === id).length;
 
-  const removeContract = async (id: string, label: string) => {
+  const removeContract = async (id: string, label: string): Promise<void> => {
     const { count, error: cErr } = await supabase
       .from("payments")
       .select("id", { count: "exact", head: true })
       .eq("contract_id", id);
-    if (cErr) return toast.error(cErr.message);
+    if (cErr) { toast.error(cErr.message); return; }
     if ((count ?? 0) > 0) {
-      return toast.error(
+      toast.error(
         `Không thể xoá hợp đồng ${label}: còn ${count} đợt thanh toán liên quan. Hãy xoá các đợt thanh toán ở trang Thanh toán trước.`,
       );
+      return;
     }
     const { error } = await supabase.from("contracts").delete().eq("id", id);
-    if (error) return toast.error(`Xoá thất bại: ${error.message}`);
+    if (error) { toast.error(`Xoá thất bại: ${error.message}`); return; }
     await qc.invalidateQueries({ queryKey: ["contracts"] });
     toast.success(`Đã xoá hợp đồng ${label}`);
   };
