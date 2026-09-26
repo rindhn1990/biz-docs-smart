@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Loader2, MousePointerClick, Search, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRight, Loader2, MousePointerClick, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { docxToHtml, replacePhraseWithToken, type DelimiterStyle } from "@/lib/docx";
@@ -23,6 +23,54 @@ type Suggestion = {
   source_field: string | null;
   module: string;
 };
+
+type SourceField = { key: string; label: string };
+
+const MATCH_STOP_WORDS = new Set([
+  "va",
+  "cua",
+  "theo",
+  "tu",
+  "nguon",
+  "du",
+  "lieu",
+  "thanh",
+  "toan",
+]);
+
+function matchTokens(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase()
+    .replace(/numb|number/g, " so ")
+    .replace(/text/g, " chu ")
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length > 1 && !MATCH_STOP_WORDS.has(token));
+}
+
+function recommendSourceField(
+  placeholder: string,
+  label: string,
+  fields: readonly SourceField[],
+) {
+  const inputTokens = new Set([...matchTokens(placeholder), ...matchTokens(label)]);
+  if (inputTokens.size === 0) return null;
+
+  let best: { field: SourceField; score: number } | null = null;
+  for (const field of fields) {
+    const keyTokens = matchTokens(field.key);
+    const labelTokens = matchTokens(field.label);
+    const keyMatches = keyTokens.filter((token) => inputTokens.has(token)).length;
+    const labelMatches = labelTokens.filter((token) => inputTokens.has(token)).length;
+    const score = keyMatches * 3 + labelMatches * 2;
+    if (score > (best?.score ?? 0)) best = { field, score };
+  }
+
+  return best && best.score >= 4 ? best.field : null;
+}
 
 type Props = {
   templateId: string;
@@ -127,6 +175,10 @@ export function TemplateRegionPicker({
   const suggestionGroups = [module, ...["tender", "hr", "payment"].filter((m) => m !== module)]
     .map((m) => ({ m, items: suggestions.filter((s) => s.module === m) }))
     .filter((g) => g.items.length > 0);
+  const suggestedSource = useMemo(
+    () => (!source ? recommendSourceField(placeholder, label, sourceFields) : null),
+    [label, placeholder, source, sourceFields],
+  );
 
   useEffect(() => {
     let alive = true;
@@ -328,14 +380,33 @@ export function TemplateRegionPicker({
                 onChange={(e) => void chooseSource(e.target.value)}
                 className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
               >
-                <option value="">Nhập tay</option>
+                <option value="">Nhập tay (giá trị cố định, không đổi mỗi lần xuất)</option>
                 {sourceFields.map((f) => (
                   <option key={f.key} value={f.key}>
                     {f.label} ({f.key})
                   </option>
                 ))}
               </select>
+              {!source ? (
+                <span className="mt-1.5 block text-xs font-normal text-muted-foreground">
+                  Nhập tay là giá trị cố định, không lấy theo dữ liệu nhập ở màn xuất.
+                </span>
+              ) : null}
             </label>
+            {suggestedSource ? (
+              <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs">
+                <p>
+                  Có vẻ vùng này nên lấy từ “{suggestedSource.label}” thay vì nhập tay.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void chooseSource(suggestedSource.key)}
+                  className="mt-1.5 inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                >
+                  Dùng gợi ý này <ArrowRight className="size-3" />
+                </button>
+              </div>
+            ) : null}
             <label className="block text-xs font-medium">
               Tên vùng dữ liệu
               <input
