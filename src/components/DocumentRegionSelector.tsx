@@ -51,19 +51,19 @@ async function loadPages(file: File, onProgress: (message: string) => void): Pro
   const pdfjs = await import("pdfjs-dist");
   const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
   pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-  const document = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const pdfDocument = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   const pages: PageImage[] = [];
-  const total = Math.min(document.numPages, 15);
+  const total = Math.min(pdfDocument.numPages, 15);
   for (let pageNumber = 1; pageNumber <= total; pageNumber++) {
     onProgress(`Đang mở trang ${pageNumber}/${total}…`);
-    const page = await document.getPage(pageNumber);
+    const page = await pdfDocument.getPage(pageNumber);
     const viewport = page.getViewport({ scale: 2 });
     const canvas = document.createElement("canvas");
     canvas.width = Math.ceil(viewport.width);
     canvas.height = Math.ceil(viewport.height);
     await page.render({ canvas, viewport } as Parameters<typeof page.render>[0]).promise;
     const blob = await new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob((value) => (value ? resolve(value) : reject(new Error("Không tạo được ảnh trang PDF."))), "image/jpeg", 0.92),
+      canvas.toBlob((value: Blob | null) => (value ? resolve(value) : reject(new Error("Không tạo được ảnh trang PDF."))), "image/jpeg", 0.92),
     );
     pages.push(await blobToPage(blob));
   }
