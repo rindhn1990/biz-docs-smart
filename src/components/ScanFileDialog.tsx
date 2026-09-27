@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Loader2, ScanLine, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { DocumentRegionSelector } from "@/components/DocumentRegionSelector";
 import { scanFileFields } from "@/lib/scan.functions";
 import { buildScanPayload } from "@/lib/scan-client";
 import { extractFieldsLocally } from "@/lib/field-extract";
@@ -41,10 +42,13 @@ export function ScanFileDialog({
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"local" | "ai">("local");
   const [progress, setProgress] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [regionCount, setRegionCount] = useState(0);
 
-  async function handleFile(file: File) {
+  async function handleFile(file: File, selectedRegions = 0) {
     setBusy(true);
     setFileName(file.name);
+    setRegionCount(selectedRegions);
     setRows([]);
     try {
       if (file.size === 0) throw new Error("Tệp rỗng, không đọc được nội dung.");
@@ -112,6 +116,7 @@ export function ScanFileDialog({
       } else {
         toast.success(`Đã nhận diện ${localCount + aiCount}/${fields.length} thông tin`, {
           description:
+            (selectedRegions ? `Đã đọc ${selectedRegions} vùng · ` : "") +
             `Quét thường (0 token AI): ${localCount} trường` +
             (mode === "ai" ? ` · Bổ sung nhờ AI: ${aiCount} trường` : "") +
             ". Kiểm tra lại trước khi xác nhận.",
@@ -161,7 +166,16 @@ export function ScanFileDialog({
             onChange={(event) => {
               const file = event.target.files?.[0];
               event.target.value = "";
-              if (file) void handleFile(file);
+               if (!file) return;
+               setFileName(file.name);
+               setRows([]);
+               setRegionCount(0);
+               if (file.name.toLowerCase().endsWith(".docx")) {
+                 setSelectedFile(null);
+                 void handleFile(file);
+               } else {
+                 setSelectedFile(file);
+               }
             }}
           />
           <div role="radiogroup" className="mb-3 grid gap-2 sm:grid-cols-2">
@@ -195,6 +209,17 @@ export function ScanFileDialog({
             {fileName ? <span className="text-sm text-muted-foreground">{fileName}</span> : null}
             {progress ? <span className="text-xs text-muted-foreground">{progress}</span> : null}
           </div>
+
+          {selectedFile ? (
+            <DocumentRegionSelector
+              file={selectedFile}
+              disabled={busy}
+              onScan={async (scanFile, count) => {
+                await handleFile(scanFile, count);
+                setSelectedFile(null);
+              }}
+            />
+          ) : null}
 
           {rows.length ? (
             <table className="w-full min-w-[600px] text-sm">
@@ -254,7 +279,9 @@ export function ScanFileDialog({
             </table>
           ) : (
             <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              Chọn một ảnh chụp tài liệu, file PDF hoặc file Word để hệ thống đọc và điền giúp bạn.
+              {regionCount
+                ? `Đã quét ${regionCount} vùng. Chọn vùng khác hoặc kiểm tra dữ liệu đọc được.`
+                : "Chọn một ảnh chụp tài liệu, file PDF hoặc file Word để hệ thống đọc và điền giúp bạn."}
             </p>
           )}
         </div>
