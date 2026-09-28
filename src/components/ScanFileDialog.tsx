@@ -277,7 +277,7 @@ export function ScanFileDialog({
                 ))}
               </tbody>
             </table>
-          ) : (
+          ) : selectedFile ? null : (
             <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
               {regionCount
                 ? `Đã quét ${regionCount} vùng. Chọn vùng khác hoặc kiểm tra dữ liệu đọc được.`

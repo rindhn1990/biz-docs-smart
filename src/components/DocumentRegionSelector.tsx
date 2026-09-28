@@ -12,6 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 type PageImage = {
   blob: Blob;
@@ -41,7 +42,9 @@ function clamp(value: number, min = 0, max = 1) {
 async function blobToPage(blob: Blob): Promise<PageImage> {
   const bitmap = await createImageBitmap(blob);
   const url = URL.createObjectURL(blob);
-  return { blob, url, width: bitmap.width, height: bitmap.height };
+  const page = { blob, url, width: bitmap.width, height: bitmap.height };
+  bitmap.close();
+  return page;
 }
 
 async function loadPages(file: File, onProgress: (message: string) => void): Promise<PageImage[]> {
@@ -267,6 +270,8 @@ export function DocumentRegionSelector({
     setPreparing(true);
     try {
       await onScan(await cropRegions(pages, regions, file.name), regions.length);
+    } catch (reason) {
+      toast.error("Không chuẩn bị được vùng đã chọn", { description: (reason as Error).message });
     } finally {
       setPreparing(false);
     }
