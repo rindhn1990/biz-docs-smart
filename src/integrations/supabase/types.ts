@@ -959,6 +959,30 @@ export type Database = {
         }
         Relationships: []
       }
+      password_reset_requests: {
+        Row: {
+          counted: boolean
+          created_at: string
+          id: string
+          ip_hash: string
+          normalized_email: string
+        }
+        Insert: {
+          counted?: boolean
+          created_at?: string
+          id?: string
+          ip_hash: string
+          normalized_email: string
+        }
+        Update: {
+          counted?: boolean
+          created_at?: string
+          id?: string
+          ip_hash?: string
+          normalized_email?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -1050,6 +1074,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_active: boolean
+          must_change_password: boolean
           phone: string | null
           position: string | null
           updated_at: string
@@ -1064,6 +1089,7 @@ export type Database = {
           full_name?: string | null
           id: string
           is_active?: boolean
+          must_change_password?: boolean
           phone?: string | null
           position?: string | null
           updated_at?: string
@@ -1078,6 +1104,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_active?: boolean
+          must_change_password?: boolean
           phone?: string | null
           position?: string | null
           updated_at?: string
@@ -1758,6 +1785,7 @@ export type Database = {
     }
     Functions: {
       can_write: { Args: { _user_id: string }; Returns: boolean }
+      complete_password_change: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
