@@ -14,6 +14,7 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 - [x] Tách kho mẫu Đấu thầu/Nhân sự; tải nhiều file ở kho mẫu và hai loại hồ sơ
 - [x] Đối chiếu mẫu gốc với file Word hoàn chỉnh, duyệt giá trị nhận diện trước khi lưu
 - [x] Quét theo nhiều vùng: xem ảnh/PDF, phóng to/thu nhỏ, kéo tài liệu và khoanh nhiều vùng trước khi OCR
+- [ ] Quên mật khẩu: email khôi phục, giới hạn 5 phút và 3 lần/60 phút, bắt buộc đổi mật khẩu trước khi vào ứng dụng
 
 ## Giai đoạn 1 — Trải nghiệm lõi đấu thầu (ĐÃ XONG)
 
