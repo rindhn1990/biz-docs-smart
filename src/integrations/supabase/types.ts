@@ -961,18 +961,21 @@ export type Database = {
       }
       password_reset_requests: {
         Row: {
+          counted: boolean
           created_at: string
           id: string
           ip_hash: string
           normalized_email: string
         }
         Insert: {
+          counted?: boolean
           created_at?: string
           id?: string
           ip_hash: string
           normalized_email: string
         }
         Update: {
+          counted?: boolean
           created_at?: string
           id?: string
           ip_hash?: string
