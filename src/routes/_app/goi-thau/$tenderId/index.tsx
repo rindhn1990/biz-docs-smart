@@ -536,6 +536,19 @@ function DataCenter({
     void queryClient.invalidateQueries({ queryKey: ["tender_contractors", tenderId] });
   }
 
+  async function savePrice(id: string, raw: string, old: number | null) {
+    const digits = raw.replace(/[^\d]/g, "");
+    const price = digits ? Number(digits) : null;
+    if (price === (old ?? null)) return;
+    const { error } = await supabase.from("tender_contractors").update({ price }).eq("id", id);
+    if (error) {
+      toast.error("Không lưu được giá", { description: error.message });
+      return;
+    }
+    toast.success("Đã lưu giá");
+    void queryClient.invalidateQueries({ queryKey: ["tender_contractors", tenderId] });
+  }
+
   async function removeLink(id: string) {
     const { error } = await supabase.from("tender_contractors").delete().eq("id", id);
     if (error) {
@@ -632,9 +645,25 @@ function DataCenter({
                         {l.contractors?.representative ?? "—"}
                       </span>
                     </span>
-                    <span className="whitespace-nowrap text-muted-foreground">
-                      {formatMoney(l.price)}
-                    </span>
+                    {canWrite ? (
+                      <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                        {role.value === "winner" ? "Giá trúng" : "Giá"}
+                        <input
+                          key={`${l.id}-${l.price ?? ""}`}
+                          defaultValue={l.price != null ? formatThousands(String(l.price)) : ""}
+                          inputMode="numeric"
+                          placeholder="0"
+                          onChange={(e) => (e.target.value = formatThousands(e.target.value))}
+                          onBlur={(e) => void savePrice(l.id, e.target.value, l.price)}
+                          className="input w-36 text-right"
+                        />
+                        đ
+                      </label>
+                    ) : (
+                      <span className="whitespace-nowrap text-muted-foreground">
+                        {formatMoney(l.price)}
+                      </span>
+                    )}
                     {isAdmin ? (
                       <ConfirmDelete
                         title={`Bỏ nhà thầu "${l.contractors?.name ?? ""}" khỏi gói thầu?`}
