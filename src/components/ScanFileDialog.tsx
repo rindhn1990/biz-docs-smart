@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, ScanLine, X } from "lucide-react";
+import { ClipboardPaste, Loader2, ScanLine, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DocumentRegionSelector } from "@/components/DocumentRegionSelector";
@@ -44,6 +44,79 @@ export function ScanFileDialog({
   const [progress, setProgress] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [regionCount, setRegionCount] = useState(0);
+  const [thumb, setThumb] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const busyRef = useRef(false);
+  busyRef.current = busy;
+
+  function pickFile(file: File) {
+    setFileName(file.name);
+    setRows([]);
+    setRegionCount(0);
+    setThumb((old) => {
+      if (old) URL.revokeObjectURL(old);
+      return file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
+    });
+    if (file.name.toLowerCase().endsWith(".docx")) {
+      setSelectedFile(null);
+      void handleFile(file);
+    } else {
+      setSelectedFile(file);
+    }
+  }
+
+  function namedImage(blob: Blob) {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, "0");
+    const ext = blob.type.split("/")[1]?.replace("jpeg", "jpg") || "png";
+    return new File([blob], `screenshot-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.${ext}`, {
+      type: blob.type || "image/png",
+    });
+  }
+
+  const pickRef = useRef(pickFile);
+  pickRef.current = pickFile;
+  useEffect(() => {
+    function onPaste(e: ClipboardEvent) {
+      if (busyRef.current) return;
+      const target = e.target as HTMLElement | null;
+      const items = Array.from(e.clipboardData?.items ?? []);
+      const fileItem = items.find((i) => i.kind === "file");
+      if (!fileItem) return; // để ô nhập chữ dán bình thường
+      const f = fileItem.getAsFile();
+      if (!f) return;
+      if (target?.tagName === "INPUT" && !f.type.startsWith("image/")) return;
+      e.preventDefault();
+      const isImage = f.type.startsWith("image/");
+      const ok = isImage || /\.(pdf|docx)$/i.test(f.name);
+      if (!ok) {
+        toast.error("Chỉ nhận ảnh, PDF hoặc file Word (.docx).");
+        return;
+      }
+      pickRef.current(isImage && (!f.name || f.name === "image.png") ? namedImage(f) : f);
+    }
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, []);
+
+  async function pasteFromClipboard() {
+    try {
+      if (!navigator.clipboard?.read) throw new Error("unsupported");
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const type = item.types.find((t) => t.startsWith("image/"));
+        if (type) {
+          pickFile(namedImage(await item.getType(type)));
+          return;
+        }
+      }
+      toast.warning("Clipboard không có ảnh", { description: "Hãy chụp màn hình rồi bấm Ctrl+V trong hộp thoại này." });
+    } catch {
+      toast.info("Trình duyệt chặn đọc clipboard", {
+        description: "Hãy bấm Ctrl+V (hoặc ⌘+V trên Mac) ngay trong hộp thoại này để dán ảnh.",
+      });
+    }
+  }
 
   async function handleFile(file: File, selectedRegions = 0) {
     setBusy(true);
@@ -166,16 +239,7 @@ export function ScanFileDialog({
             onChange={(event) => {
               const file = event.target.files?.[0];
               event.target.value = "";
-               if (!file) return;
-               setFileName(file.name);
-               setRows([]);
-               setRegionCount(0);
-               if (file.name.toLowerCase().endsWith(".docx")) {
-                 setSelectedFile(null);
-                 void handleFile(file);
-               } else {
-                 setSelectedFile(file);
-               }
+              if (file) pickFile(file);
             }}
           />
           <div role="radiogroup" className="mb-3 grid gap-2 sm:grid-cols-2">
@@ -200,6 +264,38 @@ export function ScanFileDialog({
                 <span className="block text-xs text-muted-foreground">{desc}</span>
               </button>
             ))}
+          </div>
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              const file = e.dataTransfer.files?.[0];
+              if (file && !busy) pickFile(file);
+            }}
+            className={`mb-4 flex flex-wrap items-center gap-3 rounded-md border border-dashed p-3 transition-colors ${
+              dragging ? "border-primary bg-primary/10" : "border-border"
+            }`}
+          >
+            {thumb ? (
+              <img src={thumb} alt="Ảnh vừa dán" className="size-14 rounded border border-border object-cover" />
+            ) : (
+              <ClipboardPaste className="size-6 text-muted-foreground" />
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium">Dán ảnh (Ctrl+V) hoặc kéo thả file vào đây</p>
+              <p className="text-xs text-muted-foreground">
+                {thumb ? "Dán ảnh khác để thay ảnh hiện tại." : "Nhận ảnh chụp màn hình, ảnh, PDF hoặc Word."}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" disabled={busy} onClick={() => void pasteFromClipboard()}>
+              <ClipboardPaste />
+              Dán từ clipboard
+            </Button>
           </div>
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <Button variant="outline" disabled={busy} onClick={() => inputRef.current?.click()}>
