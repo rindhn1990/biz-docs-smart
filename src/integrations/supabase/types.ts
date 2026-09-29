@@ -143,6 +143,7 @@ export type Database = {
           advance_info: string | null
           assignee_id: string | null
           contract_number: string
+          contractor_id: string | null
           created_at: string
           created_by: string | null
           currency: string
@@ -174,6 +175,7 @@ export type Database = {
           advance_info?: string | null
           assignee_id?: string | null
           contract_number: string
+          contractor_id?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string
@@ -205,6 +207,7 @@ export type Database = {
           advance_info?: string | null
           assignee_id?: string | null
           contract_number?: string
+          contractor_id?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string
@@ -232,6 +235,13 @@ export type Database = {
           warranty_info?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "contracts_contractor_id_fkey"
+            columns: ["contractor_id"]
+            isOneToOne: false
+            referencedRelation: "contractors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "contracts_customer_id_fkey"
             columns: ["customer_id"]

@@ -8,7 +8,8 @@ import { useContracts } from "@/hooks/useData";
 import { CONTRACT_STATUS } from "@/lib/domain";
 import { formatCurrency, formatDate, daysUntil } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+import { ContractEditor, type EditableContract } from "@/components/ContractEditor";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
@@ -45,7 +46,8 @@ const FILTERS = [
 
 function ContractsPage() {
   const contracts = useContracts();
-  const { isAdmin } = useAuth();
+  const { isAdmin, canWrite, user } = useAuth();
+  const [editing, setEditing] = useState<EditableContract | null | "new">(null);
   const qc = useQueryClient();
   const payments = usePayments();
   const payCount = (id: string) =>
@@ -108,6 +110,24 @@ function ContractsPage() {
         title="Hợp đồng"
         description="Cảnh báo hạn được tính theo ngày hiện tại của hệ thống: dưới 7 ngày là đỏ, dưới 15 ngày cam, dưới 30 ngày hổ phách, dưới 60 ngày vàng, dưới 90 ngày xanh teal."
       />
+      {canWrite ? (
+        <div className="mb-4 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setEditing("new")}
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="size-4" /> Thêm hợp đồng
+          </button>
+        </div>
+      ) : null}
+      {editing ? (
+        <ContractEditor
+          contract={editing === "new" ? null : editing}
+          userId={user?.id ?? null}
+          onClose={() => setEditing(null)}
+        />
+      ) : null}
 
       <div className="mb-4 flex flex-wrap gap-2">
         {FILTERS.map((f) => (
@@ -141,13 +161,13 @@ function ContractsPage() {
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <th className="px-4 py-3 font-medium">Số hợp đồng</th>
-                <th className="px-4 py-3 font-medium">Khách hàng</th>
+                <th className="px-4 py-3 font-medium">Gói thầu · Nhà thầu</th>
                 <th className="px-4 py-3 text-right font-medium">Giá trị</th>
                 <th className="px-4 py-3 font-medium">Ngày ký</th>
                 <th className="px-4 py-3 font-medium">Ngày kết thúc</th>
                 <th className="px-4 py-3 font-medium">Trạng thái</th>
                 <th className="px-4 py-3 font-medium">Cảnh báo hạn</th>
-                {isAdmin && <th className="w-12 px-4 py-3" />}
+                {(isAdmin || canWrite) && <th className="w-20 px-4 py-3" />}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -161,8 +181,11 @@ function ContractsPage() {
                         {c.title ?? "—"}
                       </p>
                     </td>
-                    <td className="max-w-[220px] truncate px-4 py-3 text-muted-foreground">
-                      {c.customers?.name ?? "—"}
+                    <td className="max-w-[240px] px-4 py-3">
+                      <p className="truncate">{c.contractors?.name ?? "—"}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {c.tenders ? `${c.tenders.code ? `${c.tenders.code} · ` : ""}${c.tenders.name}` : c.customers?.name ?? ""}
+                      </p>
                     </td>
                     <td className="num whitespace-nowrap px-4 py-3 text-right font-medium">
                       {formatCurrency(Number(c.total_value))}
@@ -188,9 +211,19 @@ function ContractsPage() {
                     <td className="px-4 py-3">
                       <DeadlineBadge endDate={c.end_date} status={c.status} />
                     </td>
-                    {isAdmin && (
-                      <td className="px-4 py-3 text-right">
-                        <ConfirmDelete
+                    {(isAdmin || canWrite) && (
+                      <td className="whitespace-nowrap px-4 py-3 text-right">
+                        {canWrite ? (
+                          <button
+                            type="button"
+                            aria-label="Sửa hợp đồng"
+                            onClick={() => setEditing(c as EditableContract)}
+                            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent"
+                          >
+                            <Pencil className="size-4" />
+                          </button>
+                        ) : null}
+                        {isAdmin && <ConfirmDelete
                           title={`Xoá hợp đồng ${c.contract_number}${c.customers?.name ? ` — ${c.customers.name}` : ""}?`}
                           description={
                             payCount(c.id) > 0
@@ -206,7 +239,7 @@ function ContractsPage() {
                           >
                             <Trash2 className="size-4" />
                           </button>
-                        </ConfirmDelete>
+                        </ConfirmDelete>}
                       </td>
                     )}
                   </tr>
