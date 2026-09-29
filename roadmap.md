@@ -15,9 +15,9 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 - [x] Đối chiếu mẫu gốc với file Word hoàn chỉnh, duyệt giá trị nhận diện trước khi lưu
 - [x] Quét theo nhiều vùng: xem ảnh/PDF, phóng to/thu nhỏ, kéo tài liệu và khoanh nhiều vùng trước khi OCR
 - [ ] Quên mật khẩu: email khôi phục, giới hạn 5 phút và 3 lần/60 phút, bắt buộc đổi mật khẩu trước khi vào ứng dụng (dữ liệu xong, còn giao diện)
-- [ ] A. Dán ảnh Ctrl+V / kéo thả / nút "Dán từ clipboard" trong hộp quét
-- [ ] B1. Nhiều nhà thầu trúng + giá trúng từng nhà thầu
-- [ ] B2. contracts.contractor_id, chọn nhà thầu theo gói, cột nhà thầu
+- [x] A. Dán ảnh Ctrl+V / kéo thả / nút "Dán từ clipboard" trong hộp quét
+- [x] B1. Nhiều nhà thầu trúng + giá trúng từng nhà thầu
+- [x] B2. contracts.contractor_id, chọn nhà thầu theo gói, cột nhà thầu
 - [ ] B3-5. Thanh toán chọn chuỗi Gói → Hợp đồng → Nhà thầu; STK/ngân hàng/số tiền theo file quét; nguồn mẫu mới
 - [ ] B6. Xuất thanh toán lưu payments + export_history (tender/contract/payment)
 - [ ] B7. Báo cáo xuyên suốt theo gói thầu
