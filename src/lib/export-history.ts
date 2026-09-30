@@ -5,6 +5,8 @@ export type ExportHistoryInput = {
   module: "tender" | "hr" | "payment";
   data: Record<string, string>;
   tenderId?: string | null;
+  contractId?: string | null;
+  paymentId?: string | null;
   documentId?: string | null;
   templateId?: string | null;
   templateName?: string | null;
@@ -22,6 +24,8 @@ export async function recordExport(input: ExportHistoryInput) {
     module: input.module,
     data: input.data,
     tender_id: input.tenderId ?? null,
+    contract_id: input.contractId ?? null,
+    payment_id: input.paymentId ?? null,
     document_id: input.documentId ?? null,
     template_id: input.templateId ?? null,
     template_name: input.templateName ?? null,

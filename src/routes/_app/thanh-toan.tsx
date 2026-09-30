@@ -187,7 +187,7 @@ function PaymentsPage() {
     const out: Record<string, string> = { ...base };
     for (const [k, v] of Object.entries(edits)) if (v.trim()) out[k] = v.trim();
     return out;
-  }, [contractor, payment, content, amountNumber]);
+  }, [contractor, payment, content, amountNumber, edits]);
 
   type Template = {
     id: string;
@@ -229,13 +229,53 @@ function PaymentsPage() {
     try {
       const ready = await prepare(tpl);
       await renderAndDownloadDocx(ready.source, ready.style, ready.data, ready.fileName);
+      let savedPaymentId: string | null = paymentId || null;
+      const linkedContract = contractId || payment?.contract_id || null;
+      if (!savedPaymentId && contractId && amountNumber > 0) {
+        const { data: lastRow } = await supabase
+          .from("payments")
+          .select("installment_no")
+          .eq("contract_id", contractId)
+          .order("installment_no", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const nextNo = (lastRow?.installment_no ?? 0) + 1;
+        const { data: created, error: payErr } = await supabase
+          .from("payments")
+          .insert({
+            contract_id: contractId,
+            installment_no: nextNo,
+            description: content || `Thanh toán đợt ${nextNo}`,
+            amount: amountNumber,
+            total_amount: amountNumber,
+            request_date: new Date().toISOString().slice(0, 10),
+            status: "pending",
+            created_by: user?.id ?? null,
+          })
+          .select("id")
+          .single();
+        if (payErr) toast.error("Chưa lưu được đợt thanh toán", { description: payErr.message });
+        else {
+          savedPaymentId = created.id;
+          ready.data["TT_dot"] = String(nextNo);
+          void qc.invalidateQueries({ queryKey: ["payments"] });
+        }
+      }
+      const linkedTender =
+        tenderId || (contractsQ.data ?? []).find((c) => c.id === linkedContract)?.tender_id || null;
       await recordExport({
+        tenderId: linkedTender,
+        contractId: linkedContract,
+        paymentId: savedPaymentId,
+        userId: user?.id ?? null,
+        userEmail: user?.email ?? null,
         fileName: ready.fileName,
         module: "payment",
         data: ready.data,
         templateId: tpl.id,
         templateName: tpl.name,
       });
+      void qc.invalidateQueries({ queryKey: ["export_history"] });
       toast.success("Đã xuất hồ sơ thanh toán", { description: ready.fileName });
     } catch (e) {
       toast.error("Không xuất được file", { description: (e as Error).message });
@@ -357,6 +397,58 @@ function PaymentsPage() {
 
           <div className="grid gap-3 border-b border-border p-4 md:grid-cols-2">
             <label className="text-xs font-medium text-muted-foreground">
+              Gói thầu
+              <select
+                value={tenderId}
+                onChange={(e) => { setTenderId(e.target.value); setContractId(""); setEdits({}); }}
+                className="mt-1 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+              >
+                <option value="">— Chọn gói thầu —</option>
+                {(tenders.data ?? []).map((t) => (
+                  <option key={t.id} value={t.id}>{t.code ? `${t.code} · ` : ""}{t.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs font-medium text-muted-foreground">
+              Hợp đồng
+              <select
+                value={contractId}
+                disabled={!tenderId}
+                onChange={(e) => pickContract(e.target.value)}
+                className="mt-1 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30 disabled:opacity-50"
+              >
+                <option value="">{tenderId && tenderContracts.length === 0 ? "Gói này chưa có hợp đồng" : "— Chọn hợp đồng —"}</option>
+                {tenderContracts.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.contract_number}{c.contractors?.name ? ` · ${c.contractors.name}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {contractId ? (
+              <div className="grid gap-2 rounded-md border border-border bg-muted/40 p-3 md:col-span-2 md:grid-cols-4">
+                {[
+                  ["GT_ten", "Tên gói thầu"],
+                  ["GT_ma", "Mã gói thầu"],
+                  ["HD_ten", "Tên hợp đồng"],
+                  ["HD_so", "Số hợp đồng"],
+                  ["HD_ngay", "Ngày ký"],
+                  ["HD_giatri", "Giá trị hợp đồng"],
+                  ["NT_ten", "Tên nhà thầu"],
+                  ["NT_mst", "Mã số thuế"],
+                ].map(([k, label]) => (
+                  <label key={k} className="text-[11px] font-medium text-muted-foreground">
+                    {label}
+                    <input
+                      value={edits[k!] ?? ""}
+                      onChange={(e) => setEdits((prev) => ({ ...prev, [k!]: k === "HD_giatri" ? formatThousands(e.target.value) : e.target.value }))}
+                      className="mt-0.5 w-full rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground outline-none focus:border-primary"
+                    />
+                  </label>
+                ))}
+              </div>
+            ) : null}
+            <label className="text-xs font-medium text-muted-foreground">
               <span className="flex flex-wrap items-center justify-between gap-2">
                 Nhà thầu nhận thanh toán
                 <button
@@ -405,6 +497,23 @@ function PaymentsPage() {
                 className="mt-1 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
               />
             </label>
+
+            {selected?.bank_account && scanned["bank_account"] &&
+            selected.bank_account.replace(/\D/g, "") !== scanned["bank_account"].replace(/\D/g, "") ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs md:col-span-2">
+                <AlertTriangle className="size-4 shrink-0 text-warning" />
+                <span className="flex-1">
+                  Số tài khoản quét được (<b>{scanned["bank_account"]}</b>) khác với hồ sơ nhà thầu (<b>{selected.bank_account}</b>). Đang dùng số quét được.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setScanned((p) => ({ ...p, bank_account: selected.bank_account ?? "", bank_name: selected.bank_name ?? p["bank_name"] ?? "" }))}
+                  className="rounded-md border border-input bg-background px-2 py-1 font-medium hover:bg-accent"
+                >
+                  Dùng số trong hồ sơ
+                </button>
+              </div>
+            ) : null}
 
             {contractor ? (
               <dl className="grid gap-1 rounded-md border border-border bg-muted/40 p-3 text-xs md:col-span-2 md:grid-cols-2">
