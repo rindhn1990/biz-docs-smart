@@ -853,6 +853,7 @@ export type Database = {
       }
       export_history: {
         Row: {
+          contract_id: string | null
           created_at: string
           created_by: string | null
           data: Json
@@ -862,6 +863,7 @@ export type Database = {
           file_name: string
           id: string
           module: string
+          payment_id: string | null
           template_id: string | null
           template_name: string | null
           tender_id: string | null
@@ -869,6 +871,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          contract_id?: string | null
           created_at?: string
           created_by?: string | null
           data?: Json
@@ -878,6 +881,7 @@ export type Database = {
           file_name: string
           id?: string
           module?: string
+          payment_id?: string | null
           template_id?: string | null
           template_name?: string | null
           tender_id?: string | null
@@ -885,6 +889,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          contract_id?: string | null
           created_at?: string
           created_by?: string | null
           data?: Json
@@ -894,6 +899,7 @@ export type Database = {
           file_name?: string
           id?: string
           module?: string
+          payment_id?: string | null
           template_id?: string | null
           template_name?: string | null
           tender_id?: string | null
@@ -902,10 +908,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "export_history_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "export_history_document_id_fkey"
             columns: ["document_id"]
             isOneToOne: false
             referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "export_history_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
             referencedColumns: ["id"]
           },
           {
