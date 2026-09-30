@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { Download, Eye, FileText, Loader2, Receipt, ScanLine } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import { AlertTriangle, Download, Eye, FileText, Loader2, Receipt, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
@@ -40,6 +41,12 @@ export const Route = createFileRoute("/_app/thanh-toan")({
 
 function PaymentsPage() {
   const payments = usePayments();
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  const [tenderId, setTenderId] = useState("");
+  const [contractId, setContractId] = useState("");
+  /** Giá trị tự điền từ gói thầu/hợp đồng, người dùng vẫn sửa tay được. */
+  const [edits, setEdits] = useState<Record<string, string>>({});
   const [contractorId, setContractorId] = useState("");
   const [paymentId, setPaymentId] = useState("");
   const [amount, setAmount] = useState("");
@@ -69,6 +76,46 @@ function PaymentsPage() {
       return data;
     },
   });
+
+  const tenders = useQuery({
+    queryKey: ["tenders", "for-payment"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("tenders").select("id,code,name").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const contractsQ = useQuery({
+    queryKey: ["contracts", "for-payment"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contracts")
+        .select("id,contract_number,title,tender_id,sign_date,total_value,contractor_id,contractors(name,tax_code)")
+        .order("sign_date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+  const tenderContracts = (contractsQ.data ?? []).filter((c) => c.tender_id === tenderId);
+
+  function pickContract(id: string) {
+    setContractId(id);
+    setPaymentId("");
+    const c = (contractsQ.data ?? []).find((x) => x.id === id);
+    const t = (tenders.data ?? []).find((x) => x.id === (c?.tender_id ?? tenderId));
+    if (c?.contractor_id) setContractorId(c.contractor_id);
+    setEdits({
+      GT_ten: t?.name ?? "",
+      GT_ma: t?.code ?? "",
+      HD_ten: c?.title ?? "",
+      HD_so: c?.contract_number ?? "",
+      HD_ngay: c?.sign_date ? formatDate(c.sign_date) : "",
+      HD_giatri: c?.total_value ? formatThousands(String(Math.round(Number(c.total_value)))) : "",
+      NT_ten: c?.contractors?.name ?? "",
+      NT_mst: c?.contractors?.tax_code ?? "",
+    });
+  }
 
   const templates = useQuery({
     queryKey: ["templates", "payment"],
@@ -112,7 +159,7 @@ function PaymentsPage() {
   /** Bộ giá trị dùng chung cho mọi mẫu văn bản thanh toán. */
   const values = useMemo<Record<string, string>>(() => {
     const contract = payment?.contracts ?? null;
-    return {
+    const base: Record<string, string> = {
       NT_ten: contractor?.name ?? "",
       NT_mst: contractor?.tax_code ?? "",
       NT_diachi: contractor?.address ?? "",
@@ -133,7 +180,13 @@ function PaymentsPage() {
       TT_tongtien: payment ? formatThousands(String(Math.round(Number(payment.total_amount)))) : "",
       TT_ngay: payment?.request_date ? formatDate(payment.request_date) : "",
       TT_hanthanhtoan: payment?.due_date ? formatDate(payment.due_date) : "",
+      GT_ten: "",
+      GT_ma: "",
+      HD_ten: "",
     };
+    const out: Record<string, string> = { ...base };
+    for (const [k, v] of Object.entries(edits)) if (v.trim()) out[k] = v.trim();
+    return out;
   }, [contractor, payment, content, amountNumber]);
 
   type Template = {
