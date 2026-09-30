@@ -13,6 +13,7 @@ type Profile = {
   is_active: boolean | null;
   can_access_tender: boolean | null;
   can_access_hr: boolean | null;
+  must_change_password: boolean | null;
 };
 
 type AuthState = {
@@ -22,6 +23,7 @@ type AuthState = {
   profile: Profile | null;
   roles: AppRole[];
   isActive: boolean;
+  mustChangePassword: boolean;
   isAdmin: boolean;
   canWrite: boolean;
   /** Được dùng phân hệ Đấu thầu */
@@ -78,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       roles,
       isActive: profile?.is_active === true,
+      mustChangePassword: profile?.must_change_password === true,
       isAdmin: roles.includes("admin"),
       canWrite: roles.some((r) => r !== "viewer"),
       canTender: roles.includes("admin") || profile?.can_access_tender !== false,
