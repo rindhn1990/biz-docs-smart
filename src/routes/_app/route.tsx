@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ShieldAlert, Clock, Loader2, LogOut, Menu, UserRound } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { ForceChangePassword } from "@/components/ForceChangePassword";
 import { AppSidebar } from "@/components/AppSidebar";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -25,7 +26,7 @@ export const Route = createFileRoute("/_app")({
 });
 
 function AppLayout() {
-  const { loading, session, profile, roles, isActive, signOut, canTender, canHr } = useAuth();
+  const { loading, session, profile, roles, isActive, mustChangePassword, refresh, signOut, canTender, canHr } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
@@ -41,6 +42,19 @@ function AppLayout() {
       <div className="grid min-h-screen place-items-center bg-background">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
       </div>
+    );
+  }
+
+  if (mustChangePassword) {
+    return (
+      <ForceChangePassword
+        email={session.user.email ?? profile.email ?? ""}
+        onDone={refresh}
+        onSignOut={async () => {
+          await signOut();
+          void navigate({ to: "/auth", search: { next: undefined } });
+        }}
+      />
     );
   }
 

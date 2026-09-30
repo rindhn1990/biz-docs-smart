@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { Download, Eye, FileText, Loader2, Receipt, ScanLine } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import { AlertTriangle, Download, Eye, FileText, Loader2, Receipt, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
@@ -40,6 +41,12 @@ export const Route = createFileRoute("/_app/thanh-toan")({
 
 function PaymentsPage() {
   const payments = usePayments();
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  const [tenderId, setTenderId] = useState("");
+  const [contractId, setContractId] = useState("");
+  /** Giá trị tự điền từ gói thầu/hợp đồng, người dùng vẫn sửa tay được. */
+  const [edits, setEdits] = useState<Record<string, string>>({});
   const [contractorId, setContractorId] = useState("");
   const [paymentId, setPaymentId] = useState("");
   const [amount, setAmount] = useState("");
@@ -69,6 +76,46 @@ function PaymentsPage() {
       return data;
     },
   });
+
+  const tenders = useQuery({
+    queryKey: ["tenders", "for-payment"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("tenders").select("id,code,name").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const contractsQ = useQuery({
+    queryKey: ["contracts", "for-payment"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contracts")
+        .select("id,contract_number,title,tender_id,sign_date,total_value,contractor_id,contractors(name,tax_code)")
+        .order("sign_date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+  const tenderContracts = (contractsQ.data ?? []).filter((c) => c.tender_id === tenderId);
+
+  function pickContract(id: string) {
+    setContractId(id);
+    setPaymentId("");
+    const c = (contractsQ.data ?? []).find((x) => x.id === id);
+    const t = (tenders.data ?? []).find((x) => x.id === (c?.tender_id ?? tenderId));
+    if (c?.contractor_id) setContractorId(c.contractor_id);
+    setEdits({
+      GT_ten: t?.name ?? "",
+      GT_ma: t?.code ?? "",
+      HD_ten: c?.title ?? "",
+      HD_so: c?.contract_number ?? "",
+      HD_ngay: c?.sign_date ? formatDate(c.sign_date) : "",
+      HD_giatri: c?.total_value ? formatThousands(String(Math.round(Number(c.total_value)))) : "",
+      NT_ten: c?.contractors?.name ?? "",
+      NT_mst: c?.contractors?.tax_code ?? "",
+    });
+  }
 
   const templates = useQuery({
     queryKey: ["templates", "payment"],
@@ -112,7 +159,7 @@ function PaymentsPage() {
   /** Bộ giá trị dùng chung cho mọi mẫu văn bản thanh toán. */
   const values = useMemo<Record<string, string>>(() => {
     const contract = payment?.contracts ?? null;
-    return {
+    const base: Record<string, string> = {
       NT_ten: contractor?.name ?? "",
       NT_mst: contractor?.tax_code ?? "",
       NT_diachi: contractor?.address ?? "",
@@ -133,8 +180,14 @@ function PaymentsPage() {
       TT_tongtien: payment ? formatThousands(String(Math.round(Number(payment.total_amount)))) : "",
       TT_ngay: payment?.request_date ? formatDate(payment.request_date) : "",
       TT_hanthanhtoan: payment?.due_date ? formatDate(payment.due_date) : "",
+      GT_ten: "",
+      GT_ma: "",
+      HD_ten: "",
     };
-  }, [contractor, payment, content, amountNumber]);
+    const out: Record<string, string> = { ...base };
+    for (const [k, v] of Object.entries(edits)) if (v.trim()) out[k] = v.trim();
+    return out;
+  }, [contractor, payment, content, amountNumber, edits]);
 
   type Template = {
     id: string;
@@ -176,13 +229,53 @@ function PaymentsPage() {
     try {
       const ready = await prepare(tpl);
       await renderAndDownloadDocx(ready.source, ready.style, ready.data, ready.fileName);
+      let savedPaymentId: string | null = paymentId || null;
+      const linkedContract = contractId || payment?.contract_id || null;
+      if (!savedPaymentId && contractId && amountNumber > 0) {
+        const { data: lastRow } = await supabase
+          .from("payments")
+          .select("installment_no")
+          .eq("contract_id", contractId)
+          .order("installment_no", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const nextNo = (lastRow?.installment_no ?? 0) + 1;
+        const { data: created, error: payErr } = await supabase
+          .from("payments")
+          .insert({
+            contract_id: contractId,
+            installment_no: nextNo,
+            description: content || `Thanh toán đợt ${nextNo}`,
+            amount: amountNumber,
+            total_amount: amountNumber,
+            request_date: new Date().toISOString().slice(0, 10),
+            status: "pending",
+            created_by: user?.id ?? null,
+          })
+          .select("id")
+          .single();
+        if (payErr) toast.error("Chưa lưu được đợt thanh toán", { description: payErr.message });
+        else {
+          savedPaymentId = created.id;
+          ready.data["TT_dot"] = String(nextNo);
+          void qc.invalidateQueries({ queryKey: ["payments"] });
+        }
+      }
+      const linkedTender =
+        tenderId || (contractsQ.data ?? []).find((c) => c.id === linkedContract)?.tender_id || null;
       await recordExport({
+        tenderId: linkedTender,
+        contractId: linkedContract,
+        paymentId: savedPaymentId,
+        userId: user?.id ?? null,
+        userEmail: user?.email ?? null,
         fileName: ready.fileName,
         module: "payment",
         data: ready.data,
         templateId: tpl.id,
         templateName: tpl.name,
       });
+      void qc.invalidateQueries({ queryKey: ["export_history"] });
       toast.success("Đã xuất hồ sơ thanh toán", { description: ready.fileName });
     } catch (e) {
       toast.error("Không xuất được file", { description: (e as Error).message });
@@ -304,6 +397,58 @@ function PaymentsPage() {
 
           <div className="grid gap-3 border-b border-border p-4 md:grid-cols-2">
             <label className="text-xs font-medium text-muted-foreground">
+              Gói thầu
+              <select
+                value={tenderId}
+                onChange={(e) => { setTenderId(e.target.value); setContractId(""); setEdits({}); }}
+                className="mt-1 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+              >
+                <option value="">— Chọn gói thầu —</option>
+                {(tenders.data ?? []).map((t) => (
+                  <option key={t.id} value={t.id}>{t.code ? `${t.code} · ` : ""}{t.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs font-medium text-muted-foreground">
+              Hợp đồng
+              <select
+                value={contractId}
+                disabled={!tenderId}
+                onChange={(e) => pickContract(e.target.value)}
+                className="mt-1 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30 disabled:opacity-50"
+              >
+                <option value="">{tenderId && tenderContracts.length === 0 ? "Gói này chưa có hợp đồng" : "— Chọn hợp đồng —"}</option>
+                {tenderContracts.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.contract_number}{c.contractors?.name ? ` · ${c.contractors.name}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {contractId ? (
+              <div className="grid gap-2 rounded-md border border-border bg-muted/40 p-3 md:col-span-2 md:grid-cols-4">
+                {[
+                  ["GT_ten", "Tên gói thầu"],
+                  ["GT_ma", "Mã gói thầu"],
+                  ["HD_ten", "Tên hợp đồng"],
+                  ["HD_so", "Số hợp đồng"],
+                  ["HD_ngay", "Ngày ký"],
+                  ["HD_giatri", "Giá trị hợp đồng"],
+                  ["NT_ten", "Tên nhà thầu"],
+                  ["NT_mst", "Mã số thuế"],
+                ].map(([k, label]) => (
+                  <label key={k} className="text-[11px] font-medium text-muted-foreground">
+                    {label}
+                    <input
+                      value={edits[k!] ?? ""}
+                      onChange={(e) => setEdits((prev) => ({ ...prev, [k!]: k === "HD_giatri" ? formatThousands(e.target.value) : e.target.value }))}
+                      className="mt-0.5 w-full rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground outline-none focus:border-primary"
+                    />
+                  </label>
+                ))}
+              </div>
+            ) : null}
+            <label className="text-xs font-medium text-muted-foreground">
               <span className="flex flex-wrap items-center justify-between gap-2">
                 Nhà thầu nhận thanh toán
                 <button
@@ -352,6 +497,23 @@ function PaymentsPage() {
                 className="mt-1 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
               />
             </label>
+
+            {selected?.bank_account && scanned["bank_account"] &&
+            selected.bank_account.replace(/\D/g, "") !== scanned["bank_account"].replace(/\D/g, "") ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs md:col-span-2">
+                <AlertTriangle className="size-4 shrink-0 text-warning" />
+                <span className="flex-1">
+                  Số tài khoản quét được (<b>{scanned["bank_account"]}</b>) khác với hồ sơ nhà thầu (<b>{selected.bank_account}</b>). Đang dùng số quét được.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setScanned((p) => ({ ...p, bank_account: selected.bank_account ?? "", bank_name: selected.bank_name ?? p["bank_name"] ?? "" }))}
+                  className="rounded-md border border-input bg-background px-2 py-1 font-medium hover:bg-accent"
+                >
+                  Dùng số trong hồ sơ
+                </button>
+              </div>
+            ) : null}
 
             {contractor ? (
               <dl className="grid gap-1 rounded-md border border-border bg-muted/40 p-3 text-xs md:col-span-2 md:grid-cols-2">
