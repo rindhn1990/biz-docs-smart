@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Building2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { requestPasswordReset } from "@/lib/password-reset.functions";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +40,52 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotBusy, setForgotBusy] = useState(false);
+  const [forgotMsg, setForgotMsg] = useState<{ tone: "ok" | "warn"; text: string } | null>(null);
+  const [waitUntil, setWaitUntil] = useState(0);
+  const [nowTick, setNowTick] = useState(Date.now());
+  const sendReset = useServerFn(requestPasswordReset);
+
+  useEffect(() => {
+    if (waitUntil <= Date.now()) return;
+    const t = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [waitUntil]);
+  const remaining = Math.max(0, Math.ceil((waitUntil - nowTick) / 1000));
+
+  const forgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotBusy(true);
+    setForgotMsg(null);
+    try {
+      const r = await sendReset({ data: { email: forgotEmail } });
+      const mins = (s: number) => Math.max(1, Math.ceil(s / 60));
+      if (r.status === "sent") {
+        setForgotMsg({ tone: "ok", text: "Mật khẩu mới đã được gửi tới email của bạn. Hãy đăng nhập bằng mật khẩu tạm rồi đổi mật khẩu mới." });
+        setWaitUntil(Date.now() + 5 * 60_000);
+      } else if (r.status === "not_registered") {
+        setForgotMsg({ tone: "warn", text: "Email này chưa được đăng ký trong hệ thống." });
+        setWaitUntil(Date.now() + 5 * 60_000);
+      } else if (r.status === "cooldown") {
+        setForgotMsg({ tone: "warn", text: `Bạn vừa yêu cầu gần đây, vui lòng thử lại sau ${mins(r.waitSeconds)} phút.` });
+        setWaitUntil(Date.now() + r.waitSeconds * 1000);
+      } else if (r.status === "hourly_limit") {
+        setForgotMsg({ tone: "warn", text: `Đã đạt tối đa 3 lần trong 1 giờ, vui lòng thử lại sau ${mins(r.waitSeconds)} phút.` });
+        setWaitUntil(Date.now() + r.waitSeconds * 1000);
+      } else if (r.status === "email_not_configured") {
+        setForgotMsg({ tone: "warn", text: "Hệ thống chưa được cấu hình gửi email nên chưa thể gửi mật khẩu tạm. Vui lòng liên hệ quản trị viên." });
+      } else {
+        setForgotMsg({ tone: "warn", text: "Không gửi được email lúc này. Mật khẩu hiện tại của bạn không bị thay đổi — vui lòng thử lại sau." });
+      }
+      setNowTick(Date.now());
+    } catch {
+      setForgotMsg({ tone: "warn", text: "Email không hợp lệ hoặc có lỗi kết nối. Vui lòng thử lại." });
+    } finally {
+      setForgotBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!loading && session) {
@@ -161,6 +209,40 @@ function AuthPage() {
                   Đăng nhập
                 </Button>
               </form>
+              <div className="pt-3 text-center">
+                <button
+                  type="button"
+                  onClick={() => { setForgotOpen((v) => !v); setForgotEmail((v) => v || email); }}
+                  className="text-sm text-primary hover:underline"
+                >
+                  Quên mật khẩu?
+                </button>
+              </div>
+              {forgotOpen ? (
+                <form onSubmit={forgot} className="mt-3 space-y-3 rounded-md border border-border bg-muted/40 p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Nhập email đã đăng ký. Hệ thống sẽ gửi một mật khẩu tạm; sau khi đăng nhập bạn phải đổi mật khẩu mới.
+                  </p>
+                  <Input
+                    type="email"
+                    required
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="ten@congty.vn"
+                  />
+                  <Button type="submit" variant="outline" className="w-full" disabled={forgotBusy || remaining > 0}>
+                    {forgotBusy ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+                    {remaining > 0
+                      ? `Gửi lại sau ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`
+                      : "Gửi mật khẩu tạm"}
+                  </Button>
+                  {forgotMsg ? (
+                    <p className={`text-xs ${forgotMsg.tone === "ok" ? "text-primary" : "text-destructive"}`}>
+                      {forgotMsg.text}
+                    </p>
+                  ) : null}
+                </form>
+              ) : null}
             </TabsContent>
 
             <TabsContent value="signup">
