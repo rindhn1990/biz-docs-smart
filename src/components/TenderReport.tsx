@@ -77,13 +77,13 @@ export function TenderReport() {
           <thead className="text-left text-xs uppercase text-muted-foreground">
             <tr className="border-b border-border">
               <th className="py-2 pr-2">Gói thầu / Hợp đồng</th>
-              <th className="pr-2">Nhà thầu</th>
-              <th className="pr-2 text-right">Giá gói</th>
-              <th className="pr-2 text-right">Giá trúng</th>
-              <th className="pr-2 text-right">Giá trị HĐ</th>
-              <th className="pr-2 text-right">Đã thanh toán</th>
-              <th className="pr-2 text-right">Còn lại</th>
-              <th className="text-right">% giải ngân</th>
+              <th className="whitespace-nowrap pr-2">Nhà thầu</th>
+              <th className="whitespace-nowrap pr-2 text-right">Giá gói</th>
+              <th className="whitespace-nowrap pr-2 text-right">Giá trúng</th>
+              <th className="whitespace-nowrap pr-2 text-right">Giá trị HĐ</th>
+              <th className="whitespace-nowrap pr-2 text-right">Đã thanh toán</th>
+              <th className="whitespace-nowrap pr-2 text-right">Còn lại</th>
+              <th className="whitespace-nowrap text-right">% giải ngân</th>
             </tr>
           </thead>
           <tbody>
@@ -93,9 +93,9 @@ export function TenderReport() {
               <FragmentRows key={t.id}>
                 <tr className="border-t border-border bg-muted/40 font-medium">
                   <td className="py-2 pr-2">{t.code ? `${t.code} · ` : ""}{t.name}
-                    <span className="ml-2 text-xs font-normal text-muted-foreground">{TENDER_STATUS[t.status]?.label}</span>
+                    <span className="ml-2 whitespace-nowrap text-xs font-normal text-muted-foreground">{TENDER_STATUS[t.status]?.label}</span>
                   </td>
-                  <td className="pr-2 text-muted-foreground">{list.length} hợp đồng</td>
+                  <td className="whitespace-nowrap pr-2 text-muted-foreground">{list.length} hợp đồng</td>
                   <td className="num pr-2 text-right">{money(t.package_value)}</td>
                   <td className="num pr-2 text-right">{money(t.won_value)}</td>
                   <td className="num pr-2 text-right">{money(value)}</td>
