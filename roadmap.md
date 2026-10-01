@@ -37,6 +37,7 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Giai đoạn 3 — Báo cáo, trang chủ, tiện ích
 
+- [x] Báo cáo theo gói thầu (Tổng quan): giá gói, giá trúng, hợp đồng, đã thanh toán, còn lại, % giải ngân
 - [ ] Trang chủ: "Việc cần xử lý hôm nay" (công việc + tiến độ %), lời chào + ngày hiện tại
 - [ ] Nhật ký công việc (work log): tab Hôm nay / Inbox / Định kỳ / Lịch sử, tạo nhanh bằng Enter, KPI đang làm / chưa cập nhật / streak, nhắc cập nhật, việc từ module khác
 - [ ] Trang Hướng dẫn: tab "Tóm tắt workflow" + "Hướng dẫn chi tiết" (mô tả 8 bước: chuẩn bị template → tạo hồ sơ → upload/OCR → chuẩn hoá → chọn nhà thầu trúng → điền từng bước → xuất Word → tải toàn bộ)

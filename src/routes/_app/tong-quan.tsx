@@ -15,6 +15,7 @@ import { ModuleTabs } from "@/components/ModuleTabs";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useContracts, useDocuments, usePayments, useTenders } from "@/hooks/useData";
 import { contractAlert, CONTRACT_STATUS, DOC_STATUS } from "@/lib/domain";
+import { TenderReport } from "@/components/TenderReport";
 import { formatCompact, formatDate } from "@/lib/format";
 
 export const Route = createFileRoute("/_app/tong-quan")({
@@ -221,6 +222,7 @@ function Overview() {
           </div>
         ))}
       </div>
+      <TenderReport />
     </div>
   );
 }
