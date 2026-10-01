@@ -12,3 +12,4 @@
 ## Architecture decisions
 
 - Document scan cropping lives in `DocumentRegionSelector`; it outputs one composite image so local OCR and AI fallback share the same selected-region input.
+- Role-check functions `has_role`/`can_write` live in the `private` schema (not exposed via API); RLS policies and triggers call `private.*` so signed-in users cannot invoke them directly.
