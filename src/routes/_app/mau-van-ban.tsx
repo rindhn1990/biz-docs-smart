@@ -23,6 +23,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { TemplateRegionPicker } from "@/components/TemplateRegionPicker";
 import { TemplateAutoDetect } from "@/components/TemplateAutoDetect";
+import { TemplateContentEditor } from "@/components/TemplateContentEditor";
 import { Button } from "@/components/ui/button";
 import {
   extractPlaceholdersFromFile,
@@ -89,6 +90,7 @@ function TemplatesPage() {
   const [editing, setEditing] = useState(false);
   const [picking, setPicking] = useState(false);
   const [detecting, setDetecting] = useState(false);
+  const [contentSource, setContentSource] = useState<ArrayBuffer | null>(null);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editMethod, setEditMethod] = useState<TenderMethod>(DEFAULT_METHOD);
@@ -348,6 +350,43 @@ function TemplatesPage() {
     toast.success("Đã lưu thông tin mẫu");
   }
 
+  function sourceFileName() {
+    const raw = (current as { file_name?: string | null } | undefined)?.file_name;
+    if (raw && raw.toLowerCase().endsWith(".docx")) return raw;
+    return `${current?.name ?? "mau"}.docx`;
+  }
+
+  async function fetchSource() {
+    if (!current?.source_docx_path) throw new Error("Mẫu này chưa có tệp Word gốc");
+    const { data, error } = await supabase.storage
+      .from("templates")
+      .download(current.source_docx_path);
+    if (error || !data) throw error ?? new Error("Không tải được tệp");
+    return data;
+  }
+
+  async function downloadSource() {
+    try {
+      const blob = await fetchSource();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = sourceFileName();
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      toast.error("Không tải được file mẫu", { description: (e as Error).message });
+    }
+  }
+
+  async function openContentEditor() {
+    try {
+      setContentSource(await (await fetchSource()).arrayBuffer());
+    } catch (e) {
+      toast.error("Không mở được file mẫu", { description: (e as Error).message });
+    }
+  }
+
   async function handleReplaceDocx(file: File) {
     if (!current) return;
     setBusy("replace");
@@ -370,6 +409,8 @@ function TemplatesPage() {
 
       const known = new Set(rows.map((r) => r.placeholder));
       const fresh = placeholders.filter((p) => !known.has(p));
+      const present = new Set(placeholders);
+      const removed = rows.map((r) => r.placeholder).filter((p) => !present.has(p));
       if (fresh.length > 0) {
         await supabase.from("template_mappings").insert(
           fresh.map((p, i) => ({
@@ -384,10 +425,17 @@ function TemplatesPage() {
 
       await queryClient.invalidateQueries({ queryKey: ["templates"] });
       await queryClient.invalidateQueries({ queryKey: ["template_mappings", current.id] });
-      toast.success("Đã thay file Word của mẫu", {
+      toast.success("Đã cập nhật file Word của mẫu", {
         description:
           fresh.length > 0 ? `Thêm ${fresh.length} chỗ trống mới.` : "Giữ nguyên các ánh xạ cũ.",
       });
+      if (removed.length > 0) {
+        toast.warning(`${removed.length} chỗ trống không còn trong văn bản`, {
+          description: `${removed.join(", ")}. Ánh xạ cũ vẫn được giữ lại — hãy tự xoá nếu không cần nữa.`,
+          duration: 12000,
+        });
+      }
+
     } catch (e) {
       toast.error("Không thay được file", { description: (e as Error).message });
     } finally {
@@ -591,6 +639,33 @@ function TemplatesPage() {
                   )}
                   Thay file Word
                 </button>
+                <button
+                  type="button"
+                  disabled={!current.source_docx_path || busy !== null}
+                  onClick={() => void downloadSource()}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-50"
+                >
+                  <Download className="size-3.5" />
+                  Tải file mẫu
+                </button>
+                <button
+                  type="button"
+                  disabled={!current.source_docx_path || busy !== null}
+                  onClick={() => void openContentEditor()}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-50"
+                >
+                  <FileText className="size-3.5" />
+                  Chỉnh sửa nội dung mẫu
+                </button>
+                {contentSource && current ? (
+                  <TemplateContentEditor
+                    title={current.name}
+                    fileName={sourceFileName()}
+                    source={contentSource}
+                    onClose={() => setContentSource(null)}
+                    onSave={(file) => handleReplaceDocx(file)}
+                  />
+                ) : null}
                 <Button
                   type="button"
                   variant="outline"
