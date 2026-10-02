@@ -27,9 +27,9 @@ function runs(node: Node, fmt: Fmt = {}): TextRun[] {
         out.push(
           new TextRun({
             text,
-            bold: fmt.bold,
-            italics: fmt.italics,
-            underline: fmt.underline ? {} : undefined,
+            bold: !!fmt.bold,
+            italics: !!fmt.italics,
+            ...(fmt.underline ? { underline: {} } : {}),
           }),
         );
       }
@@ -55,7 +55,7 @@ function alignOf(el: HTMLElement) {
   if (a === "center") return AlignmentType.CENTER;
   if (a === "right") return AlignmentType.RIGHT;
   if (a === "justify") return AlignmentType.JUSTIFIED;
-  return undefined;
+  return AlignmentType.LEFT;
 }
 
 function blocks(container: Node): Block[] {
@@ -89,7 +89,7 @@ function blocks(container: Node): Block[] {
         HeadingLevel.HEADING_4,
         HeadingLevel.HEADING_5,
         HeadingLevel.HEADING_6,
-      ][Number(tag[1]) - 1];
+      ][Number(tag[1]) - 1] ?? HeadingLevel.HEADING_1;
       out.push(new Paragraph({ heading: level, alignment: alignOf(child), children: runs(child) }));
     } else if (tag === "p") {
       out.push(new Paragraph({ alignment: alignOf(child), children: runs(child) }));
@@ -120,7 +120,7 @@ function blocks(container: Node): Block[] {
                   const inner = blocks(td);
                   return new TableCell({
                     borders,
-                    columnSpan: span > 1 ? span : undefined,
+                    columnSpan: span,
                     width: { size: w * span, type: WidthType.DXA },
                     margins: { top: 60, bottom: 60, left: 100, right: 100 },
                     children: inner.length > 0 ? inner : [new Paragraph("")],
