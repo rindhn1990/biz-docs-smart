@@ -274,7 +274,7 @@ export function TemplateRegionPicker({
         if (insErr) throw insErr;
       }
 
-      setHtml(await docxToHtml(buffer));
+      setHtml(await docxToHtml(buffer.slice(0)));
       setSelection("");
       setPlaceholder("");
       setLabel("");
