@@ -14,6 +14,8 @@ import {
   RefreshCw,
   FileSearch,
   AlertTriangle,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +31,7 @@ import {
   extractPlaceholdersFromFile,
   prettifyPlaceholder,
   renderAndDownloadDocx,
+  withTimestampedName,
   type DelimiterStyle,
 } from "@/lib/docx";
 import { KHLCNT_DOC_TYPE, KHLCNT_FIELDS } from "@/lib/khlcnt";
@@ -36,6 +39,7 @@ import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
 import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { cn } from "@/lib/utils";
+import { recallTemplateBuffer, rememberTemplateBuffer } from "@/lib/template-cache";
 
 export const Route = createFileRoute("/_app/mau-van-ban")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -365,7 +369,7 @@ function TemplatesPage() {
     next.splice(to, 0, item);
     const base = Math.min(...list.map((t) => t.sort_order ?? 0));
     const updates = next.map((t, i) => ({ id: t.id, sort_order: base + i }));
-    qc.setQueryData(["templates", "with-mappings"], (old: typeof templates.data) =>
+    queryClient.setQueryData(["templates", "with-mappings"], (old: typeof templates.data) =>
       (old ?? [])
         .map((t) => ({ ...t, sort_order: updates.find((u) => u.id === t.id)?.sort_order ?? t.sort_order }))
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
@@ -375,7 +379,7 @@ function TemplatesPage() {
     );
     const failed = results.find((r) => r.error);
     if (failed?.error) toast.error("Không lưu được thứ tự mẫu", { description: failed.error.message });
-    void qc.invalidateQueries({ queryKey: ["templates"] });
+    void queryClient.invalidateQueries({ queryKey: ["templates"] });
   }
 
   async function fetchSource(): Promise<Blob> {

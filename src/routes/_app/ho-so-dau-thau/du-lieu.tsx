@@ -113,7 +113,7 @@ function DataPage() {
         .from("templates")
         .select("id,name,description,source_docx_path,delimiter_style,method")
         .eq("method", method)
-        .order("created_at");
+        .order("sort_order").order("created_at");
       if (error) throw error;
       return data;
     },
