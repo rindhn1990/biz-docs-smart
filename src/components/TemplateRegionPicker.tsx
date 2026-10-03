@@ -3,6 +3,7 @@ import { ArrowRight, Loader2, MousePointerClick, Search, X } from "lucide-react"
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { docxToHtml, replacePhraseWithToken, type DelimiterStyle } from "@/lib/docx";
+import { recallTemplateBuffer, rememberTemplateBuffer } from "@/lib/template-cache";
 import { KHLCNT_FIELDS } from "@/lib/khlcnt";
 import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
 import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
@@ -110,6 +111,7 @@ export function TemplateRegionPicker({
   const [labelTouched, setLabelTouched] = useState(false);
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const bufferRef = useRef<ArrayBuffer | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -187,7 +189,7 @@ export function TemplateRegionPicker({
       if (!buf) {
         const { data, error: dlError } = await supabase.storage
           .from("templates")
-          .download(`${storagePath}?t=${Date.now()}`.replace(/\?t=\d+$/, ""));
+          .download(storagePath);
         if (!alive) return;
         if (dlError || !data) {
           setError(dlError?.message ?? "Không tải được tệp Word");
