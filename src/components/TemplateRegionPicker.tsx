@@ -183,14 +183,22 @@ export function TemplateRegionPicker({
   useEffect(() => {
     let alive = true;
     void (async () => {
-      const { data, error: dlError } = await supabase.storage.from("templates").download(storagePath);
-      if (!alive) return;
-      if (dlError || !data) {
-        setError(dlError?.message ?? "Không tải được tệp Word");
-        return;
+      let buf = recallTemplateBuffer(storagePath);
+      if (!buf) {
+        const { data, error: dlError } = await supabase.storage
+          .from("templates")
+          .download(`${storagePath}?t=${Date.now()}`.replace(/\?t=\d+$/, ""));
+        if (!alive) return;
+        if (dlError || !data) {
+          setError(dlError?.message ?? "Không tải được tệp Word");
+          return;
+        }
+        buf = await data.arrayBuffer();
       }
+      if (!alive) return;
+      bufferRef.current = buf;
       try {
-        setHtml(await docxToHtml(await data.arrayBuffer()));
+        setHtml(await docxToHtml(buf.slice(0)));
       } catch (e) {
         setError((e as Error).message);
       }
@@ -217,23 +225,28 @@ export function TemplateRegionPicker({
       toast.error("Tên vùng dữ liệu chỉ gồm chữ, số và dấu gạch dưới");
       return;
     }
+    const current = bufferRef.current;
+    if (!current) {
+      toast.error("Tệp Word chưa tải xong");
+      return;
+    }
     setSaving(true);
     try {
-      const { data, error: dlError } = await supabase.storage
-        .from("templates")
-        .download(storagePath);
-      if (dlError || !data) throw dlError ?? new Error("Không tải được tệp Word");
+      // Thay trực tiếp trên bản đang giữ trong bộ nhớ, không tải lại từ storage (tránh bản cũ do cache).
       const { buffer } = replacePhraseWithToken(
-        await data.arrayBuffer(),
+        current.slice(0),
         selection,
         `${wrap[0]}${key}${wrap[1]}`,
       );
       const up = await supabase.storage.from("templates").upload(storagePath, buffer, {
         upsert: true,
+        cacheControl: "0",
         contentType:
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       });
       if (up.error) throw up.error;
+      bufferRef.current = buffer;
+      rememberTemplateBuffer(storagePath, buffer);
 
       const { data: existing } = await supabase
         .from("template_mappings")
