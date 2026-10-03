@@ -3,6 +3,7 @@ import { ArrowRight, Loader2, MousePointerClick, Search, X } from "lucide-react"
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { docxToHtml, replacePhraseWithToken, type DelimiterStyle } from "@/lib/docx";
+import { recallTemplateBuffer, rememberTemplateBuffer } from "@/lib/template-cache";
 import { KHLCNT_FIELDS } from "@/lib/khlcnt";
 import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
 import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
@@ -110,6 +111,7 @@ export function TemplateRegionPicker({
   const [labelTouched, setLabelTouched] = useState(false);
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const bufferRef = useRef<ArrayBuffer | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -183,14 +185,22 @@ export function TemplateRegionPicker({
   useEffect(() => {
     let alive = true;
     void (async () => {
-      const { data, error: dlError } = await supabase.storage.from("templates").download(storagePath);
-      if (!alive) return;
-      if (dlError || !data) {
-        setError(dlError?.message ?? "Không tải được tệp Word");
-        return;
+      let buf = recallTemplateBuffer(storagePath);
+      if (!buf) {
+        const { data, error: dlError } = await supabase.storage
+          .from("templates")
+          .download(storagePath);
+        if (!alive) return;
+        if (dlError || !data) {
+          setError(dlError?.message ?? "Không tải được tệp Word");
+          return;
+        }
+        buf = await data.arrayBuffer();
       }
+      if (!alive) return;
+      bufferRef.current = buf;
       try {
-        setHtml(await docxToHtml(await data.arrayBuffer()));
+        setHtml(await docxToHtml(buf.slice(0)));
       } catch (e) {
         setError((e as Error).message);
       }
@@ -217,23 +227,28 @@ export function TemplateRegionPicker({
       toast.error("Tên vùng dữ liệu chỉ gồm chữ, số và dấu gạch dưới");
       return;
     }
+    const current = bufferRef.current;
+    if (!current) {
+      toast.error("Tệp Word chưa tải xong");
+      return;
+    }
     setSaving(true);
     try {
-      const { data, error: dlError } = await supabase.storage
-        .from("templates")
-        .download(storagePath);
-      if (dlError || !data) throw dlError ?? new Error("Không tải được tệp Word");
+      // Thay trực tiếp trên bản đang giữ trong bộ nhớ, không tải lại từ storage (tránh bản cũ do cache).
       const { buffer } = replacePhraseWithToken(
-        await data.arrayBuffer(),
+        current.slice(0),
         selection,
         `${wrap[0]}${key}${wrap[1]}`,
       );
       const up = await supabase.storage.from("templates").upload(storagePath, buffer, {
         upsert: true,
+        cacheControl: "0",
         contentType:
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       });
       if (up.error) throw up.error;
+      bufferRef.current = buffer;
+      rememberTemplateBuffer(storagePath, buffer);
 
       const { data: existing } = await supabase
         .from("template_mappings")
@@ -259,7 +274,7 @@ export function TemplateRegionPicker({
         if (insErr) throw insErr;
       }
 
-      setHtml(await docxToHtml(buffer));
+      setHtml(await docxToHtml(buffer.slice(0)));
       setSelection("");
       setPlaceholder("");
       setLabel("");

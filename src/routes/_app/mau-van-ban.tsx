@@ -14,6 +14,8 @@ import {
   RefreshCw,
   FileSearch,
   AlertTriangle,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +31,7 @@ import {
   extractPlaceholdersFromFile,
   prettifyPlaceholder,
   renderAndDownloadDocx,
+  withTimestampedName,
   type DelimiterStyle,
 } from "@/lib/docx";
 import { KHLCNT_DOC_TYPE, KHLCNT_FIELDS } from "@/lib/khlcnt";
@@ -36,6 +39,7 @@ import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
 import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { cn } from "@/lib/utils";
+import { recallTemplateBuffer, rememberTemplateBuffer } from "@/lib/template-cache";
 
 export const Route = createFileRoute("/_app/mau-van-ban")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -102,7 +106,8 @@ function TemplatesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("templates")
-        .select("id,name,category,description,body,source_docx_path,delimiter_style,method,module")
+        .select("id,name,category,description,body,source_docx_path,delimiter_style,method,module,sort_order")
+        .order("sort_order")
         .order("created_at");
       if (error) throw error;
       return data;
@@ -356,8 +361,35 @@ function TemplatesPage() {
     return `${current?.name ?? "mau"}.docx`;
   }
 
-  async function fetchSource() {
+  async function moveTemplate(from: number, to: number) {
+    if (from === to || to < 0 || to >= list.length) return;
+    const next = [...list];
+    const [item] = next.splice(from, 1);
+    if (!item) return;
+    next.splice(to, 0, item);
+    const base = Math.min(...list.map((t) => t.sort_order ?? 0));
+    const updates = next.map((t, i) => ({ id: t.id, sort_order: base + i }));
+    queryClient.setQueryData(["templates", "with-mappings"], (old: typeof templates.data) =>
+      (old ?? [])
+        .map((t) => ({ ...t, sort_order: updates.find((u) => u.id === t.id)?.sort_order ?? t.sort_order }))
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+    );
+    const results = await Promise.all(
+      updates.map((u) => supabase.from("templates").update({ sort_order: u.sort_order }).eq("id", u.id)),
+    );
+    const failed = results.find((r) => r.error);
+    if (failed?.error) toast.error("Không lưu được thứ tự mẫu", { description: failed.error.message });
+    void queryClient.invalidateQueries({ queryKey: ["templates"] });
+  }
+
+  async function fetchSource(): Promise<Blob> {
     if (!current?.source_docx_path) throw new Error("Mẫu này chưa có tệp Word gốc");
+    const cached = recallTemplateBuffer(current.source_docx_path);
+    if (cached) {
+      return new Blob([cached], {
+        type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      });
+    }
     const { data, error } = await supabase.storage
       .from("templates")
       .download(current.source_docx_path);
@@ -371,7 +403,7 @@ function TemplatesPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = sourceFileName();
+      a.download = withTimestampedName(sourceFileName());
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (e) {
@@ -393,8 +425,11 @@ function TemplatesPage() {
     try {
       const { placeholders, style } = await extractPlaceholdersFromFile(file);
       const path = current.source_docx_path ?? `templates/${current.id}/source.docx`;
-      const up = await supabase.storage.from("templates").upload(path, file, { upsert: true });
+      const up = await supabase.storage
+        .from("templates")
+        .upload(path, file, { upsert: true, cacheControl: "0" });
       if (up.error) throw up.error;
+      rememberTemplateBuffer(path, await file.arrayBuffer());
 
       const { error } = await supabase
         .from("templates")
@@ -568,13 +603,52 @@ function TemplatesPage() {
             />
           ) : (
             <ul className="divide-y divide-border">
-              {list.map((t) => (
-                <li key={t.id}>
+              {list.map((t, idx) => (
+                <li
+                  key={t.id}
+                  draggable={isAdmin}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData("text/plain", t.id);
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
+                  onDragOver={(e) => {
+                    if (isAdmin) e.preventDefault();
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const from = list.findIndex((x) => x.id === e.dataTransfer.getData("text/plain"));
+                    if (from >= 0) void moveTemplate(from, idx);
+                  }}
+                  className="group flex items-stretch"
+                >
+                  {isAdmin ? (
+                    <span className="flex flex-col justify-center pl-1">
+                      <button
+                        type="button"
+                        aria-label="Đưa lên"
+                        disabled={idx === 0}
+                        onClick={() => void moveTemplate(idx, idx - 1)}
+                        className="rounded p-0.5 text-muted-foreground hover:bg-accent disabled:opacity-30"
+                      >
+                        <ChevronUp className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Đưa xuống"
+                        disabled={idx === list.length - 1}
+                        onClick={() => void moveTemplate(idx, idx + 1)}
+                        className="rounded p-0.5 text-muted-foreground hover:bg-accent disabled:opacity-30"
+                      >
+                        <ChevronDown className="size-3.5" />
+                      </button>
+                    </span>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => setSelectedId(t.id)}
                     className={cn(
-                      "flex w-full items-start gap-2 px-4 py-3 text-left transition-colors",
+                      "flex w-full min-w-0 items-start gap-2 px-4 py-3 text-left transition-colors",
+                      isAdmin && "cursor-grab pl-2",
                       t.id === currentId ? "bg-accent" : "hover:bg-accent/50",
                     )}
                   >

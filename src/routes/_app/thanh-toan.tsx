@@ -124,7 +124,7 @@ function PaymentsPage() {
         .from("templates")
         .select("id,name,description,source_docx_path,delimiter_style")
         .eq("module", "payment")
-        .order("created_at");
+        .order("sort_order").order("created_at");
       if (error) throw error;
       return data;
     },

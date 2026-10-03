@@ -147,7 +147,16 @@ export async function renderAndDownloadDocx(
     mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     compression: "DEFLATE",
   });
-  saveAs(blob, fileName);
+  saveAs(blob, withTimestampedName(fileName));
+}
+
+/** "TotrinhKHLCNT.docx" → "TotrinhKHLCNT_14_05_02_10.docx" (giờ_phút_ngày_tháng). */
+export function withTimestampedName(name: string, at: Date = new Date()) {
+  const p = (n: number) => String(n).padStart(2, "0");
+  const stamp = `${p(at.getHours())}_${p(at.getMinutes())}_${p(at.getDate())}_${p(at.getMonth() + 1)}`;
+  const m = name.match(/^(.*?)(\.docx)?$/i);
+  const base = (m?.[1] || "file").trim();
+  return `${base}_${stamp}${m?.[2] ?? ".docx"}`;
 }
 
 /** Render file .docx với dữ liệu rồi trả về HTML để xem trước ngay trên màn hình. */

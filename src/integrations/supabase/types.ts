@@ -1316,6 +1316,7 @@ export type Database = {
           module: string
           name: string
           parent_id: string | null
+          sort_order: number
           source_docx_path: string | null
           storage_path: string | null
           updated_at: string
@@ -1337,6 +1338,7 @@ export type Database = {
           module?: string
           name: string
           parent_id?: string | null
+          sort_order?: number
           source_docx_path?: string | null
           storage_path?: string | null
           updated_at?: string
@@ -1358,6 +1360,7 @@ export type Database = {
           module?: string
           name?: string
           parent_id?: string | null
+          sort_order?: number
           source_docx_path?: string | null
           storage_path?: string | null
           updated_at?: string
