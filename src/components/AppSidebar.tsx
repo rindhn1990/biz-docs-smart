@@ -18,6 +18,7 @@ import {
   Handshake,
   Receipt,
   History,
+  Table2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -67,6 +68,7 @@ const hrGroups: { title: string; items: Item[] }[] = [
     items: [
       { to: "/nhan-su", label: "Hồ sơ nhân sự", icon: IdCard },
       { to: "/nhan-su/hop-dong", label: "Hợp đồng nhân sự", icon: Users },
+      { to: "/nhan-su/du-lieu", label: "Dữ liệu nhân sự", icon: Table2 },
       { to: "/mau-van-ban", label: "Mẫu văn bản", icon: FileText, search: { module: "hr" } },
     ],
   },
@@ -161,7 +163,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
                 }
                 const active =
                   item.to === "/nhan-su"
-                    ? pathname === "/nhan-su" || /^\/nhan-su\/(?!hop-dong$)/.test(pathname)
+                    ? pathname === "/nhan-su" || /^\/nhan-su\/(?!hop-dong$|du-lieu$)/.test(pathname)
                     : pathname === item.to || pathname.startsWith(`${item.to}/`);
                 return (
                   <li key={item.to}>

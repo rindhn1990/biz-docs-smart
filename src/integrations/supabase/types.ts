@@ -659,6 +659,13 @@ export type Database = {
             foreignKeyName: "employee_contracts_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
+            referencedRelation: "employee_summary_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_contracts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
@@ -730,6 +737,13 @@ export type Database = {
             referencedRelation: "employee_documents"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "employee_document_fields_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "employee_summary_view"
+            referencedColumns: ["latest_document_id"]
+          },
         ]
       }
       employee_documents: {
@@ -782,6 +796,13 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "employee_documents_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employee_summary_view"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "employee_documents_employee_id_fkey"
             columns: ["employee_id"]
@@ -1814,7 +1835,32 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      employee_summary_view: {
+        Row: {
+          base_salary: number | null
+          contract_id: string | null
+          contract_number: string | null
+          contract_status: string | null
+          contract_type: string | null
+          created_at: string | null
+          date_of_birth: string | null
+          degree_major: string | null
+          degree_name: string | null
+          degree_school: string | null
+          department: string | null
+          end_date: string | null
+          full_name: string | null
+          hometown: string | null
+          id: string | null
+          id_issue_date: string | null
+          id_issue_place: string | null
+          id_number: string | null
+          latest_document_id: string | null
+          position: string | null
+          start_date: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       complete_password_change: { Args: never; Returns: undefined }
