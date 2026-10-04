@@ -18,6 +18,7 @@ import {
   Handshake,
   Receipt,
   History,
+  Table2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
