@@ -13,3 +13,4 @@
 
 - Document scan cropping lives in `DocumentRegionSelector`; it outputs one composite image so local OCR and AI fallback share the same selected-region input.
 - Role-check functions `has_role`/`can_write` live in the `private` schema (not exposed via API); RLS policies and triggers call `private.*` so signed-in users cannot invoke them directly.
+- The HR summary table reads the security_invoker view `employee_summary_view` with server-side filter/sort/range, so large datasets load one page per query without N+1 calls.
