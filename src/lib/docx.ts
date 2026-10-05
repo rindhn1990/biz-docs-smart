@@ -285,6 +285,80 @@ export function replacePhraseWithToken(
   return { buffer, count };
 }
 
+const PARA_RE = /<w:p[\s>][\s\S]*?<\/w:p>/g;
+const RUN_T_RE = /(<w:t[^>]*>)([\s\S]*?)(<\/w:t>)/g;
+
+/** Văn bản của từng đoạn trong document.xml (giữ đúng thứ tự, kể cả đoạn rỗng). */
+export function listDocxParagraphs(source: ArrayBuffer): string[] {
+  const xml = new PizZip(source).file("word/document.xml")?.asText() ?? "";
+  return (xml.match(PARA_RE) ?? []).map((p) =>
+    decodeXml((p.match(/<w:t[^>]*>[\s\S]*?<\/w:t>/g) ?? []).map((r) => r.replace(/<[^>]+>/g, "")).join("")),
+  );
+}
+
+function editParagraph(paragraph: string, next: string): string {
+  type Slot = { open: string; close: string; text: string; at: number; len: number; start: number };
+  const slots: Slot[] = [];
+  let merged = "";
+  let m: RegExpExecArray | null;
+  const re = new RegExp(RUN_T_RE.source, "g");
+  while ((m = re.exec(paragraph)) !== null) {
+    const text = decodeXml(m[2] ?? "");
+    slots.push({ open: m[1] ?? "<w:t>", close: m[3] ?? "</w:t>", text, at: m.index, len: m[0].length, start: merged.length });
+    merged += text;
+  }
+  if (merged === next) return paragraph;
+  if (slots.length === 0) {
+    return paragraph.replace(/<\/w:p>$/, `<w:r><w:t xml:space="preserve">${escapeXml(next)}</w:t></w:r></w:p>`);
+  }
+  // Giữ phần đầu/cuối chung để các run không bị sửa vẫn nguyên định dạng.
+  let pre = 0;
+  while (pre < merged.length && pre < next.length && merged[pre] === next[pre]) pre++;
+  let suf = 0;
+  while (
+    suf < merged.length - pre &&
+    suf < next.length - pre &&
+    merged[merged.length - 1 - suf] === next[next.length - 1 - suf]
+  ) suf++;
+  const start = pre;
+  const end = merged.length - suf;
+  const insert = next.slice(pre, next.length - suf);
+  // Run nhận phần chèn: run chứa vị trí start (nếu start ở cuối run thì vẫn chèn vào run đó).
+  let target = slots.findIndex((s) => start >= s.start && start < s.start + s.text.length);
+  if (target === -1) target = slots.length - 1;
+  let out = paragraph;
+  for (let i = slots.length - 1; i >= 0; i--) {
+    const slot = slots[i]!;
+    const s = slot.start;
+    const e = s + slot.text.length;
+    const touches = i === target || (e > start && s < end);
+    if (!touches) continue;
+    const before = slot.text.slice(0, Math.max(0, Math.min(slot.text.length, start - s)));
+    const after = slot.text.slice(Math.max(0, Math.min(slot.text.length, end - s)));
+    const text = before + (i === target ? insert : "") + after;
+    const open = slot.open.includes("xml:space") ? slot.open : slot.open.replace(/>$/, ' xml:space="preserve">');
+    out = out.slice(0, slot.at) + open + escapeXml(text) + slot.close + out.slice(slot.at + slot.len);
+  }
+  return out;
+}
+
+/** Ghi văn bản đã sửa vào đúng từng đoạn của file gốc, giữ nguyên toàn bộ định dạng/bảng/ảnh/đầu chân trang. */
+export function applyDocxParagraphEdits(source: ArrayBuffer, texts: string[]): ArrayBuffer {
+  const zip = new PizZip(source);
+  const file = zip.file("word/document.xml");
+  if (!file) throw new Error("Không đọc được nội dung file Word");
+  let i = 0;
+  const xml = file.asText().replace(PARA_RE, (p) => {
+    const next = texts[i++];
+    return next === undefined ? p : editParagraph(p, next);
+  });
+  zip.file("word/document.xml", xml);
+  const uint = zip.generate({ type: "uint8array", compression: "DEFLATE" }) as Uint8Array;
+  const buffer = new ArrayBuffer(uint.byteLength);
+  new Uint8Array(buffer).set(uint);
+  return buffer;
+}
+
 /** Toàn bộ văn bản thuần của một file .docx (mỗi đoạn một dòng). */
 export function docxPlainText(source: ArrayBuffer): string {
   return paragraphTexts(source).join("\n");
