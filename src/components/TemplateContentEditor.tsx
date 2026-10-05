@@ -1,22 +1,15 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  AlertTriangle,
-  Bold,
-  Italic,
-  List,
-  ListOrdered,
-  Loader2,
-  Save,
-  Table as TableIcon,
-  Underline,
-  X,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Info, Loader2, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { docxToHtml } from "@/lib/docx";
-import { htmlToDocxBlob } from "@/lib/html-to-docx";
+import { applyDocxParagraphEdits, listDocxParagraphs } from "@/lib/docx";
 
-/** Soạn thảo nội dung file mẫu Word ngay trên web rồi lưu lại thành .docx mới. */
+const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+/**
+ * Sửa chữ trực tiếp trên file Word gốc: mỗi đoạn văn là một ô sửa, khi lưu chỉ thay phần chữ
+ * trong đúng đoạn đó nên giữ nguyên định dạng, bảng, ảnh, lề, đầu/chân trang của file gốc.
+ */
 export function TemplateContentEditor({
   title,
   fileName,
@@ -30,45 +23,27 @@ export function TemplateContentEditor({
   onClose: () => void;
   onSave: (file: File) => Promise<void>;
 }) {
-  const editorRef = useRef<HTMLDivElement>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    docxToHtml(source)
-      .then((html) => {
-        if (alive && editorRef.current) editorRef.current.innerHTML = html || "<p></p>";
-      })
-      .catch((e: Error) => toast.error("Không mở được nội dung mẫu", { description: e.message }))
-      .finally(() => alive && setLoading(false));
-    return () => {
-      alive = false;
-    };
+  const original = useMemo(() => {
+    try {
+      return listDocxParagraphs(source);
+    } catch (e) {
+      toast.error("Không mở được nội dung mẫu", { description: (e as Error).message });
+      return [];
+    }
   }, [source]);
+  const [texts, setTexts] = useState<string[]>(original);
+  const [showEmpty, setShowEmpty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => setTexts(original), [original]);
 
-  function cmd(name: string) {
-    editorRef.current?.focus();
-    document.execCommand(name);
-  }
-
-  function insertTable() {
-    editorRef.current?.focus();
-    const cells = "<td>&nbsp;</td><td>&nbsp;</td>";
-    document.execCommand(
-      "insertHTML",
-      false,
-      `<table><tbody><tr>${cells}</tr><tr>${cells}</tr></tbody></table><p></p>`,
-    );
-  }
+  const changed = texts.filter((t, i) => t !== original[i]).length;
 
   async function save() {
-    if (!editorRef.current) return;
     setSaving(true);
     try {
-      const blob = await htmlToDocxBlob(editorRef.current.innerHTML);
+      const buffer = applyDocxParagraphEdits(source, texts);
       const name = fileName.toLowerCase().endsWith(".docx") ? fileName : `${fileName}.docx`;
-      await onSave(new File([blob], name, { type: blob.type }));
+      await onSave(new File([buffer], name, { type: DOCX_MIME }));
       onClose();
     } catch (e) {
       toast.error("Không lưu được nội dung mẫu", { description: (e as Error).message });
@@ -77,9 +52,6 @@ export function TemplateContentEditor({
     }
   }
 
-  const tool =
-    "inline-flex size-8 items-center justify-center rounded-md border border-input hover:bg-accent";
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4">
       <div className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-lg">
@@ -87,7 +59,7 @@ export function TemplateContentEditor({
           <div className="min-w-0">
             <h2 className="truncate text-sm font-semibold">Chỉnh sửa nội dung mẫu: {title}</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Gõ trực tiếp vào văn bản. Chỗ trống viết dạng {"{{TEN_CHO_TRONG}}"} hoặc [[Ten_cho_trong]].
+              Mỗi ô là một đoạn trong file Word. Chỗ trống viết dạng {"{{TEN_CHO_TRONG}}"} hoặc [[Ten_cho_trong]].
             </p>
           </div>
           <Button variant="ghost" size="icon" aria-label="Đóng" onClick={onClose}>
@@ -95,58 +67,56 @@ export function TemplateContentEditor({
           </Button>
         </header>
 
-        <div className="flex items-start gap-2 border-b border-border bg-warning/10 px-5 py-2 text-xs">
-          <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warning" />
-          <span>
-            Khi lưu, một số định dạng phức tạp của file Word gốc (ảnh/logo, khung nền, canh lề chi
-            tiết, kiểu bảng đặc biệt, đầu/chân trang) có thể bị đơn giản hoá hoặc mất. Nếu cần giữ
-            nguyên 100% định dạng, hãy sửa trong Word rồi dùng "Thay file Word".
+        <div className="flex items-start justify-between gap-3 border-b border-border bg-muted/50 px-5 py-2 text-xs">
+          <span className="flex items-start gap-2">
+            <Info className="mt-0.5 size-3.5 shrink-0" />
+            Định dạng gốc (phông chữ, canh lề, bảng, logo, đầu/chân trang) được giữ nguyên. Muốn thêm/xoá
+            đoạn, đổi bố cục hay định dạng thì sửa trong Word rồi dùng "Thay file Word".
           </span>
+          <label className="flex shrink-0 items-center gap-1.5">
+            <input type="checkbox" checked={showEmpty} onChange={(e) => setShowEmpty(e.target.checked)} />
+            Hiện đoạn trống
+          </label>
         </div>
 
-        <div className="flex flex-wrap gap-1.5 border-b border-border px-5 py-2">
-          <button type="button" className={tool} title="In đậm" onMouseDown={(e) => { e.preventDefault(); cmd("bold"); }}>
-            <Bold className="size-4" />
-          </button>
-          <button type="button" className={tool} title="In nghiêng" onMouseDown={(e) => { e.preventDefault(); cmd("italic"); }}>
-            <Italic className="size-4" />
-          </button>
-          <button type="button" className={tool} title="Gạch chân" onMouseDown={(e) => { e.preventDefault(); cmd("underline"); }}>
-            <Underline className="size-4" />
-          </button>
-          <button type="button" className={tool} title="Danh sách gạch đầu dòng" onMouseDown={(e) => { e.preventDefault(); cmd("insertUnorderedList"); }}>
-            <List className="size-4" />
-          </button>
-          <button type="button" className={tool} title="Danh sách đánh số" onMouseDown={(e) => { e.preventDefault(); cmd("insertOrderedList"); }}>
-            <ListOrdered className="size-4" />
-          </button>
-          <button type="button" className={tool} title="Chèn bảng 2×2" onMouseDown={(e) => { e.preventDefault(); insertTable(); }}>
-            <TableIcon className="size-4" />
-          </button>
-        </div>
-
-        <div className="relative min-h-0 flex-1 overflow-y-auto bg-muted/40 p-5">
-          {loading ? (
-            <p className="absolute inset-0 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+        <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto bg-muted/30 p-5">
+          {original.length === 0 ? (
+            <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" /> Đang mở nội dung mẫu…
             </p>
           ) : null}
-          <div
-            ref={editorRef}
-            contentEditable={!loading && !saving}
-            suppressContentEditableWarning
-            className="mx-auto min-h-[60vh] max-w-[820px] rounded-md border border-border bg-background p-8 text-sm leading-relaxed shadow-sm outline-none focus:ring-2 focus:ring-ring [&_h1]:mb-3 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mb-2 [&_h2]:font-semibold [&_ol]:ml-6 [&_ol]:list-decimal [&_p]:mb-2 [&_table]:my-2 [&_table]:w-full [&_td]:border [&_td]:border-border [&_td]:p-1.5 [&_ul]:ml-6 [&_ul]:list-disc"
-          />
+          {texts.map((text, i) =>
+            !showEmpty && !(original[i] ?? "").trim() && !text.trim() ? null : (
+              <div key={i} className="flex items-start gap-2">
+                <span className="w-8 shrink-0 pt-2 text-right text-[10px] text-muted-foreground">{i + 1}</span>
+                <textarea
+                  value={text}
+                  disabled={saving}
+                  rows={Math.max(1, Math.ceil(text.length / 95))}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\n/g, " ");
+                    setTexts((prev) => prev.map((t, j) => (j === i ? v : t)));
+                  }}
+                  className={`w-full resize-y rounded-md border bg-background px-2.5 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring ${
+                    text !== original[i] ? "border-primary" : "border-input"
+                  }`}
+                />
+              </div>
+            ),
+          )}
         </div>
 
-        <footer className="flex justify-end gap-2 border-t border-border px-5 py-3">
-          <Button variant="outline" onClick={onClose} disabled={saving}>
-            Huỷ
-          </Button>
-          <Button onClick={() => void save()} disabled={loading || saving}>
-            {saving ? <Loader2 className="animate-spin" /> : <Save />}
-            Lưu thành file Word
-          </Button>
+        <footer className="flex items-center justify-between gap-2 border-t border-border px-5 py-3">
+          <span className="text-xs text-muted-foreground">{changed} đoạn đã sửa</span>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose} disabled={saving}>
+              Huỷ
+            </Button>
+            <Button onClick={() => void save()} disabled={saving || changed === 0}>
+              {saving ? <Loader2 className="animate-spin" /> : <Save />}
+              Lưu vào file Word
+            </Button>
+          </div>
         </footer>
       </div>
     </div>
