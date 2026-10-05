@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DateField, formatVnDate, parseVnDate } from "@/components/DateField";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenders } from "@/hooks/useData";
-import { formatThousands, parseThousands } from "@/lib/money";
+import { formatThousands, parseThousands, readVietnameseMoney } from "@/lib/money";
 
 export type EditableContract = {
   id: string;
