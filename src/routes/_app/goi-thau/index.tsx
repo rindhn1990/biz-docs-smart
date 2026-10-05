@@ -13,6 +13,7 @@ import { TENDER_METHODS, methodLabel, DEFAULT_METHOD, type TenderMethod } from "
 import { TENDER_STATUS } from "@/lib/domain";
 import { formatMoney } from "@/lib/tender";
 import { formatDateTime } from "@/lib/format";
+import { formatThousands, parseThousands, readVietnameseMoney } from "@/lib/money";
 
 export const Route = createFileRoute("/_app/goi-thau/")({
   head: () => ({
@@ -110,7 +111,7 @@ function TenderCasesPage() {
           name: form.name.trim(),
           code: form.code.trim() || null,
           method: form.method,
-          package_value: form.package_value ? Number(form.package_value) : null,
+          package_value: parseThousands(form.package_value),
           funding_source: form.funding_source.trim() || null,
           location: form.location.trim() || null,
           status: "preparing",
@@ -234,11 +235,14 @@ function TenderCasesPage() {
             <Field label="Giá gói thầu (VNĐ)">
               <input
                 value={form.package_value}
-                onChange={(e) => setForm({ ...form, package_value: e.target.value })}
-                className="input"
+                onChange={(e) => setForm({ ...form, package_value: formatThousands(e.target.value) })}
+                className="input text-right"
                 inputMode="numeric"
-                placeholder="8900000000"
+                placeholder="8.900.000.000"
               />
+              <span className="mt-1 block text-xs italic text-muted-foreground">
+                Bằng chữ: {form.package_value ? readVietnameseMoney(form.package_value) : "—"}
+              </span>
             </Field>
             <Field label="Nguồn vốn">
               <input

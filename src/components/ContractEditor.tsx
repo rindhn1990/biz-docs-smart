@@ -180,6 +180,9 @@ export function ContractEditor({
               value={value}
               onChange={(e) => setValue(formatThousands(e.target.value))}
             />
+            <span className="mt-1 block text-xs italic text-muted-foreground">
+              Bằng chữ: {value ? readVietnameseMoney(value) : "—"}
+            </span>
           </label>
           <label className="md:col-span-2">
             <span className={label}>Tên hợp đồng</span>
