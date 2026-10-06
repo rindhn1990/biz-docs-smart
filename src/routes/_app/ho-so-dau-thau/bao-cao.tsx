@@ -19,6 +19,7 @@ import { DocsTabs } from "@/components/DocsTabs";
 import { KpiCard } from "@/components/KpiCard";
 import { supabase } from "@/integrations/supabase/client";
 import { DOC_STATUS } from "@/lib/domain";
+import { TenderSelect, filterByTender, useTenderFilter } from "@/components/TenderFilter";
 
 export const Route = createFileRoute("/_app/ho-so-dau-thau/bao-cao")({
   head: () => ({
@@ -54,12 +55,13 @@ function monthKey(iso: string) {
 }
 
 function ReportPage() {
+  const [tenderFilter, setTenderFilter] = useTenderFilter();
   const documents = useQuery({
     queryKey: ["report", "documents"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("documents")
-        .select("id,file_name,status,doc_type,created_at")
+        .select("id,file_name,status,doc_type,created_at,tender_id")
         .order("created_at");
       if (error) throw error;
       return data;
@@ -71,14 +73,20 @@ function ReportPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("document_fields")
-        .select("id,confidence,needs_review,value");
+        .select("id,confidence,needs_review,value,document_id");
       if (error) throw error;
       return data;
     },
   });
 
-  const docs = useMemo(() => documents.data ?? [], [documents.data]);
-  const fieldRows = useMemo(() => fields.data ?? [], [fields.data]);
+  const docs = useMemo(
+    () => filterByTender(documents.data ?? [], tenderFilter),
+    [documents.data, tenderFilter],
+  );
+  const fieldRows = useMemo(() => {
+    const ids = new Set(docs.map((d) => d.id));
+    return (fields.data ?? []).filter((f) => ids.has(f.document_id));
+  }, [fields.data, docs]);
 
   const byStatus = useMemo(
     () =>
@@ -157,6 +165,8 @@ function ReportPage() {
         title="Báo cáo hồ sơ đấu thầu"
         description="Tổng hợp số lượng hồ sơ theo trạng thái, tiến độ xử lý theo tháng và chất lượng dữ liệu nhận dạng."
         actions={
+          <div className="flex flex-wrap items-center gap-2">
+          <TenderSelect value={tenderFilter} onChange={setTenderFilter} />
           <button
             type="button"
             onClick={exportCsv}
@@ -165,6 +175,7 @@ function ReportPage() {
             <Download className="size-4" />
             Xuất báo cáo (Excel/CSV)
           </button>
+          </div>
         }
       />
       <DocsTabs />

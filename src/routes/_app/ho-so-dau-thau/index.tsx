@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Upload, Loader2, ChevronRight } from "lucide-react";
@@ -16,8 +16,12 @@ import { KHLCNT_DOC_TYPE, KHLCNT_FIELDS, TENDER_DOC_TYPES } from "@/lib/khlcnt";
 import { formatDateTime } from "@/lib/format";
 import { docxPlainText, matchLabeledValues } from "@/lib/docx";
 import { toStorageKey } from "@/lib/utils";
+import { TenderSelect, filterByTender, useTenderFilter, ALL_TENDERS, NO_TENDER } from "@/components/TenderFilter";
 
 export const Route = createFileRoute("/_app/ho-so-dau-thau/")({
+  validateSearch: (search: Record<string, unknown>): { tender?: string | undefined } => ({
+    tender: typeof search["tender"] === "string" ? (search["tender"] as string) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Hồ sơ đấu thầu — OfficeFlow" },
@@ -54,7 +58,33 @@ function useDocumentList() {
 function DocumentsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user, canWrite } = useAuth();
+  const { user, canWrite, isAdmin } = useAuth();
+  const { tender: tenderFromUrl } = Route.useSearch();
+  const [tenderFilter, setTenderFilter] = useTenderFilter();
+  const [uploadTender, setUploadTender] = useState<string>("");
+  const [assigning, setAssigning] = useState<string | null>(null);
+  useEffect(() => {
+    if (tenderFromUrl) {
+      setTenderFilter(tenderFromUrl);
+      setUploadTender(tenderFromUrl);
+    } else if (tenderFilter !== ALL_TENDERS && tenderFilter !== NO_TENDER) {
+      setUploadTender((v) => v || tenderFilter);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenderFromUrl, tenderFilter]);
+
+  async function assignTender(docId: string, tenderId: string) {
+    if (!tenderId) return;
+    const { error } = await supabase.from("documents").update({ tender_id: tenderId }).eq("id", docId);
+    if (error) {
+      toast.error("Không gán được gói thầu", { description: error.message });
+      return;
+    }
+    setAssigning(null);
+    toast.success("Đã gán hồ sơ vào gói thầu");
+    void queryClient.invalidateQueries({ queryKey: ["documents"] });
+    void queryClient.invalidateQueries({ queryKey: ["data_documents"] });
+  }
   const documents = useDocumentList();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [docType, setDocType] = useState<string>("ho_so_du_thau");
@@ -93,6 +123,7 @@ function DocumentsPage() {
           folder: isKhlcnt ? "01_To_trinh" : "02_Ho_so_du_thau",
           doc_type: docType,
           status: "new",
+          tender_id: uploadTender || null,
           page_count: isKhlcnt ? 3 : 12,
           created_by: user?.id ?? null,
           updated_by: user?.id ?? null,
@@ -167,7 +198,7 @@ function DocumentsPage() {
     },
   });
 
-  const rows = documents.data ?? [];
+  const rows = filterByTender(documents.data ?? [], tenderFilter);
 
   function filesLabel(count: number) {
     return `${count} hồ sơ`;
@@ -192,6 +223,12 @@ function DocumentsPage() {
                 if (files.length) upload.mutate(files);
               }}
             />
+            <TenderSelect
+              value={uploadTender}
+              onChange={setUploadTender}
+              includeAll={false}
+              placeholder="— Gói thầu cho hồ sơ tải lên —"
+            />
             <select
               value={docType}
               onChange={(e) => setDocType(e.target.value)}
@@ -206,7 +243,13 @@ function DocumentsPage() {
             <button
               type="button"
               disabled={!canWrite || upload.isPending}
-              onClick={() => fileInput.current?.click()}
+              onClick={() => {
+                if (!uploadTender) {
+                  toast.error("Hãy chọn gói thầu cho hồ sơ trước khi tải lên");
+                  return;
+                }
+                fileInput.current?.click();
+              }}
               className="inline-flex items-center gap-2 rounded-md bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               {upload.isPending ? (
@@ -220,7 +263,10 @@ function DocumentsPage() {
         }
       />
       <DocsTabs />
-
+      <div className="mb-4 flex items-center gap-2 text-sm">
+        <span className="text-muted-foreground">Lọc theo gói thầu:</span>
+        <TenderSelect value={tenderFilter} onChange={setTenderFilter} />
+      </div>
 
       {!canWrite ? (
         <p className="mb-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning-foreground">
@@ -277,8 +323,32 @@ function DocumentsPage() {
                         <span className="max-w-[280px] truncate font-medium">{row.file_name}</span>
                       </div>
                     </td>
-                    <td className="max-w-[220px] truncate px-4 py-3 text-muted-foreground">
-                      {row.tenders?.code ? `${row.tenders.code} · ${row.tenders.name}` : "—"}
+                    <td
+                      className="max-w-[240px] truncate px-4 py-3 text-muted-foreground"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {row.tenders ? (
+                        `${row.tenders.code ? `${row.tenders.code} · ` : ""}${row.tenders.name}`
+                      ) : isAdmin ? (
+                        assigning === row.id ? (
+                          <TenderSelect
+                            value=""
+                            includeAll={false}
+                            onChange={(v) => void assignTender(row.id, v)}
+                            className="max-w-[220px] rounded-md border border-input bg-background px-2 py-1 text-xs"
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setAssigning(row.id)}
+                            className="rounded-md border border-input px-2 py-1 text-xs font-medium text-foreground hover:bg-accent"
+                          >
+                            Gán vào gói thầu
+                          </button>
+                        )
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                       {formatDateTime(row.created_at)}
