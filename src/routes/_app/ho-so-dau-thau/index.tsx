@@ -19,7 +19,7 @@ import { toStorageKey } from "@/lib/utils";
 import { TenderSelect, filterByTender, useTenderFilter, ALL_TENDERS, NO_TENDER } from "@/components/TenderFilter";
 
 export const Route = createFileRoute("/_app/ho-so-dau-thau/")({
-  validateSearch: (search: Record<string, unknown>): { tender?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { tender?: string | undefined } => ({
     tender: typeof search["tender"] === "string" ? (search["tender"] as string) : undefined,
   }),
   head: () => ({
