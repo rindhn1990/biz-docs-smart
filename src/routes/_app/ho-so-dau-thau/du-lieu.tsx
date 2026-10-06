@@ -27,6 +27,7 @@ import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods
 import { renderAndDownloadDocx, type DelimiterStyle } from "@/lib/docx";
 import { recordExport } from "@/lib/export-history";
 import { cn } from "@/lib/utils";
+import { TenderSelect, filterByTender, useTenderFilter } from "@/components/TenderFilter";
 
 export const Route = createFileRoute("/_app/ho-so-dau-thau/du-lieu")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -55,6 +56,7 @@ function DataPage() {
   const { canWrite, isAdmin, user, profile } = useAuth();
   const queryClient = useQueryClient();
   const [docId, setDocId] = useState<string | null>(null);
+  const [tenderFilter, setTenderFilter] = useTenderFilter();
   const [method, setMethod] = useState<TenderMethod>(DEFAULT_METHOD);
   const [exporting, setExporting] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -81,16 +83,21 @@ function DataPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("documents")
-        .select("id,file_name,status,created_at")
+        .select("id,file_name,status,created_at,tender_id")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
   });
 
-  const list = docs.data ?? [];
-  const fromUrl = doc && list.some((d) => d.id === doc) ? doc : null;
-  const currentId = docId ?? fromUrl ?? list[0]?.id ?? null;
+  const allDocs = docs.data ?? [];
+  const urlDoc = doc ? allDocs.find((d) => d.id === doc) : undefined;
+  const list = filterByTender(allDocs, tenderFilter).length || !urlDoc
+    ? filterByTender(allDocs, tenderFilter)
+    : [urlDoc];
+  const fromUrl = urlDoc && list.some((d) => d.id === urlDoc.id) ? urlDoc.id : null;
+  const currentId =
+    (docId && list.some((d) => d.id === docId) ? docId : null) ?? fromUrl ?? list[0]?.id ?? null;
 
   const fields = useQuery({
     queryKey: ["document_fields", currentId],
