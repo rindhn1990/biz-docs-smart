@@ -272,6 +272,7 @@ export function TemplateRegionPicker({
           sort_order: (last?.sort_order ?? 0) + 1,
         });
         if (insErr) throw insErr;
+        if (module === "tender") await addFieldToTenderDocuments(key, label.trim() || prettifyPlaceholder(key));
       }
 
       setHtml(await docxToHtml(buffer.slice(0)));
@@ -463,4 +464,35 @@ export function TemplateRegionPicker({
       </div>
     </div>
   );
+}
+
+/**
+ * Vùng dữ liệu mới của mẫu đấu thầu: thêm ngay trường trống (cần kiểm tra) vào mọi hồ sơ
+ * đấu thầu còn thiếu trường này. Mẫu dùng chung cho mọi gói thầu nên áp dụng toàn bộ hồ sơ.
+ */
+async function addFieldToTenderDocuments(key: string, label: string) {
+  const { data: docs } = await supabase.from("documents").select("id");
+  const ids = (docs ?? []).map((d) => d.id);
+  if (ids.length === 0) return;
+  const { data: have } = await supabase
+    .from("document_fields")
+    .select("document_id")
+    .eq("field_key", key)
+    .in("document_id", ids);
+  const done = new Set((have ?? []).map((r) => r.document_id));
+  const missing = ids.filter((id) => !done.has(id));
+  if (missing.length === 0) return;
+  const { error } = await supabase.from("document_fields").insert(
+    missing.map((id) => ({
+      document_id: id,
+      field_key: key,
+      label,
+      value: null,
+      confidence: 0.3,
+      needs_review: true,
+      field_group: "Khác",
+      sort_order: 999,
+    })),
+  );
+  if (error) toast.warning("Chưa thêm được trường mới vào hồ sơ", { description: error.message });
 }

@@ -92,9 +92,14 @@ function DataPage() {
 
   const allDocs = docs.data ?? [];
   const urlDoc = doc ? allDocs.find((d) => d.id === doc) : undefined;
-  const list = filterByTender(allDocs, tenderFilter).length || !urlDoc
-    ? filterByTender(allDocs, tenderFilter)
-    : [urlDoc];
+  const list = filterByTender(allDocs, tenderFilter);
+  // Mở từ đường dẫn tới một hồ sơ cụ thể: chuyển bộ lọc sang gói thầu của hồ sơ đó.
+  useEffect(() => {
+    if (urlDoc && !list.some((d) => d.id === urlDoc.id)) {
+      setTenderFilter(urlDoc.tender_id ?? "none");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlDoc?.id, tenderFilter]);
   const fromUrl = urlDoc && list.some((d) => d.id === urlDoc.id) ? urlDoc.id : null;
   const currentId =
     (docId && list.some((d) => d.id === docId) ? docId : null) ?? fromUrl ?? list[0]?.id ?? null;
@@ -440,6 +445,14 @@ function DataPage() {
         title="Dữ liệu"
         description="Toàn bộ dữ liệu máy đọc được của một hồ sơ, gom theo nhóm để đối chiếu và sửa nhanh, sau đó xuất thẳng ra văn bản Word."
         actions={
+          <div className="flex flex-wrap items-center gap-2">
+          <TenderSelect
+            value={tenderFilter}
+            onChange={(v) => {
+              setTenderFilter(v);
+              setDocId(null);
+            }}
+          />
           <select
             value={currentId ?? ""}
             onChange={(e) => setDocId(e.target.value)}
@@ -453,6 +466,7 @@ function DataPage() {
               </option>
             ))}
           </select>
+          </div>
         }
       />
       <DocsTabs />
