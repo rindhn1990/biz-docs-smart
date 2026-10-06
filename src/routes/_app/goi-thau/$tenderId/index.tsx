@@ -109,9 +109,19 @@ function TenderCaseDetail() {
         title={t.name}
         description={`${t.code ?? "Chưa có mã"} · ${methodLabel(t.method)} · ${formatMoney(t.package_value)} · đã duyệt ${done}/${list.length} bước`}
         actions={
-          <StatusBadge tone={TENDER_STATUS[t.status]?.tone}>
-            {TENDER_STATUS[t.status]?.label ?? t.status}
-          </StatusBadge>
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge tone={TENDER_STATUS[t.status]?.tone}>
+              {TENDER_STATUS[t.status]?.label ?? t.status}
+            </StatusBadge>
+            <Link
+              to="/ho-so-dau-thau"
+              search={{ tender: tenderId }}
+              className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              <FolderOpen className="size-4" />
+              Xem hồ sơ
+            </Link>
+          </div>
         }
       />
 
