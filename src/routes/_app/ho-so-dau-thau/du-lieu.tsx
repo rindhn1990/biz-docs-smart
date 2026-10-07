@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Eye, FileText, Loader2, Plus, ScanLine } from "lucide-react";
+import { Download, Eye, FileText, Loader2, Plus, RotateCcw, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/PageHeader";
 import { DocsTabs } from "@/components/DocsTabs";
 import { EmptyState } from "@/components/EmptyState";
-import { FieldGroupEditor, type FieldRow } from "@/components/FieldGroupEditor";
+import { FieldGroupEditor, flushPendingFieldSaves, type FieldRow } from "@/components/FieldGroupEditor";
 import { ScanFileDialog } from "@/components/ScanFileDialog";
 import { DocxPreviewDialog } from "@/components/DocxPreviewDialog";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
@@ -334,8 +334,19 @@ function DataPage() {
       .select("placeholder,source_field,value")
       .eq("template_id", tpl.id);
 
+    /** Đợi mọi ô vừa sửa lưu xong, rồi đọc thẳng từ CSDL để không dùng dữ liệu cũ trong bộ nhớ đệm. */
+    await flushPendingFieldSaves();
+    let current: { field_key: string; value: string | null }[] = rows;
+    if (currentId) {
+      const fresh = await supabase
+        .from("document_fields")
+        .select("field_key,value")
+        .eq("document_id", currentId);
+      if (fresh.error) throw fresh.error;
+      current = fresh.data ?? [];
+    }
     const byKey: Record<string, string> = {};
-    for (const f of rows) if (f.value) byKey[f.field_key] = f.value;
+    for (const f of current) if (f.value?.trim()) byKey[f.field_key] = f.value;
 
     /** Dữ liệu của hồ sơ đang chọn được ưu tiên; ánh xạ tay chỉ dùng khi hồ sơ trống. */
     const values: Record<string, string> = {};
@@ -400,10 +411,9 @@ function DataPage() {
   /** Đưa toàn bộ giá trị của hồ sơ về trống để chuẩn bị nhập hồ sơ mới. */
   async function resetForm() {
     if (!currentId) return;
-    const { error } = await supabase
-      .from("document_fields")
-      .update({ value: null })
-      .eq("document_id", currentId);
+    await flushPendingFieldSaves();
+    /** Chỉ làm trống hồ sơ này — không lan sang hồ sơ khác cùng gói thầu. */
+    const { error } = await supabase.rpc("reset_document_fields", { _document_id: currentId });
     if (error) {
       toast.error("Không làm mới được biểu mẫu", { description: error.message });
       return;
@@ -496,6 +506,21 @@ function DataPage() {
                     <Plus className="size-3.5" />
                     Thêm trường
                   </button>
+                  <ConfirmDelete
+                    title="Reset dữ liệu hồ sơ về mặc định?"
+                    description="Toàn bộ giá trị trường của hồ sơ đang mở sẽ được đưa về trống (chỉ hồ sơ này, các hồ sơ khác cùng gói thầu không bị ảnh hưởng). Dữ liệu đã xuất trước đó vẫn còn trong Lịch sử xuất file."
+                    confirmLabel="Reset về mặc định"
+                    onConfirm={() => resetForm()}
+                  >
+                    <button
+                      type="button"
+                      disabled={!rows.some((r) => r.value)}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-50"
+                    >
+                      <RotateCcw className="size-3.5" />
+                      Reset về mặc định
+                    </button>
+                  </ConfirmDelete>
                   {isAdmin ? (
                     <button
                       type="button"
