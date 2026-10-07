@@ -49,6 +49,7 @@ export const Route = createFileRoute("/_app/mau-van-ban")({
         : search["module"] === "payment"
           ? ("payment" as const)
           : ("tender" as const),
+    tpl: typeof search["tpl"] === "string" ? (search["tpl"] as string) : undefined,
   }),
   head: () => ({
     meta: [
@@ -81,10 +82,10 @@ type Mapping = {
 const ADMIN_ONLY_NOTE = "Chỉ quản trị viên được chỉnh sửa mẫu";
 
 function TemplatesPage() {
-  const { module } = Route.useSearch();
+  const { module, tpl } = Route.useSearch();
   const queryClient = useQueryClient();
   const { user, isAdmin } = useAuth();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(tpl ?? null);
   const [method, setMethod] = useState<TenderMethod>(DEFAULT_METHOD);
   const [busy, setBusy] = useState<"upload" | "export" | "replace" | "delete" | null>(null);
   const [adding, setAdding] = useState(false);
