@@ -269,22 +269,31 @@ export function FieldRowEditor({
 
   const shownValue = autoFilled ? (derivedValue ?? value) : value;
 
-  const save = async (next: string) => {
-    if ((field.value ?? "") === next) return;
+  /**
+   * Thứ tự an toàn: ghi giá trị của hồ sơ đang mở trước (CSDL tự đồng bộ đúng giá trị này
+   * sang hồ sơ khác cùng gói thầu), rồi cập nhật ngay bộ nhớ đệm bằng chính giá trị vừa lưu,
+   * không phụ thuộc vào lần tải lại có thể còn cũ.
+   */
+  const save = (next: string) => {
+    if ((field.value ?? "") === next) return Promise.resolve();
+    return trackFieldSave(doSave(next));
+  };
+
+  const doSave = async (next: string) => {
     setSaving(true);
+    const saved = next || null;
     const { error } = await supabase
       .from("document_fields")
-      .update({ value: next || null })
+      .update({ value: saved })
       .eq("id", field.id);
 
+    let words: string | null | undefined;
     /** Số tiền bằng chữ luôn bám theo số tiền bằng số vừa nhập. */
     if (!error && isMoney && textField) {
-      const words = readVietnameseMoney(next);
-      if ((textField.value ?? "") !== words) {
-        await supabase
-          .from("document_fields")
-          .update({ value: words || null })
-          .eq("id", textField.id);
+      const w = readVietnameseMoney(next) || null;
+      if ((textField.value ?? null) !== w) {
+        const r = await supabase.from("document_fields").update({ value: w }).eq("id", textField.id);
+        if (!r.error) words = w;
       }
     }
 
@@ -293,7 +302,15 @@ export function FieldRowEditor({
       toast.error("Không lưu được thay đổi", { description: error.message });
       return;
     }
-    void queryClient.invalidateQueries({ queryKey: ["document_fields", field.document_id] });
+    queryClient.setQueryData<FieldRow[]>(["document_fields", field.document_id], (old) =>
+      old?.map((r) =>
+        r.id === field.id
+          ? { ...r, value: saved }
+          : textField && words !== undefined && r.id === textField.id
+            ? { ...r, value: words }
+            : r,
+      ),
+    );
   };
 
   /** Cập nhật giá trị và hẹn giờ lưu; ô tiền còn phát ngay phần "bằng chữ". */
