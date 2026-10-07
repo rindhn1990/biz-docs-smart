@@ -1864,6 +1864,7 @@ export type Database = {
     }
     Functions: {
       complete_password_change: { Args: never; Returns: undefined }
+      reset_document_fields: { Args: { _document_id: string }; Returns: number }
     }
     Enums: {
       app_role:
