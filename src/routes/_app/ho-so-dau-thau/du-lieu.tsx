@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, Eye, FileText, Loader2, Plus, RotateCcw, ScanLine } from "lucide-react";
 import { toast } from "sonner";
+import { TemplateMissingBadge } from "@/components/TemplateMissingBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/PageHeader";
@@ -685,6 +686,7 @@ function DataPage() {
                       <FileText className="size-4 shrink-0 text-primary" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">{t.name}</span>
+                        <TemplateMissingBadge templateId={t.id} module="tender" />
                         {t.description ? (
                           <span className="block truncate text-xs text-muted-foreground">
                             {t.description}

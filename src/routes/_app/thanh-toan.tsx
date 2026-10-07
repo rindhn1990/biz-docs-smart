@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { AlertTriangle, Download, Eye, FileText, Loader2, Receipt, ScanLine } from "lucide-react";
 import { toast } from "sonner";
+import { TemplateMissingBadge } from "@/components/TemplateMissingBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -543,6 +544,7 @@ function PaymentsPage() {
                     <FileText className="size-4 shrink-0 text-primary" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium">{t.name}</span>
+                        <TemplateMissingBadge templateId={t.id} module="payment" />
                       {t.description ? (
                         <span className="block truncate text-xs text-muted-foreground">
                           {t.description}
