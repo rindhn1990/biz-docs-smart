@@ -2,9 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, Eye, FileText, Loader2, Plus, RotateCcw, ScanLine } from "lucide-react";
-...
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { PageHeader } from "@/components/PageHeader";
+import { DocsTabs } from "@/components/DocsTabs";
+import { EmptyState } from "@/components/EmptyState";
 import { FieldGroupEditor, flushPendingFieldSaves, type FieldRow } from "@/components/FieldGroupEditor";
-import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { ScanFileDialog } from "@/components/ScanFileDialog";
 import { DocxPreviewDialog } from "@/components/DocxPreviewDialog";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
