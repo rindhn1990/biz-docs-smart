@@ -49,6 +49,19 @@ export function confidenceStyle(c: number) {
 }
 
 /** Gom các trường theo field_group, xếp đúng thứ tự nghiệp vụ (Căn cứ → Khác). */
+/** Các lần lưu trường đang chạy — xuất file phải đợi hết trước khi đọc dữ liệu. */
+const pendingSaves = new Set<Promise<void>>();
+function trackFieldSave(p: Promise<void>) {
+  pendingSaves.add(p);
+  void p.finally(() => pendingSaves.delete(p));
+  return p;
+}
+export async function flushPendingFieldSaves() {
+  // Cho sự kiện rời ô (blur) kịp phát lệnh lưu trước khi đợi.
+  await new Promise((r) => setTimeout(r, 0));
+  while (pendingSaves.size) await Promise.allSettled([...pendingSaves]);
+}
+
 export function useGroupedFields(rows: FieldRow[]) {
   return useMemo<[string | null, FieldRow[]][]>(() => {
     if (!rows.some((f) => f.field_group)) return [[null, rows]];
