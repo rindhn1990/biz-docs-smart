@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ShieldAlert, Clock, Loader2, LogOut, Menu, UserRound } from "lucide-react";
+import { ShieldAlert, Clock, Loader2, LogOut, PanelLeft, UserRound } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { ForceChangePassword } from "@/components/ForceChangePassword";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -30,6 +30,43 @@ function AppLayout() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
+  const [sidebarHidden, setSidebarHidden] = useState(false);
+
+  useEffect(() => {
+    try {
+      setSidebarHidden(localStorage.getItem("officeflow:sidebar-hidden") === "1");
+    } catch {
+      /* mặc định hiện */
+    }
+  }, []);
+
+  const toggleSidebar = () => {
+    if (typeof window !== "undefined" && !window.matchMedia("(min-width: 1024px)").matches) {
+      setOpen((o) => !o);
+      return;
+    }
+    setSidebarHidden((h) => {
+      const next = !h;
+      try {
+        localStorage.setItem("officeflow:sidebar-hidden", next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "b" || e.altKey || e.shiftKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      e.preventDefault();
+      toggleSidebar();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   useEffect(() => {
     if (!loading && !session) {
@@ -89,18 +126,29 @@ function AppLayout() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <div className="sticky top-0 hidden h-screen lg:block">
-        <AppSidebar />
+      <div
+        className={`sticky top-0 hidden h-screen shrink-0 overflow-hidden transition-[width] duration-200 ease-out lg:block ${
+          sidebarHidden ? "w-0" : "w-64"
+        }`}
+        aria-hidden={sidebarHidden}
+      >
+        <div className="h-full w-64">
+          <AppSidebar />
+        </div>
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-card/95 px-4 backdrop-blur">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            title={`${sidebarHidden ? "Hiện" : "Ẩn"} thanh điều hướng (Ctrl+B / ⌘B)`}
+            aria-label="Ẩn/hiện thanh điều hướng"
+          >
+            <PanelLeft className="size-5" />
+          </Button>
           <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden">
-                <Menu className="size-5" />
-              </Button>
-            </SheetTrigger>
             <SheetContent side="left" className="w-64 border-0 bg-sidebar p-0">
               <SheetTitle className="sr-only">Điều hướng</SheetTitle>
               <AppSidebar onNavigate={() => setOpen(false)} />
