@@ -306,7 +306,7 @@ function PaymentsPage() {
         actions={
           <Link
             to="/mau-van-ban"
-            search={{ module: "payment" as const }}
+            search={{ module: "payment" as const, tpl: undefined }}
             className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3.5 py-2 text-sm font-medium transition-colors hover:bg-accent"
           >
             <FileText className="size-4" />
