@@ -122,6 +122,13 @@ function TemplatesPage() {
       ),
     [templates.data, method, module],
   );
+
+  // Khi mở từ nhãn cảnh báo (có tpl), tự chuyển tab hình thức sang đúng hình thức của mẫu đó.
+  useEffect(() => {
+    if (!tpl || module !== "tender") return;
+    const t = (templates.data ?? []).find((x) => x.id === tpl);
+    if (t?.method && t.method !== method) setMethod(t.method as TenderMethod);
+  }, [tpl, module, templates.data, method]);
   const currentId = list.some((t) => t.id === selectedId) ? selectedId : (list[0]?.id ?? null);
 
   const mappings = useQuery({
