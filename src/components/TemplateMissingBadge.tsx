@@ -2,18 +2,25 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { loadInheritedSources, moduleSourceFields, resolveSource } from "@/lib/template-resolve";
 
-/** Đếm vùng "Nhập tay" chưa có giá trị trên một mẫu; bấm để mở mẫu trong kho. */
+/**
+ * Đếm vùng sẽ thực sự ra trống khi xuất: chưa có nguồn, không có giá trị cố định,
+ * và không tự khớp tên/kế thừa nguồn được. Bấm để mở mẫu trong kho.
+ */
 export function TemplateMissingBadge({ templateId, module }: { templateId: string; module: "tender" | "hr" | "payment" }) {
   const q = useQuery({
     queryKey: ["template_mappings", "missing", templateId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("template_mappings")
-        .select("source_field,value")
-        .eq("template_id", templateId);
+      const [{ data, error }, inherited] = await Promise.all([
+        supabase.from("template_mappings").select("placeholder,source_field,value").eq("template_id", templateId),
+        loadInheritedSources(module),
+      ]);
       if (error) throw error;
-      return (data ?? []).filter((m) => !m.source_field && !m.value?.trim()).length;
+      const keys = moduleSourceFields(module).map((f) => f.key);
+      return (data ?? []).filter(
+        (m) => !m.source_field && !m.value?.trim() && !resolveSource(m, keys, inherited),
+      ).length;
     },
   });
   const n = q.data ?? 0;
