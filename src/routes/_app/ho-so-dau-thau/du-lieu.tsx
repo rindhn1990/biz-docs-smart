@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, Eye, FileText, Loader2, Plus, RotateCcw, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import { TemplateMissingBadge } from "@/components/TemplateMissingBadge";
+import { fillMappings, loadInheritedSources } from "@/lib/template-resolve";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/PageHeader";
@@ -349,12 +350,9 @@ function DataPage() {
     const byKey: Record<string, string> = {};
     for (const f of current) if (f.value?.trim()) byKey[f.field_key] = f.value;
 
-    /** Dữ liệu của hồ sơ đang chọn được ưu tiên; ánh xạ tay chỉ dùng khi hồ sơ trống. */
-    const values: Record<string, string> = {};
-    for (const m of mappings ?? []) {
-      const fromDoc = (m.source_field ? byKey[m.source_field] : byKey[m.placeholder])?.trim();
-      values[m.placeholder] = fromDoc || (m.value?.trim() ?? "");
-    }
+    /** Dữ liệu hồ sơ ưu tiên; vùng chưa có nguồn tự khớp tên (không phân biệt hoa/thường) hoặc kế thừa nguồn từ mẫu khác. */
+    const inherited = await loadInheritedSources("tender");
+    const values: Record<string, string> = fillMappings(mappings ?? [], byKey, inherited);
     for (const key of Object.keys(byKey)) values[key] ??= byKey[key]!;
 
     const { data, error } = await supabase.storage.from("templates").download(tpl.source_docx_path);

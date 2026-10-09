@@ -25,6 +25,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { TemplateRegionPicker } from "@/components/TemplateRegionPicker";
 import { TemplateAutoDetect } from "@/components/TemplateAutoDetect";
+import { AutoAssignSources } from "@/components/AutoAssignSources";
 import { TemplateContentEditor } from "@/components/TemplateContentEditor";
 import { Button } from "@/components/ui/button";
 import {
@@ -841,6 +842,14 @@ function TemplatesPage() {
                 </p>
               </div>
               {isAdmin ? (
+                <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+                <AutoAssignSources
+                  rows={rows}
+                  module={module as "tender" | "hr" | "payment"}
+                  onSaved={() => {
+                    void queryClient.invalidateQueries({ queryKey: ["template_mappings"] });
+                  }}
+                />
                 <button
                   type="button"
                   disabled={!currentId}
@@ -850,6 +859,7 @@ function TemplatesPage() {
                   <Plus className="size-3.5" />
                   Thêm chỗ trống
                 </button>
+                </div>
               ) : (
                 <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
                   <Lock className="size-3.5" />
