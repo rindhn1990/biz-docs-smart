@@ -57,13 +57,14 @@ export function readVietnameseMoney(value: number | string | null | undefined): 
 
   const parts: string[] = [];
   for (let i = triples.length - 1; i >= 0; i--) {
-    const t = triples[i]!;
+    const t = triples[i];
+    if (t === undefined) continue;
     if (t === 0) continue;
     const full = i !== triples.length - 1;
     parts.push(`${readTriple(t, full)}${UNITS[i] ?? ""}`);
   }
 
-  const text = parts.join(" ").replace(/\s+/g, " ").trim();
+  const text = parts.join(", ").replace(/\s+/g, " ").trim();
   return `${text.charAt(0).toUpperCase()}${text.slice(1)} đồng`;
 }
 
