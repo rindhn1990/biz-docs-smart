@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { AlertTriangle, Download, Eye, FileText, Loader2, Receipt, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import { TemplateMissingBadge } from "@/components/TemplateMissingBadge";
+import { fillMappings, loadInheritedSources } from "@/lib/template-resolve";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -209,11 +210,8 @@ function PaymentsPage() {
       .select("placeholder,source_field,value")
       .eq("template_id", tpl.id);
 
-    const filled: Record<string, string> = { ...values };
-    for (const m of mappings ?? []) {
-      const fromData = (m.source_field ? values[m.source_field] : values[m.placeholder])?.trim();
-      filled[m.placeholder] = fromData || (m.value?.trim() ?? "");
-    }
+    const inherited = await loadInheritedSources("payment");
+    const filled: Record<string, string> = { ...values, ...fillMappings(mappings ?? [], values, inherited) };
 
     const { data, error } = await supabase.storage.from("templates").download(tpl.source_docx_path);
     if (error) throw error;
