@@ -5,6 +5,8 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
+- [ ] Đồng nhất dấu phẩy trong số tiền bằng chữ; kiểm tra và cập nhật riêng giá trị lưu theo cách đọc cũ, bảo vệ chữ sửa tay.
+
 - [x] App shell, sidebar mode-aware, auth + phân quyền theo vai trò (admin/user), trang Quản trị gán vai trò
 - [x] Hồ sơ đấu thầu: danh sách, review 2 cột (PDF + form), lưu debounce/blur, confidence badge, bbox highlight
 - [x] Mẫu văn bản: 5 tab hình thức, upload .docx, dò placeholder `{{}}`/`[[]]`, thêm/xoá mapping tay, chọn vùng bằng bôi đen văn bản, sửa tên/mô tả/hình thức, thay file Word, xoá mẫu (admin)
