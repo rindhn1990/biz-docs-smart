@@ -4,6 +4,8 @@
  * Mẫu nào không dùng đến trường nào thì trường đó để trống, nhưng bảng dữ liệu
  * của mọi hồ sơ luôn hiển thị đầy đủ các trường dưới đây.
  */
+import { readVietnameseMoney } from "@/lib/money";
+
 export const KHLCNT_DOC_TYPE = "to_trinh_khlcnt";
 
 export const KHLCNT_GROUPS = [
@@ -90,7 +92,7 @@ export const KHLCNT_FIELDS: KhlcntField[] = [
     key: "Gia_goi_thau_text",
     label: "Giá gói thầu (chữ)",
     group: "Thông tin gói thầu",
-    value: "Bốn trăm tám mươi sáu triệu đồng",
+    value: readVietnameseMoney(486000000),
     conf: 0.85,
   },
   {
@@ -293,7 +295,7 @@ export const KHLCNT_FIELDS: KhlcntField[] = [
     key: "Gia_trungthau_text",
     label: "Giá trúng thầu (chữ)",
     group: "KQLCNT",
-    value: "Bốn trăm tám mươi triệu đồng",
+    value: readVietnameseMoney(480000000),
     conf: 0.83,
   },
 
