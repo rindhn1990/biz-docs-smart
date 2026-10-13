@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, Loader2, Plus, Gavel, Trash2 } from "lucide-react";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
+import { clearTenderFilterIf } from "@/components/TenderFilter";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -61,6 +62,18 @@ function TenderCasesPage() {
 
   /** Xoá gói thầu kèm toàn bộ dữ liệu con — chỉ quản trị viên. */
   async function removeCase(id: string) {
+    const [docsRes, exportsRes, contractsRes] = await Promise.all([
+      supabase.from("documents").select("id,storage_path").eq("tender_id", id),
+      supabase.from("export_history").select("id", { count: "exact", head: true }).eq("tender_id", id),
+      supabase.from("contracts").select("id", { count: "exact", head: true }).eq("tender_id", id),
+    ]);
+    if ((contractsRes.count ?? 0) > 0 || (exportsRes.count ?? 0) > 0) {
+      toast.error("Chưa xoá được gói thầu", {
+        description: "Gói thầu còn hợp đồng hoặc lịch sử xuất file liên quan — giữ nguyên như quy định hiện tại.",
+      });
+      return;
+    }
+    const paths = (docsRes.data ?? []).map((d) => d.storage_path).filter(Boolean);
     for (const table of [
       "tender_steps",
       "tender_sources",
@@ -78,8 +91,12 @@ function TenderCasesPage() {
       toast.error("Không xoá được gói thầu", { description: error.message });
       return;
     }
-    void queryClient.invalidateQueries({ queryKey: ["tender_cases"] });
-    toast.success("Đã xoá gói thầu");
+    // Hồ sơ và dữ liệu con đã xoá theo (ON DELETE CASCADE); dọn file gốc để không còn file mồ côi.
+    if (paths.length) await supabase.storage.from("documents").remove(paths);
+    clearTenderFilterIf(id);
+    for (const key of ["tender_cases", "tenders", "documents", "data_documents", "report", "reminders"])
+      void queryClient.invalidateQueries({ queryKey: [key] });
+    toast.success("Đã xoá gói thầu", { description: `Đã xoá cùng ${paths.length} hồ sơ.` });
   }
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<NewCase>(emptyCase);
@@ -90,7 +107,7 @@ function TenderCasesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tenders")
-        .select("id,code,name,method,package_value,status,created_at,tender_steps(status)")
+        .select("id,code,name,method,package_value,status,created_at,tender_steps(status),documents(id)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -151,6 +168,7 @@ function TenderCasesPage() {
           gia_goi_thau: form.package_value,
           nguon_von: form.funding_source,
           dia_diem: form.location,
+          gia_bang_chu: form.package_value ? readVietnameseMoney(form.package_value) : "",
         },
         created_by: user?.id ?? null,
       });
@@ -347,7 +365,7 @@ function TenderCasesPage() {
                         {isAdmin ? (
                           <ConfirmDelete
                             title={`Xoá gói thầu "${row.name}"?`}
-                            description="Toàn bộ bước, tài liệu nguồn, dữ liệu chung và nhà thầu của gói thầu này sẽ bị xoá."
+                            description={`Gói thầu này có ${row.documents?.length ?? 0} hồ sơ, sẽ bị xoá cùng (kèm dữ liệu và file gốc) và không thể hoàn tác. Toàn bộ bước, tài liệu nguồn, dữ liệu chung và nhà thầu của gói cũng bị xoá.`}
                             onConfirm={() => removeCase(row.id)}
                           >
                             <button

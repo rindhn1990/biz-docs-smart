@@ -528,6 +528,9 @@ function DataCenter({
     }
     toast.success("Đã lưu dữ liệu chung");
     void queryClient.invalidateQueries({ queryKey: ["tender_data", tenderId] });
+    // Trường dùng chung đã được CSDL đồng bộ sang gói thầu và các hồ sơ.
+    for (const key of ["tender_case", "tender_cases", "tenders", "documents", "document_fields"])
+      void queryClient.invalidateQueries({ queryKey: [key] });
   }
 
   async function addContractor(role: string, contractorId: string) {
