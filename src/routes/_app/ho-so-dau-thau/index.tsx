@@ -96,6 +96,7 @@ function DocumentsPage() {
     mutationFn: async (files: File[]) => {
       let completed = 0;
       let lastDocId: string | null = null;
+      const shared = uploadTender ? await loadTenderSharedValues(uploadTender) : {};
       for (const [fileIndex, file] of files.entries()) {
       const stamp = new Date();
       const seq = `${String(stamp.getTime()).slice(-5)}-${fileIndex + 1}`;
@@ -161,6 +162,11 @@ function DocumentsPage() {
 
           // Với file Word, ưu tiên dữ liệu quét được thật từ nội dung tài liệu.
           const merged = payload.map((row) => {
+            // Trường dùng chung lấy từ gói thầu là nguồn chuẩn, thay kết quả quét.
+            const fromTender = shared[row.field_key];
+            if (fromTender) {
+              return { ...row, value: fromTender, confidence: 1, needs_review: false };
+            }
             const hit = scanned[row.field_key];
             if (!hit) return row;
             return {
