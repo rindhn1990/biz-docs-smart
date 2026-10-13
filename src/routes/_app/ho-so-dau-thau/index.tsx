@@ -17,6 +17,11 @@ import { formatDateTime } from "@/lib/format";
 import { docxPlainText, matchLabeledValues } from "@/lib/docx";
 import { toStorageKey } from "@/lib/utils";
 import { TenderSelect, filterByTender, useTenderFilter, ALL_TENDERS, NO_TENDER } from "@/components/TenderFilter";
+import { Link } from "@tanstack/react-router";
+import { useTenders } from "@/hooks/useData";
+import { loadTenderSharedValues } from "@/lib/tender-shared";
+import { methodLabel } from "@/lib/methods";
+import { formatMoney } from "@/lib/tender";
 
 export const Route = createFileRoute("/_app/ho-so-dau-thau/")({
   validateSearch: (search: Record<string, unknown>): { tender?: string | undefined } => ({
@@ -96,6 +101,7 @@ function DocumentsPage() {
     mutationFn: async (files: File[]) => {
       let completed = 0;
       let lastDocId: string | null = null;
+      const shared = uploadTender ? await loadTenderSharedValues(uploadTender) : {};
       for (const [fileIndex, file] of files.entries()) {
       const stamp = new Date();
       const seq = `${String(stamp.getTime()).slice(-5)}-${fileIndex + 1}`;
@@ -161,6 +167,11 @@ function DocumentsPage() {
 
           // Với file Word, ưu tiên dữ liệu quét được thật từ nội dung tài liệu.
           const merged = payload.map((row) => {
+            // Trường dùng chung lấy từ gói thầu là nguồn chuẩn, thay kết quả quét.
+            const fromTender = shared[row.field_key];
+            if (fromTender) {
+              return { ...row, value: fromTender, confidence: 1, needs_review: false };
+            }
             const hit = scanned[row.field_key];
             if (!hit) return row;
             return {
@@ -199,6 +210,25 @@ function DocumentsPage() {
   });
 
   const rows = filterByTender(documents.data ?? [], tenderFilter);
+  const tenders = useTenders();
+  const selectedTender =
+    tenderFilter !== ALL_TENDERS && tenderFilter !== NO_TENDER
+      ? (tenders.data ?? []).find((t) => t.id === tenderFilter)
+      : undefined;
+  /** Nhóm hồ sơ theo gói thầu; hồ sơ chưa gán gói nằm cuối. */
+  const groups = (() => {
+    const map = new Map<string, { label: string; items: typeof rows }>();
+    for (const r of rows) {
+      const key = r.tender_id ?? NO_TENDER;
+      const label = r.tenders
+        ? `${r.tenders.code ? `${r.tenders.code} · ` : ""}${r.tenders.name}`
+        : "Chưa gán gói thầu";
+      const g = map.get(key);
+      if (g) g.items.push(r);
+      else map.set(key, { label, items: [r] });
+    }
+    return [...map.entries()].sort((a, b) => (a[0] === NO_TENDER ? 1 : b[0] === NO_TENDER ? -1 : 0));
+  })();
 
   function filesLabel(count: number) {
     return `${count} hồ sơ`;
@@ -268,6 +298,35 @@ function DocumentsPage() {
         <TenderSelect value={tenderFilter} onChange={setTenderFilter} />
       </div>
 
+      {selectedTender ? (
+        <section className="panel mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 p-4 text-sm">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-muted-foreground">Gói thầu đang xem</p>
+            <p className="truncate font-semibold">{selectedTender.name}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Mã gói</p>
+            <p className="font-medium">{selectedTender.code ?? "—"}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Giá gói thầu</p>
+            <p className="font-medium">{formatMoney(selectedTender.package_value)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Hình thức</p>
+            <p className="font-medium">{methodLabel(selectedTender.method)}</p>
+          </div>
+          <Link
+            to="/goi-thau/$tenderId"
+            params={{ tenderId: selectedTender.id }}
+            className="inline-flex items-center gap-1 rounded-md border border-input px-3 py-1.5 font-medium hover:bg-accent"
+          >
+            Mở gói thầu
+            <ChevronRight className="size-4" />
+          </Link>
+        </section>
+      ) : null}
+
       {!canWrite ? (
         <p className="mb-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning-foreground">
           Tài khoản của bạn chỉ có quyền xem nên không thể tải lên hồ sơ mới.
@@ -294,8 +353,14 @@ function DocumentsPage() {
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
-              {rows.map((row) => {
+            {groups.map(([groupKey, group]) => (
+            <tbody key={groupKey} className="divide-y divide-border">
+              <tr className="bg-muted/50">
+                <td colSpan={6} className="px-4 py-2 text-xs font-semibold text-muted-foreground">
+                  {group.label} · {group.items.length} hồ sơ
+                </td>
+              </tr>
+              {group.items.map((row) => {
                 const hasFields = (row.document_fields?.length ?? 0) > 0;
                 const busy = processingId === row.id;
                 return (
@@ -373,6 +438,7 @@ function DocumentsPage() {
                 );
               })}
             </tbody>
+            ))}
           </table>
         )}
       </div>

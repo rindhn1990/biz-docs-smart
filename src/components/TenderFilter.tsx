@@ -11,12 +11,21 @@ export function useTenderFilter() {
   useEffect(() => {
     const saved = window.localStorage.getItem(KEY);
     if (saved) setValue(saved);
+    const sync = () => setValue(window.localStorage.getItem(KEY) ?? ALL_TENDERS);
+    window.addEventListener("tender-filter-reset", sync);
+    return () => window.removeEventListener("tender-filter-reset", sync);
   }, []);
   const update = (v: string) => {
     setValue(v);
     window.localStorage.setItem(KEY, v);
   };
   return [value, update] as const;
+}
+
+/** Gói thầu vừa bị xoá: nếu bộ lọc đang chọn đúng gói đó thì đưa về "Tất cả". */
+export function clearTenderFilterIf(tenderId: string) {
+  if (window.localStorage.getItem(KEY) === tenderId) window.localStorage.setItem(KEY, ALL_TENDERS);
+  window.dispatchEvent(new Event("tender-filter-reset"));
 }
 
 /** Áp bộ lọc gói thầu vào danh sách có cột tender_id. */
