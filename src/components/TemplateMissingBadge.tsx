@@ -19,7 +19,7 @@ export function TemplateMissingBadge({ templateId, module }: { templateId: strin
       if (error) throw error;
       const keys = moduleSourceFields(module).map((f) => f.key);
       return (data ?? []).filter(
-        (m) => !m.source_field && !m.value?.trim() && !resolveSource(m, keys, inherited),
+        (m) => !m.source_field && !resolveSource(m, keys, inherited),
       ).length;
     },
   });

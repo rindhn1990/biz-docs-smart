@@ -185,8 +185,7 @@ function TemplatesPage() {
   const resolved = useMemo(() => {
     const out: Record<string, string> = {};
     for (const m of rows) {
-      const manual = m.value?.trim();
-      out[m.placeholder] = manual || (m.source_field ? (auto[m.source_field] ?? "") : "");
+      out[m.placeholder] = m.source_field ? (auto[m.source_field] ?? "") : "";
     }
     return out;
   }, [rows, auto]);
@@ -939,7 +938,7 @@ function TemplatesPage() {
                 <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="px-4 py-2.5 font-medium">Chỗ trống</th>
                   <th className="px-4 py-2.5 font-medium">Trường nguồn</th>
-                  <th className="px-4 py-2.5 font-medium">Giá trị</th>
+                  <th className="px-4 py-2.5 font-medium">Ví dụ (không điền khi xuất)</th>
                   {isAdmin ? <th className="px-2 py-2.5" /> : null}
                 </tr>
               </thead>

@@ -75,7 +75,7 @@ export function resolveSource(
   return null;
 }
 
-/** Ghép dữ liệu cho mọi vùng: nguồn đã gán → giá trị cố định → tự khớp tên/kế thừa khi xuất. */
+/** Ghép dữ liệu cho mọi vùng: nguồn đã gán → tự khớp tên/kế thừa. Giá trị ví dụ của mẫu KHÔNG được điền vào file xuất. */
 export function fillMappings(
   mappings: MappingLike[],
   data: Record<string, string>,
@@ -87,7 +87,6 @@ export function fillMappings(
   for (const m of mappings) {
     let v = (m.source_field ? data[m.source_field] : data[m.placeholder])?.trim() || "";
     if (!v && m.source_field) v = byNorm.get(normKey(m.source_field))?.trim() ?? "";
-    if (!v) v = m.value?.trim() ?? "";
     if (!v && !m.source_field) {
       v = byNorm.get(normKey(m.placeholder))?.trim() ?? "";
       const inh = inherited.get(normKey(m.placeholder));
