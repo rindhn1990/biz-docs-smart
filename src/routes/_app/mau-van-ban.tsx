@@ -894,7 +894,7 @@ function TemplatesPage() {
                   aria-label="Trường nguồn"
                   className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
                 >
-                  <option value="">Nhập tay (giá trị cố định, không đổi mỗi lần xuất)</option>
+                  <option value="">Chưa chọn nguồn (chỉ ghi ví dụ, không điền khi xuất)</option>
                   {sourceFields.map((f) => (
                     <option key={f.key} value={f.key}>
                       {f.label} ({f.key})
@@ -952,7 +952,7 @@ function TemplatesPage() {
                       <span className="mt-1 block text-xs text-muted-foreground">{m.label}</span>
                     </td>
                     <td className="num px-4 py-2.5 text-xs text-muted-foreground">
-                      {m.source_field ?? "Nhập tay · cố định"}
+                      {m.source_field ?? "Chưa chọn nguồn"}
                     </td>
                     <td className="px-4 py-2.5">
                       <input
@@ -976,18 +976,11 @@ function TemplatesPage() {
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30 read-only:bg-muted"
                       />
                       {!m.source_field ? (
-                        m.value?.trim() ? (
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Giá trị này giữ nguyên mỗi lần xuất file, không lấy theo dữ liệu nhập ở
-                            màn xuất.
-                          </p>
-                        ) : (
-                          <p className="mt-1 flex items-start gap-1.5 text-xs text-warning-foreground">
-                            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-                            Vùng này sẽ luôn trống khi xuất file. Hãy nhập giá trị cố định hoặc chọn
-                            một trường nguồn có sẵn.
-                          </p>
-                        )
+                        <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
+                          <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                          Chưa chọn trường nguồn: khi xuất file, vùng này giữ nguyên chỗ trống trong mẫu.
+                          Giá trị ở đây chỉ là ví dụ, không tự điền vào file.
+                        </p>
                       ) : null}
                     </td>
                     {isAdmin ? (
