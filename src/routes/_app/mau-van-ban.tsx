@@ -836,8 +836,8 @@ function TemplatesPage() {
               <div>
                 <h2 className="text-sm font-semibold">Ánh xạ dữ liệu</h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Chỗ trống trong mẫu được nối với trường dữ liệu nguồn. Để trống ô giá trị nếu
-                  muốn dùng dữ liệu tự động từ hồ sơ đã xác nhận.
+                  Chỗ trống trong mẫu được nối với trường dữ liệu nguồn. Cột ví dụ chỉ để tham khảo;
+                  chưa nhập dữ liệu thì file xuất giữ nguyên chỗ trống trong mẫu.
                 </p>
               </div>
               {isAdmin ? (
