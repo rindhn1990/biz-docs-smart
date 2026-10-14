@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { loadInheritedSources, moduleSourceFields, resolveSource } from "@/lib/template-resolve";
 
 /**
- * Đếm vùng sẽ thực sự ra trống khi xuất: chưa có nguồn, không có giá trị cố định,
+ * Đếm vùng sẽ thực sự ra trống khi xuất: chưa có nguồn
  * và không tự khớp tên/kế thừa nguồn được. Bấm để mở mẫu trong kho.
  */
 export function TemplateMissingBadge({ templateId, module }: { templateId: string; module: "tender" | "hr" | "payment" }) {
@@ -19,7 +19,7 @@ export function TemplateMissingBadge({ templateId, module }: { templateId: strin
       if (error) throw error;
       const keys = moduleSourceFields(module).map((f) => f.key);
       return (data ?? []).filter(
-        (m) => !m.source_field && !m.value?.trim() && !resolveSource(m, keys, inherited),
+        (m) => !m.source_field && !resolveSource(m, keys, inherited),
       ).length;
     },
   });

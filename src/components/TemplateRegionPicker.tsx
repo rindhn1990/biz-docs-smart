@@ -396,7 +396,7 @@ export function TemplateRegionPicker({
                 onChange={(e) => void chooseSource(e.target.value)}
                 className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
               >
-                <option value="">Nhập tay (giá trị cố định, không đổi mỗi lần xuất)</option>
+                <option value="">Chưa chọn nguồn (chỉ ghi ví dụ, không điền khi xuất)</option>
                 {sourceFields.map((f) => (
                   <option key={f.key} value={f.key}>
                     {f.label} ({f.key})
@@ -405,7 +405,7 @@ export function TemplateRegionPicker({
               </select>
               {!source ? (
                 <span className="mt-1.5 block text-xs font-normal text-muted-foreground">
-                  Nhập tay là giá trị cố định, không lấy theo dữ liệu nhập ở màn xuất.
+                  Giá trị nhập ở đây chỉ là ví dụ/định nghĩa, không tự điền vào file khi xuất.
                 </span>
               ) : null}
             </label>

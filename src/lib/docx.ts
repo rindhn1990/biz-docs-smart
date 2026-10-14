@@ -9,6 +9,21 @@ export const DELIMITERS: Record<DelimiterStyle, { start: string; end: string }> 
   square: { start: "[[", end: "]]" },
 };
 
+/** Bỏ các giá trị trống để vùng chưa có dữ liệu giữ nguyên dạng {{Ten_bien}} trong file xuất. */
+function nonEmptyData(data: Record<string, string>) {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(data)) if (typeof v === "string" ? v.trim() : v) out[k] = v;
+  return out;
+}
+
+/** Vùng không có dữ liệu → giữ nguyên chỗ trống định nghĩa trong mẫu thay vì xoá/điền ví dụ. */
+function keepPlaceholder(style: DelimiterStyle) {
+  return (part: { type?: string; value?: string }) =>
+    part?.type === "placeholder" && part.value
+      ? `${DELIMITERS[style].start}${part.value}${DELIMITERS[style].end}`
+      : "";
+}
+
 const PLACEHOLDER_RE = /\{\{[A-Za-z0-9_]+\}\}|\[\[[A-Za-z0-9_]+\]\]/g;
 
 export type DetectedTemplateValue = {
@@ -139,9 +154,9 @@ export async function renderAndDownloadDocx(
     delimiters: DELIMITERS[style],
     paragraphLoop: true,
     linebreaks: true,
-    nullGetter: () => "",
+    nullGetter: keepPlaceholder(style),
   });
-  doc.render(data);
+  doc.render(nonEmptyData(data));
   const blob = doc.getZip().generate({
     type: "blob",
     mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -170,9 +185,9 @@ export async function renderDocxToHtml(
     delimiters: DELIMITERS[style],
     paragraphLoop: true,
     linebreaks: true,
-    nullGetter: () => "",
+    nullGetter: keepPlaceholder(style),
   });
-  doc.render(data);
+  doc.render(nonEmptyData(data));
   const out = doc.getZip().generate({ type: "arraybuffer" }) as ArrayBuffer;
   return docxToHtml(out);
 }
