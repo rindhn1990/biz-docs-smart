@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { groupHeading, groupOrder } from "@/lib/khlcnt";
 import { toast } from "sonner";
+import { TENDER_SHARED_KEYS, invalidateTenderSharedQueries } from "@/lib/tender-shared";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
@@ -324,6 +325,7 @@ export function FieldRowEditor({
             : r,
       ),
     );
+    if (TENDER_SHARED_KEYS.has(field.field_key)) invalidateTenderSharedQueries(queryClient);
   };
 
   /** Cập nhật giá trị và hẹn giờ lưu; ô tiền còn phát ngay phần "bằng chữ". */
