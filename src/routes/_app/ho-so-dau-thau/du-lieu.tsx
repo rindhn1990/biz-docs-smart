@@ -1,3 +1,4 @@
+import { TENDER_SHARED_KEYS, invalidateTenderSharedQueries } from "@/lib/tender-shared";
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -442,6 +443,8 @@ function DataPage() {
       }
     }
     await queryClient.invalidateQueries({ queryKey: ["document_fields", currentId] });
+    if (updates.some((r) => TENDER_SHARED_KEYS.has(r.field_key)))
+      invalidateTenderSharedQueries(queryClient);
     toast.success(`Đã điền ${updates.length} trường từ tệp`, {
       description: "Hãy kiểm tra lại trước khi xác nhận.",
     });

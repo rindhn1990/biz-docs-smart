@@ -53,3 +53,11 @@ export async function loadTenderSharedValues(tenderId: string): Promise<Record<s
   }
   return out;
 }
+
+/** Làm mới mọi màn hình gói thầu/hồ sơ sau khi một trường dùng chung đổi giá trị. */
+export function invalidateTenderSharedQueries(queryClient: {
+  invalidateQueries: (o: { queryKey: string[] }) => Promise<unknown>;
+}) {
+  for (const k of ["tender_case", "tender_cases", "tenders", "tender_data", "documents"])
+    void queryClient.invalidateQueries({ queryKey: [k] });
+}
