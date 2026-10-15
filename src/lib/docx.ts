@@ -168,12 +168,11 @@ export function prettifyPlaceholder(name: string) {
 }
 
 /** Render file .docx gốc với dữ liệu theo nguồn đã gán rồi tải xuống. */
-export async function renderAndDownloadDocx(
+export function renderDocxBuffer(
   source: ArrayBuffer,
   style: DelimiterStyle,
   data: Record<string, string>,
-  fileName: string,
-) {
+): ArrayBuffer {
   const zip = new PizZip(source);
   const doc = new Docxtemplater(zip, {
     delimiters: DELIMITERS[style],
@@ -183,10 +182,17 @@ export async function renderAndDownloadDocx(
     parser: trimParser,
   });
   doc.render(nonEmptyData(data));
-  const blob = doc.getZip().generate({
-    type: "blob",
-    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    compression: "DEFLATE",
+  return doc.getZip().generate({ type: "arraybuffer", compression: "DEFLATE" }) as ArrayBuffer;
+}
+
+export async function renderAndDownloadDocx(
+  source: ArrayBuffer,
+  style: DelimiterStyle,
+  data: Record<string, string>,
+  fileName: string,
+) {
+  const blob = new Blob([renderDocxBuffer(source, style, data)], {
+    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   });
   saveAs(blob, withTimestampedName(fileName));
 }
