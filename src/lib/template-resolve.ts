@@ -96,3 +96,36 @@ export function fillMappings(
   }
   return out;
 }
+
+/**
+ * Đề xuất nguồn + nhãn cho chỗ trống mới dò được khi tải/thay mẫu.
+ * Chỉ gán khi chắc chắn: trùng tên chuẩn hoá với khoá nguồn, hoặc kế thừa
+ * từ vùng cùng tên ở mẫu khác cùng phân hệ (nguồn dùng nhiều nhất).
+ */
+export async function suggestForNewPlaceholders(module: TemplateModule, placeholders: string[]) {
+  const fields = moduleSourceFields(module);
+  const keys = fields.map((f) => f.key);
+  const out = new Map<string, { source_field: string | null; label: string | null }>();
+  if (!placeholders.length) return out;
+  const [inherited, { data }] = await Promise.all([
+    loadInheritedSources(module),
+    supabase
+      .from("template_mappings")
+      .select("placeholder,label,source_field,updated_at,templates!inner(module)")
+      .eq("templates.module", module)
+      .order("updated_at", { ascending: false })
+      .limit(5000),
+  ]);
+  const labels = new Map<string, string>();
+  for (const r of (data ?? []) as { placeholder: string; label: string | null; source_field: string | null }[]) {
+    const k = normKey(r.placeholder);
+    if (r.label && !labels.has(k) && r.source_field === inherited.get(k)) labels.set(k, r.label);
+  }
+  for (const p of placeholders) {
+    const r = resolveSource({ placeholder: p, source_field: null, value: null }, keys, inherited);
+    const k = normKey(p);
+    const label = labels.get(k) ?? (r ? fields.find((f) => f.key === r.key)?.label ?? null : null);
+    out.set(p, { source_field: r?.key ?? null, label });
+  }
+  return out;
+}
