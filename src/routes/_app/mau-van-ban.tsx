@@ -36,7 +36,7 @@ import {
   withTimestampedName,
   type DelimiterStyle,
 } from "@/lib/docx";
-import { KHLCNT_DOC_TYPE, KHLCNT_FIELDS } from "@/lib/khlcnt";
+import { KHLCNT_FIELDS } from "@/lib/khlcnt";
 import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
 import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
@@ -155,7 +155,6 @@ function TemplatesPage() {
       : module === "payment"
         ? PAYMENT_TEMPLATE_FIELDS
         : KHLCNT_FIELDS;
-  const sourceKeys = new Set<string>(sourceFields.map((field) => field.key));
   const wrap: [string, string] =
     current?.delimiter_style === "square" ? ["[[", "]]"] : ["{{", "}}"];
 
