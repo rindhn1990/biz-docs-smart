@@ -13,8 +13,22 @@ export const DELIMITERS: Record<DelimiterStyle, { start: string; end: string }> 
 function nonEmptyData(data: Record<string, string>) {
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(data)) if (typeof v === "string" ? v.trim() : v) out[k] = v;
+  // Chữ số tiền chỉ điền khi số tiền tương ứng có dữ liệu.
+  for (const k of Object.keys(out)) {
+    const pair = /_text$/i.test(k)
+      ? k.replace(/_text$/i, (m) => (m === "_TEXT" ? "_NUMB" : "_numb"))
+      : /^text_/i.test(k)
+        ? k.replace(/^text_/i, (m) => (m[0] === "T" ? "Numb_" : "numb_"))
+        : null;
+    if (pair && pair in data && !String(data[pair] ?? "").trim()) delete out[k];
+  }
   return out;
 }
+
+/** Cho phép {{ Ten_bien }} có khoảng trắng trong ngoặc. */
+const trimParser = (tag: string) => ({
+  get: (scope: Record<string, unknown>) => (tag.trim() === "." ? scope : scope?.[tag.trim()]),
+});
 
 /** Vùng không có dữ liệu → giữ nguyên chỗ trống định nghĩa trong mẫu thay vì xoá/điền ví dụ. */
 function keepPlaceholder(style: DelimiterStyle) {
@@ -24,7 +38,7 @@ function keepPlaceholder(style: DelimiterStyle) {
       : "";
 }
 
-const PLACEHOLDER_RE = /\{\{[A-Za-z0-9_]+\}\}|\[\[[A-Za-z0-9_]+\]\]/g;
+const PLACEHOLDER_RE = /\{\{\s*[A-Za-z0-9_]+\s*\}\}|\[\[\s*[A-Za-z0-9_]+\s*\]\]/g;
 
 export type DetectedTemplateValue = {
   placeholder: string;
@@ -49,28 +63,39 @@ export function extractPlaceholdersFromDocumentXml(xml: string): {
   placeholders: string[];
   style: DelimiterStyle;
 } {
-  const paragraphs = xml.match(/<w:p[\s>][\s\S]*?<\/w:p>/g) ?? [xml];
   const found: string[] = [];
   let square = 0;
   let curly = 0;
-
-  for (const p of paragraphs) {
-    const runs = p.match(/<w:t[^>]*>[\s\S]*?<\/w:t>/g) ?? [];
-    const merged = decodeXml(runs.map((r) => r.replace(/<[^>]+>/g, "")).join(""));
-    for (const match of merged.match(PLACEHOLDER_RE) ?? []) {
-      const name = match.slice(2, -2);
+  const scan = (text: string) => {
+    for (const match of decodeXml(text).match(PLACEHOLDER_RE) ?? []) {
+      const name = match.slice(2, -2).trim();
       if (match.startsWith("[[")) square++;
       else curly++;
       if (!found.includes(name)) found.push(name);
     }
+  };
+  // Dùng ngăn xếp để đoạn lồng (ô văn bản trong đoạn) không cắt ngang đoạn ngoài.
+  const stack: string[] = [];
+  const re = /<w:p(?=[\s>/])[^>]*?(\/?)>|<\/w:p>|<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g;
+  for (const m of xml.matchAll(re)) {
+    if (m[0].startsWith("</w:p")) scan(stack.pop() ?? "");
+    else if (m[0].startsWith("<w:p")) {
+      if (m[1] !== "/") stack.push("");
+    } else if (stack.length) stack[stack.length - 1] += m[2] ?? "";
+    else scan(m[2] ?? "");
   }
+  while (stack.length) scan(stack.pop() ?? "");
 
   return { placeholders: found, style: square >= curly && square > 0 ? "square" : "curly" };
 }
 
 export async function extractPlaceholdersFromFile(file: File | Blob) {
   const zip = new PizZip(await file.arrayBuffer());
-  const xml = zip.file("word/document.xml")?.asText() ?? "";
+  // Thân văn bản (gồm bảng, ô văn bản) + đầu/chân trang + chú thích.
+  const parts = zip
+    .file(/^word\/(document|header\d*|footer\d*|footnotes|endnotes)\.xml$/)
+    .sort((a, b) => (a.name === "word/document.xml" ? -1 : b.name === "word/document.xml" ? 1 : a.name.localeCompare(b.name)));
+  const xml = parts.map((f) => f.asText()).join("\n");
   return extractPlaceholdersFromDocumentXml(xml);
 }
 
@@ -142,25 +167,32 @@ export function prettifyPlaceholder(name: string) {
   return [first.charAt(0).toUpperCase() + first.slice(1), ...words.slice(1)].join(" ");
 }
 
-/** Render file .docx gốc với dữ liệu đã ánh xạ rồi tải xuống. */
-export async function renderAndDownloadDocx(
+/** Render file .docx gốc với dữ liệu theo nguồn đã gán rồi tải xuống. */
+export function renderDocxBuffer(
   source: ArrayBuffer,
   style: DelimiterStyle,
   data: Record<string, string>,
-  fileName: string,
-) {
+): ArrayBuffer {
   const zip = new PizZip(source);
   const doc = new Docxtemplater(zip, {
     delimiters: DELIMITERS[style],
     paragraphLoop: true,
     linebreaks: true,
     nullGetter: keepPlaceholder(style),
+    parser: trimParser,
   });
   doc.render(nonEmptyData(data));
-  const blob = doc.getZip().generate({
-    type: "blob",
-    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    compression: "DEFLATE",
+  return doc.getZip().generate({ type: "arraybuffer", compression: "DEFLATE" }) as ArrayBuffer;
+}
+
+export async function renderAndDownloadDocx(
+  source: ArrayBuffer,
+  style: DelimiterStyle,
+  data: Record<string, string>,
+  fileName: string,
+) {
+  const blob = new Blob([renderDocxBuffer(source, style, data)], {
+    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   });
   saveAs(blob, withTimestampedName(fileName));
 }
@@ -186,6 +218,7 @@ export async function renderDocxToHtml(
     paragraphLoop: true,
     linebreaks: true,
     nullGetter: keepPlaceholder(style),
+    parser: trimParser,
   });
   doc.render(nonEmptyData(data));
   const out = doc.getZip().generate({ type: "arraybuffer" }) as ArrayBuffer;

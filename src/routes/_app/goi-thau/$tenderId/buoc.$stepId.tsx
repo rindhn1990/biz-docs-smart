@@ -106,7 +106,7 @@ function StepEditor() {
     },
   });
 
-  /** Ưu tiên: dữ liệu đã nhập ở bước → dữ liệu chung của gói thầu → giá trị mặc định của mẫu. */
+  /** Ưu tiên: dữ liệu đã nhập ở bước → dữ liệu chung của gói thầu → giá trị ví dụ của mẫu không được dùng. */
   const resolved = useMemo(() => {
     const stepData = (step.data?.data ?? {}) as Record<string, string>;
     const shared = center.data ?? {};
@@ -114,7 +114,7 @@ function StepEditor() {
     for (const m of mappings.data ?? []) {
       const key = m.placeholder;
       const fromShared = m.source_field ? shared[m.source_field] : shared[key];
-      out[key] = stepData[key] || fromShared || m.value || "";
+      out[key] = stepData[key] || fromShared || "";
     }
     return out;
   }, [step.data, center.data, mappings.data]);

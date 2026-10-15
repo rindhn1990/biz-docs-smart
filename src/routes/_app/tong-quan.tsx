@@ -48,7 +48,7 @@ const MODULES: Module[] = [
     desc: "Tải lên, nhận dạng, kiểm tra dữ liệu",
     ready: true,
   },
-  { to: "/mau-van-ban", title: "Mẫu văn bản", desc: "Ánh xạ trường, điền tự động", ready: true },
+  { to: "/mau-van-ban", title: "Mẫu văn bản", desc: "Nguồn dữ liệu, điền tự động", ready: true },
   { to: "/hop-dong", title: "Hợp đồng", desc: "Theo dõi hạn, cảnh báo màu", ready: true },
   { title: "Văn bản – Hồ sơ", desc: "Luồng công văn đến/đi", ready: false },
   { title: "Báo cáo – Thống kê", desc: "Theo kỳ, xuất Excel/CSV", ready: false },
