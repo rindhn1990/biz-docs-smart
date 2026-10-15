@@ -63,21 +63,28 @@ export function extractPlaceholdersFromDocumentXml(xml: string): {
   placeholders: string[];
   style: DelimiterStyle;
 } {
-  const paragraphs = xml.match(/<w:p[\s>][\s\S]*?<\/w:p>/g) ?? [xml];
   const found: string[] = [];
   let square = 0;
   let curly = 0;
-
-  for (const p of paragraphs) {
-    const runs = p.match(/<w:t[^>]*>[\s\S]*?<\/w:t>/g) ?? [];
-    const merged = decodeXml(runs.map((r) => r.replace(/<[^>]+>/g, "")).join(""));
-    for (const match of merged.match(PLACEHOLDER_RE) ?? []) {
+  const scan = (text: string) => {
+    for (const match of decodeXml(text).match(PLACEHOLDER_RE) ?? []) {
       const name = match.slice(2, -2).trim();
       if (match.startsWith("[[")) square++;
       else curly++;
       if (!found.includes(name)) found.push(name);
     }
+  };
+  // Dùng ngăn xếp để đoạn lồng (ô văn bản trong đoạn) không cắt ngang đoạn ngoài.
+  const stack: string[] = [];
+  const re = /<w:p(?=[\s>/])[^>]*?(\/?)>|<\/w:p>|<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g;
+  for (const m of xml.matchAll(re)) {
+    if (m[0].startsWith("</w:p")) scan(stack.pop() ?? "");
+    else if (m[0].startsWith("<w:p")) {
+      if (m[1] !== "/") stack.push("");
+    } else if (stack.length) stack[stack.length - 1] += m[2] ?? "";
+    else scan(m[2] ?? "");
   }
+  while (stack.length) scan(stack.pop() ?? "");
 
   return { placeholders: found, style: square >= curly && square > 0 ? "square" : "curly" };
 }
