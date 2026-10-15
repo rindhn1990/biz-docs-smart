@@ -26,6 +26,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { TemplateRegionPicker } from "@/components/TemplateRegionPicker";
 import { TemplateAutoDetect } from "@/components/TemplateAutoDetect";
 import { AutoAssignSources } from "@/components/AutoAssignSources";
+import { suggestForNewPlaceholders, type TemplateModule } from "@/lib/template-resolve";
 import { TemplateContentEditor } from "@/components/TemplateContentEditor";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,7 +64,7 @@ export const Route = createFileRoute("/_app/mau-van-ban")({
       { property: "og:title", content: "Mẫu văn bản — OfficeFlow" },
       {
         property: "og:description",
-        content: "Tải lên mẫu Word thật, ánh xạ chỗ trống và xuất file .docx đã điền sẵn.",
+        content: "Tải lên mẫu Word thật, gán nguồn dữ liệu cho chỗ trống và xuất file .docx đã điền sẵn.",
       },
     ],
   }),
@@ -146,29 +147,6 @@ function TemplatesPage() {
     },
   });
 
-  /** Dữ liệu từ hồ sơ Tờ trình KHLCNT đã xác nhận gần nhất, dùng để điền tự động. */
-  const approvedData = useQuery({
-    queryKey: ["khlcnt_approved_fields"],
-    queryFn: async () => {
-      const { data: doc } = await supabase
-        .from("documents")
-        .select("id")
-        .eq("doc_type", KHLCNT_DOC_TYPE)
-        .eq("status", "approved")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!doc) return {} as Record<string, string>;
-      const { data: fields } = await supabase
-        .from("document_fields")
-        .select("field_key,value")
-        .eq("document_id", doc.id);
-      const map: Record<string, string> = {};
-      for (const f of fields ?? []) if (f.value) map[f.field_key] = f.value;
-      return map;
-    },
-  });
-
   const current = list.find((t) => t.id === currentId) ?? null;
   const rows = mappings.data ?? [];
   const sourceFields =
@@ -178,17 +156,16 @@ function TemplatesPage() {
         ? PAYMENT_TEMPLATE_FIELDS
         : KHLCNT_FIELDS;
   const sourceKeys = new Set<string>(sourceFields.map((field) => field.key));
-  const auto = approvedData.data ?? {};
   const wrap: [string, string] =
     current?.delimiter_style === "square" ? ["[[", "]]"] : ["{{", "}}"];
 
+  // Mẫu văn bản không có dữ liệu thật: mọi vùng giữ nguyên {{TÊN}} khi xuất/xem trước.
+  // Không lấy dữ liệu của hồ sơ khác, không dùng giá trị ví dụ.
   const resolved = useMemo(() => {
     const out: Record<string, string> = {};
-    for (const m of rows) {
-      out[m.placeholder] = m.source_field ? (auto[m.source_field] ?? "") : "";
-    }
+    for (const m of rows) out[m.placeholder] = "";
     return out;
-  }, [rows, auto]);
+  }, [rows]);
 
   useEffect(() => {
     setBusy(null);
@@ -235,12 +212,13 @@ function TemplatesPage() {
       await supabase.from("templates").update({ source_docx_path: path }).eq("id", tpl.id);
 
       if (placeholders.length > 0) {
+        const sug = await suggestForNewPlaceholders(module as TemplateModule, placeholders);
         await supabase.from("template_mappings").insert(
           placeholders.map((p, i) => ({
             template_id: tpl.id,
             placeholder: p,
-            label: prettifyPlaceholder(p),
-            source_field: sourceKeys.has(p) ? p : null,
+            label: sug.get(p)?.label || prettifyPlaceholder(p),
+            source_field: sug.get(p)?.source_field ?? null,
             sort_order: i + 1,
           })),
         );
@@ -256,6 +234,7 @@ function TemplatesPage() {
     const succeeded = results.filter((result) => result.status === "fulfilled");
     const failed = results.length - succeeded.length;
     await queryClient.invalidateQueries({ queryKey: ["templates"] });
+    await queryClient.invalidateQueries({ queryKey: ["template_mappings"] });
     const last = succeeded.at(-1);
     if (last?.status === "fulfilled") setSelectedId(last.value.id);
     if (succeeded.length) toast.success(`Đã tải lên ${succeeded.length} mẫu Word`);
@@ -455,12 +434,13 @@ function TemplatesPage() {
       const present = new Set(placeholders);
       const removed = rows.map((r) => r.placeholder).filter((p) => !present.has(p));
       if (fresh.length > 0) {
+        const sug = await suggestForNewPlaceholders(module as TemplateModule, fresh);
         await supabase.from("template_mappings").insert(
           fresh.map((p, i) => ({
             template_id: current.id,
             placeholder: p,
-            label: prettifyPlaceholder(p),
-            source_field: sourceKeys.has(p) ? p : null,
+            label: sug.get(p)?.label || prettifyPlaceholder(p),
+            source_field: sug.get(p)?.source_field ?? null,
             sort_order: (rows.at(-1)?.sort_order ?? 0) + i + 1,
           })),
         );
@@ -470,11 +450,11 @@ function TemplatesPage() {
       await queryClient.invalidateQueries({ queryKey: ["template_mappings", current.id] });
       toast.success("Đã cập nhật file Word của mẫu", {
         description:
-          fresh.length > 0 ? `Thêm ${fresh.length} chỗ trống mới.` : "Giữ nguyên các ánh xạ cũ.",
+          fresh.length > 0 ? `Thêm ${fresh.length} chỗ trống mới.` : "Giữ nguyên các nguồn dữ liệu cũ.",
       });
       if (removed.length > 0) {
         toast.warning(`${removed.length} chỗ trống không còn trong văn bản`, {
-          description: `${removed.join(", ")}. Ánh xạ cũ vẫn được giữ lại — hãy tự xoá nếu không cần nữa.`,
+          description: `${removed.join(", ")}. Nguồn dữ liệu cũ của các vùng này vẫn được giữ lại — hãy tự xoá nếu không cần nữa.`,
           duration: 12000,
         });
       }
@@ -834,10 +814,10 @@ function TemplatesPage() {
           <header className="border-b border-border px-4 py-3">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h2 className="text-sm font-semibold">Ánh xạ dữ liệu</h2>
+                <h2 className="text-sm font-semibold">Nguồn dữ liệu</h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Chỗ trống trong mẫu được nối với trường dữ liệu nguồn. Cột ví dụ chỉ để tham khảo;
-                  chưa nhập dữ liệu thì file xuất giữ nguyên chỗ trống trong mẫu.
+                  Mỗi chỗ trống lấy dữ liệu từ nguồn nào. Cột ví dụ chỉ để tham khảo; vùng chưa có
+                  dữ liệu khi xuất sẽ giữ nguyên {`${wrap[0]}TÊN${wrap[1]}`} trong file.
                 </p>
               </div>
               {isAdmin ? (
@@ -904,8 +884,8 @@ function TemplatesPage() {
               </div>
               {!newSource ? (
                 <p className="text-xs text-muted-foreground">
-                  Giá trị nhập tay sẽ giữ nguyên mỗi lần xuất file, không lấy theo dữ liệu nhập ở
-                  màn xuất.
+                  Chưa chọn nguồn: khi xuất file, vùng này giữ nguyên {`${wrap[0]}TÊN${wrap[1]}`}{" "}
+                  trong mẫu. Giá trị ví dụ không được điền vào file.
                 </p>
               ) : null}
               <div className="flex items-center gap-2">
@@ -959,9 +939,7 @@ function TemplatesPage() {
                         defaultValue={m.value ?? ""}
                         readOnly={!isAdmin}
                         title={isAdmin ? undefined : ADMIN_ONLY_NOTE}
-                        placeholder={
-                          m.source_field ? (auto[m.source_field] ?? "Chưa có dữ liệu") : "—"
-                        }
+                        placeholder="—"
                         onBlur={async (e) => {
                           const next = e.target.value;
                           if (next === (m.value ?? "")) return;
@@ -978,7 +956,8 @@ function TemplatesPage() {
                       {!m.source_field ? (
                         <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
                           <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-                          Chưa chọn trường nguồn: khi xuất file, vùng này giữ nguyên chỗ trống trong mẫu.
+                          Chưa chọn trường nguồn: khi xuất file, vùng này giữ nguyên{" "}
+                          {`${wrap[0]}${m.placeholder}${wrap[1]}`} trong mẫu.
                           Giá trị ở đây chỉ là ví dụ, không tự điền vào file.
                         </p>
                       ) : null}
