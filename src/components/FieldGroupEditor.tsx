@@ -270,8 +270,8 @@ export function FieldRowEditor({
   hasExampleMapping,
 }: {
   field: FieldRow;
-  exampleModule?: TemplateModule;
-  example?: string;
+  exampleModule?: TemplateModule | undefined;
+  example?: string | undefined;
   hasExampleMapping?: boolean;
   active: boolean;
   readOnly: boolean;
@@ -496,7 +496,7 @@ export function FieldRowEditor({
           id={field.id}
           value={value}
           readOnly={readOnly}
-          placeholder={placeholder}
+          placeholder={placeholder ?? "Chọn ngày…"}
           onChange={(next) => {
             setValue(next);
             void save(next);
