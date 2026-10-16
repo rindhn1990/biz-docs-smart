@@ -8,6 +8,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { DateField, isDateField } from "@/components/DateField";
+import { useFieldExamples } from "@/hooks/useFieldExamples";
+import { fieldExamplePlaceholder } from "@/lib/field-examples";
+import type { TemplateModule } from "@/lib/template-resolve";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
   formatThousands,
   isMoneyNumberField,
@@ -85,8 +91,10 @@ export function FieldGroupEditor({
   onChanged,
   onRenameGroup,
   onDeleteGroup,
+  exampleModule,
 }: {
   rows: FieldRow[];
+  exampleModule?: TemplateModule;
   readOnly: boolean;
   activeField?: string | null;
   onFocusField?: (id: string) => void;
@@ -98,6 +106,7 @@ export function FieldGroupEditor({
   onDeleteGroup?: ((name: string, count: number) => void | Promise<void>) | undefined;
 }) {
   const grouped = useGroupedFields(rows);
+  const examples = useFieldExamples(exampleModule);
   const { isAdmin } = useAuth();
   /** Số tiền bằng chữ hiển thị ngay khi người dùng đang gõ ở ô số tiền. */
   const [liveWords, setLiveWords] = useState<Record<string, string>>({});
@@ -150,6 +159,9 @@ export function FieldGroupEditor({
               readOnly={readOnly}
               onFocusField={() => onFocusField?.(field.id)}
               onChanged={onChanged}
+              exampleModule={exampleModule}
+              example={examples.data?.examples[field.field_key]}
+              hasExampleMapping={examples.data?.mappedKeys.has(field.field_key) ?? false}
             />
           ))}
         </div>
@@ -253,8 +265,14 @@ export function FieldRowEditor({
   autoFilled,
   onWords,
   onChanged,
+  exampleModule,
+  example,
+  hasExampleMapping,
 }: {
   field: FieldRow;
+  exampleModule?: TemplateModule | undefined;
+  example?: string | undefined;
+  hasExampleMapping?: boolean;
   active: boolean;
   readOnly: boolean;
   onFocusField: () => void;
@@ -274,10 +292,14 @@ export function FieldRowEditor({
   const [label, setLabel] = useState(field.label);
   const [renaming, setRenaming] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingExample, setEditingExample] = useState(false);
+  const [exampleDraft, setExampleDraft] = useState("");
+  const [savingExample, setSavingExample] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const conf = confidenceStyle(Number(field.confidence));
   const isMoney = isMoneyNumberField(field.field_key, field.label) && !!textField;
   const isDate = isDateField(field.field_key, field.label);
+  const placeholder = exampleModule ? fieldExamplePlaceholder(field.field_key, field.label, field.field_group, example) : undefined;
 
   useEffect(() => setValue(field.value ?? ""), [field.value]);
 
@@ -368,6 +390,35 @@ export function FieldRowEditor({
     toast.success("Đã xoá trường dữ liệu");
   };
 
+  const saveFieldSettings = async () => {
+    if (!isAdmin || !exampleModule || savingExample) return;
+    setSavingExample(true);
+    try {
+      if (hasExampleMapping) {
+        const { data, error } = await supabase.from("template_mappings")
+          .select("id,templates!inner(module)").eq("source_field", field.field_key)
+          .eq("templates.module", exampleModule);
+        if (error) throw error;
+        const ids = data.map((m) => m.id);
+        if (ids.length) {
+          const result = await supabase.from("template_mappings")
+            .update({ value: exampleDraft.trim() || null }).in("id", ids);
+          if (result.error) throw result.error;
+        }
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["template_field_examples"] }),
+          queryClient.invalidateQueries({ queryKey: ["template_mappings"] }),
+        ]);
+      }
+      await renameField();
+      setEditingExample(false);
+    } catch (error) {
+      toast.error("Không lưu được ví dụ", { description: (error as Error).message });
+    } finally {
+      setSavingExample(false);
+    }
+  };
+
   return (
     <div
       onMouseEnter={onFocusField}
@@ -405,14 +456,22 @@ export function FieldRowEditor({
             {conf.pct}%{conf.warn ? " · Cần xác minh" : ""}
           </span>
           {!readOnly ? (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               aria-label={`Sửa tên trường ${field.label}`}
-              onClick={() => setRenaming(true)}
-              className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              onClick={() => {
+                if (isAdmin && exampleModule) {
+                  setLabel(field.label);
+                  setExampleDraft(example ?? "");
+                  setEditingExample(true);
+                } else setRenaming(true);
+              }}
+              className="size-6 text-muted-foreground"
             >
               <Pencil className="size-3.5" />
-            </button>
+            </Button>
           ) : null}
           {isAdmin ? (
             <ConfirmDelete
@@ -437,6 +496,7 @@ export function FieldRowEditor({
           id={field.id}
           value={value}
           readOnly={readOnly}
+          placeholder={placeholder ?? "Chọn ngày…"}
           onChange={(next) => {
             setValue(next);
             void save(next);
@@ -449,11 +509,11 @@ export function FieldRowEditor({
           readOnly={readOnly || autoFilled}
           inputMode={isMoney ? "numeric" : undefined}
           placeholder={
-            autoFilled
+            placeholder ?? (autoFilled
               ? "Tự sinh từ số tiền"
               : conf.warn
                 ? "Chưa đọc được — vui lòng nhập tay"
-                : "—"
+                : "—")
           }
           onChange={(e) => change(e.target.value)}
           onFocus={onFocusField}
@@ -462,7 +522,7 @@ export function FieldRowEditor({
             if (timer.current) clearTimeout(timer.current);
             void save(value);
           }}
-          className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30 read-only:bg-muted"
+          className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30 read-only:bg-muted placeholder:text-muted-foreground placeholder:italic"
         />
       )}
 
@@ -470,6 +530,29 @@ export function FieldRowEditor({
         <p className="mt-1 text-[11px] italic text-muted-foreground">
           Bằng chữ: {readVietnameseMoney(value)}
         </p>
+      ) : null}
+      {isAdmin && exampleModule ? (
+        <Dialog open={editingExample} onOpenChange={setEditingExample}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Sửa trường dữ liệu</DialogTitle>
+              <DialogDescription>Ví dụ chỉ hướng dẫn nhập, không lưu vào hồ sơ và không điền vào file xuất.</DialogDescription>
+            </DialogHeader>
+            <label className="space-y-2 text-sm">
+              <span>Tên trường dữ liệu</span>
+              <Input value={label} onChange={(e) => setLabel(e.target.value)} />
+            </label>
+            <label className="space-y-2 text-sm">
+              <span>Ví dụ hướng dẫn nhập</span>
+              <Input value={exampleDraft} disabled={!hasExampleMapping} placeholder={hasExampleMapping ? "Nhập ví dụ, vd 13/KT" : fieldExamplePlaceholder(field.field_key, field.label, field.field_group)} onChange={(e) => setExampleDraft(e.target.value)} />
+            </label>
+            {!hasExampleMapping ? <p className="text-xs text-muted-foreground">Chưa có vùng mẫu dùng trường này; chỉ hiển thị hướng dẫn mặc định.</p> : null}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingExample(false)}>Huỷ</Button>
+              <Button disabled={savingExample} onClick={() => void saveFieldSettings()}>{savingExample ? <Loader2 className="size-4 animate-spin" /> : null}Lưu</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       ) : null}
     </div>
   );

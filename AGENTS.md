@@ -11,6 +11,8 @@
 
 ## Architecture decisions
 
+- Field examples use a module-scoped React Query cache separate from document values; only input placeholders consume it so persistence, synchronization and exports cannot inherit examples.
+
 - All Vietnamese money-to-words output uses `src/lib/money.ts`'s `readVietnameseMoney` so forms, scripts and Word exports stay consistent.
 
 - Document scan cropping lives in `DocumentRegionSelector`; it outputs one composite image so local OCR and AI fallback share the same selected-region input.

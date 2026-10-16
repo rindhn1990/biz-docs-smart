@@ -49,6 +49,8 @@ export const Route = createFileRoute("/_app/ho-so-dau-thau/du-lieu")({
         property: "og:description",
         content: "Tổng hợp dữ liệu quét được của từng hồ sơ và xuất văn bản Word tương ứng.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: DataPage,
@@ -637,6 +639,7 @@ function DataPage() {
               <div className="max-h-[60vh] overflow-y-auto">
                 <FieldGroupEditor
                   rows={rows}
+                  exampleModule="tender"
                   readOnly={!canWrite}
                   onRenameGroup={renameGroup}
                   onDeleteGroup={deleteGroup}
