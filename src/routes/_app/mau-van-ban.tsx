@@ -815,7 +815,7 @@ function TemplatesPage() {
               <div>
                 <h2 className="text-sm font-semibold">Nguồn dữ liệu</h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Mỗi chỗ trống lấy dữ liệu từ nguồn nào. Cột ví dụ chỉ để tham khảo; vùng chưa có
+                  Ví dụ hiện làm hướng dẫn nhập ở tab Dữ liệu, không lưu vào hồ sơ và không điền vào file; vùng chưa có
                   dữ liệu khi xuất sẽ giữ nguyên {`${wrap[0]}TÊN${wrap[1]}`} trong file.
                 </p>
               </div>
@@ -935,22 +935,28 @@ function TemplatesPage() {
                     </td>
                     <td className="px-4 py-2.5">
                       <input
+                        key={`${m.id}:${m.value ?? ""}`}
                         defaultValue={m.value ?? ""}
                         readOnly={!isAdmin}
                         title={isAdmin ? undefined : ADMIN_ONLY_NOTE}
-                        placeholder="—"
+                        placeholder="Nhập ví dụ, vd 13/KT"
                         onBlur={async (e) => {
                           const next = e.target.value;
                           if (next === (m.value ?? "")) return;
-                          await supabase
+                          const { error } = await supabase
                             .from("template_mappings")
                             .update({ value: next || null })
                             .eq("id", m.id);
+                          if (error) {
+                            toast.error("Không lưu được ví dụ", { description: error.message });
+                            return;
+                          }
+                          void queryClient.invalidateQueries({ queryKey: ["template_field_examples"] });
                           void queryClient.invalidateQueries({
                             queryKey: ["template_mappings", currentId],
                           });
                         }}
-                        className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30 read-only:bg-muted"
+                        className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30 read-only:bg-muted placeholder:text-muted-foreground placeholder:italic"
                       />
                       {!m.source_field ? (
                         <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">

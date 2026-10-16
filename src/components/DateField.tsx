@@ -53,7 +53,7 @@ export function DateField({
           disabled={readOnly}
           className={cn(
             "flex w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-2.5 py-1.5 text-left text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30 disabled:bg-muted",
-            !value && "text-muted-foreground",
+            !value && "text-muted-foreground italic",
             className,
           )}
         >
