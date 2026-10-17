@@ -230,7 +230,7 @@ export function ScanFileDialog({
           </Button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+        <div className="min-h-0 min-w-0 flex-1 overflow-auto p-5">
           <input
             ref={inputRef}
             type="file"
@@ -318,6 +318,7 @@ export function ScanFileDialog({
           ) : null}
 
           {rows.length ? (
+            <div className="max-w-full overflow-x-auto">
             <table className="w-full min-w-[600px] text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -373,6 +374,7 @@ export function ScanFileDialog({
                 ))}
               </tbody>
             </table>
+            </div>
           ) : selectedFile ? null : (
             <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
               {regionCount

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  ArrowLeft,
+  ArrowRight,
   ChevronLeft,
   ChevronRight,
   Focus,
@@ -127,7 +129,7 @@ export function DocumentRegionSelector({
   const wheelHandlerRef = useRef<(event: WheelEvent) => void>(() => undefined);
   const dragRef = useRef<
     | { kind: "draw"; start: Point; current: Point }
-    | { kind: "pan"; start: Point; offset: Point }
+    | { kind: "pan"; start: Point; scroll: Point }
     | null
   >(null);
   const [pages, setPages] = useState<PageImage[]>([]);
@@ -136,7 +138,6 @@ export function DocumentRegionSelector({
   const [draft, setDraft] = useState<{ start: Point; current: Point } | null>(null);
   const [tool, setTool] = useState<"select" | "pan">("select");
   const [zoom, setZoom] = useState(1);
-  const [offset, setOffset] = useState<Point>({ x: 24, y: 24 });
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
@@ -177,10 +178,7 @@ export function DocumentRegionSelector({
     const baseHeight = (page.height / page.width) * baseWidth;
     const next = clamp(Math.min((viewport.clientWidth - 32) / baseWidth, (viewport.clientHeight - 32) / baseHeight), 0.2, 1.5);
     setZoom(next);
-    setOffset({
-      x: Math.max(16, (viewport.clientWidth - baseWidth * next) / 2),
-      y: Math.max(16, (viewport.clientHeight - baseHeight * next) / 2),
-    });
+    viewport.scrollTo({ left: 0, top: 0 });
   }
 
   useEffect(() => {
@@ -194,12 +192,21 @@ export function DocumentRegionSelector({
     if (!viewport) return;
     const next = clamp(nextZoom, 0.25, 4);
     const point = anchor ?? { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 };
-    const ratio = next / zoom;
-    setOffset((current) => ({
-      x: point.x - (point.x - current.x) * ratio,
-      y: point.y - (point.y - current.y) * ratio,
-    }));
+    const rect = imageRef.current?.getBoundingClientRect();
+    const viewRect = viewport.getBoundingClientRect();
+    const imagePoint = rect ? {
+      x: (viewRect.left + point.x - rect.left) / rect.width,
+      y: (viewRect.top + point.y - rect.top) / rect.height,
+    } : null;
     setZoom(next);
+    requestAnimationFrame(() => {
+      const updated = imageRef.current?.getBoundingClientRect();
+      if (!updated || !imagePoint) return;
+      viewport.scrollBy({
+        left: updated.left + imagePoint.x * updated.width - viewRect.left - point.x,
+        top: updated.top + imagePoint.y * updated.height - viewRect.top - point.y,
+      });
+    });
   }
 
   wheelHandlerRef.current = (event) => {
@@ -208,6 +215,10 @@ export function DocumentRegionSelector({
     if (!viewport) return;
     const rect = viewport.getBoundingClientRect();
     const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
+    if (event.shiftKey) {
+      viewport.scrollBy({ left: event.deltaX || delta });
+      return;
+    }
     zoomAt(zoom * Math.exp(-delta * 0.0015), { x: event.clientX - rect.left, y: event.clientY - rect.top });
   };
 
@@ -227,9 +238,18 @@ export function DocumentRegionSelector({
 
   function pointerDown(event: React.PointerEvent<HTMLDivElement>) {
     if (disabled || loading) return;
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const viewRect = viewport.getBoundingClientRect();
+    // Leave native scrollbar dragging to the browser.
+    if (event.clientX >= viewRect.left + viewport.clientWidth || event.clientY >= viewRect.top + viewport.clientHeight) return;
+    const imageRect = imageRef.current?.getBoundingClientRect();
+    if (!imageRect) return;
+    if (tool === "select" && event.button !== 1 && !event.shiftKey &&
+      (event.clientX < imageRect.left || event.clientX > imageRect.right || event.clientY < imageRect.top || event.clientY > imageRect.bottom)) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     if (tool === "pan" || event.button === 1 || event.shiftKey) {
-      dragRef.current = { kind: "pan", start: { x: event.clientX, y: event.clientY }, offset };
+      dragRef.current = { kind: "pan", start: { x: event.clientX, y: event.clientY }, scroll: { x: viewport.scrollLeft, y: viewport.scrollTop } };
       return;
     }
     const point = normalizedPoint(event.clientX, event.clientY);
@@ -242,7 +262,7 @@ export function DocumentRegionSelector({
     const drag = dragRef.current;
     if (!drag) return;
     if (drag.kind === "pan") {
-      setOffset({ x: drag.offset.x + event.clientX - drag.start.x, y: drag.offset.y + event.clientY - drag.start.y });
+      viewportRef.current?.scrollTo({ left: drag.scroll.x + drag.start.x - event.clientX, top: drag.scroll.y + drag.start.y - event.clientY });
       return;
     }
     const point = normalizedPoint(event.clientX, event.clientY);
@@ -294,6 +314,8 @@ export function DocumentRegionSelector({
     <section className="mb-4 overflow-hidden rounded-md border border-border bg-muted/20">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-3 py-2">
         <div className="flex items-center gap-1">
+          <Button size="icon" variant="ghost" aria-label="Cuộn tài liệu sang trái" title="Cuộn tài liệu sang trái" onClick={() => viewportRef.current?.scrollBy({ left: -200, behavior: "smooth" })}><ArrowLeft /></Button>
+          <Button size="icon" variant="ghost" aria-label="Cuộn tài liệu sang phải" title="Cuộn tài liệu sang phải" onClick={() => viewportRef.current?.scrollBy({ left: 200, behavior: "smooth" })}><ArrowRight /></Button>
           <Button size="sm" variant={tool === "select" ? "secondary" : "ghost"} onClick={() => setTool("select")}>
             <MousePointer2 /> Khoanh vùng
           </Button>
@@ -314,7 +336,9 @@ export function DocumentRegionSelector({
 
       <div
         ref={viewportRef}
-        className={`relative h-[52vh] min-h-[360px] max-h-[620px] overflow-hidden bg-muted/50 touch-none ${tool === "pan" ? "cursor-grab active:cursor-grabbing" : "cursor-crosshair"}`}
+        aria-label="Khung tài liệu"
+        tabIndex={0}
+        className={`document-scroll relative h-[52vh] min-h-[360px] max-h-[620px] overflow-scroll bg-muted/50 touch-none ${tool === "pan" ? "cursor-grab active:cursor-grabbing" : "cursor-crosshair"}`}
         onPointerDown={pointerDown}
         onPointerMove={pointerMove}
         onPointerUp={pointerUp}
@@ -327,9 +351,10 @@ export function DocumentRegionSelector({
         ) : error ? (
           <p className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-destructive">{error}</p>
         ) : page ? (
+          <div className="grid min-h-full min-w-full place-items-center p-6" style={{ width: displayWidth * zoom + 48, height: displayHeight * zoom + 48 }}>
           <div
-            className="absolute origin-top-left shadow-lg"
-            style={{ width: displayWidth, height: displayHeight, transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})` }}
+            className="relative shrink-0 shadow-lg"
+            style={{ width: displayWidth * zoom, height: displayHeight * zoom }}
           >
             <img ref={imageRef} src={page.url} alt={`Trang ${pageIndex + 1}`} draggable={false} className="block size-full select-none bg-background object-fill" />
             {pageRegions.map((region) => {
@@ -355,6 +380,7 @@ export function DocumentRegionSelector({
             {draftRect ? (
               <div className="pointer-events-none absolute border-2 border-dashed border-primary bg-primary/10" style={{ left: `${draftRect.x * 100}%`, top: `${draftRect.y * 100}%`, width: `${draftRect.width * 100}%`, height: `${draftRect.height * 100}%` }} />
             ) : null}
+          </div>
           </div>
         ) : null}
       </div>

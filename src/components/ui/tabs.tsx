@@ -2,22 +2,30 @@ import * as React from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 
 import { cn } from "@/lib/utils";
+import { useActiveTabScroll } from "@/components/ScrollTabs";
 
 const Tabs = TabsPrimitive.Root;
 
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
->(({ className, ...props }, ref) => (
+>(({ className, ...props }, ref) => {
+  const scrollRef = useActiveTabScroll();
+  return (
   <TabsPrimitive.List
-    ref={ref}
+    ref={(node) => {
+      scrollRef.current = node;
+      if (typeof ref === "function") ref(node);
+      else if (ref) ref.current = node;
+    }}
     className={cn(
-      "inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
+      "scroll-tabs inline-flex min-h-9 items-center rounded-lg bg-muted p-1 text-muted-foreground",
       className,
     )}
     {...props}
   />
-));
+  );
+});
 TabsList.displayName = TabsPrimitive.List.displayName;
 
 const TabsTrigger = React.forwardRef<

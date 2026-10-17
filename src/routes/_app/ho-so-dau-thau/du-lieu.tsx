@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/PageHeader";
 import { DocsTabs } from "@/components/DocsTabs";
+import { ScrollTabs } from "@/components/ScrollTabs";
 import { EmptyState } from "@/components/EmptyState";
 import { FieldGroupEditor, flushPendingFieldSaves, type FieldRow } from "@/components/FieldGroupEditor";
 import { ScanFileDialog } from "@/components/ScanFileDialog";
@@ -656,12 +657,14 @@ function DataPage() {
               </p>
             </header>
             <div className="border-b border-border px-4 py-3">
-              <div className="inline-flex flex-wrap gap-1 rounded-lg border border-border bg-card p-1">
+              <ScrollTabs role="tablist" aria-label="Hình thức xuất văn bản" className="gap-1 rounded-lg border border-border bg-card p-1">
                 {TENDER_METHODS.map((m) => (
                   <button
                     key={m.value}
                     type="button"
                     onClick={() => setMethod(m.value)}
+                    role="tab"
+                    aria-selected={m.value === method}
                     className={cn(
                       "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                       m.value === method
@@ -672,7 +675,7 @@ function DataPage() {
                     {m.label}
                   </button>
                 ))}
-              </div>
+              </ScrollTabs>
             </div>
             <div className="p-4">
               {templates.isLoading ? (

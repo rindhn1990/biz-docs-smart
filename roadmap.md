@@ -5,6 +5,8 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
+- [ ] Cuộn ngang tài liệu quét/xem trước, tab và bảng; kiểm thử màn hình 1100px/768px.
+
 - [ ] Ví dụ hướng dẫn tab Dữ liệu: placeholder riêng, sửa ví dụ admin, kiểm tra lưu và xuất không dùng ví dụ.
 
 - [x] Đồng nhất dấu phẩy trong số tiền bằng chữ; kiểm tra và cập nhật riêng giá trị lưu theo cách đọc cũ, bảo vệ chữ sửa tay.

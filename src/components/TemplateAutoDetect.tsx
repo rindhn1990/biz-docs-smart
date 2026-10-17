@@ -112,6 +112,7 @@ export function TemplateAutoDetect({
             {fileName ? <span className="text-sm text-muted-foreground">{fileName}</span> : null}
           </div>
           {rows.length ? (
+            <div className="max-w-full overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
               <thead><tr className="border-b text-left text-xs uppercase text-muted-foreground"><th className="px-2 py-2">Dùng</th><th className="px-2 py-2">Vùng dữ liệu</th><th className="px-2 py-2">Giá trị nhận diện</th><th className="px-2 py-2">Tin cậy</th></tr></thead>
               <tbody className="divide-y divide-border">
@@ -125,6 +126,7 @@ export function TemplateAutoDetect({
                 ))}
               </tbody>
             </table>
+            </div>
           ) : (
             <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Chọn file Word hoàn chỉnh tương ứng với mẫu gốc này.</p>
           )}

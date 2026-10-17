@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { ListChecks, BarChart3, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ScrollTabs } from "@/components/ScrollTabs";
 
 const TABS = [
   { to: "/ho-so-dau-thau", label: "Danh sách hồ sơ", icon: ListChecks },
@@ -12,7 +13,7 @@ const TABS = [
 export function DocsTabs() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
-    <div
+    <ScrollTabs
       role="tablist"
       aria-label="Hồ sơ đấu thầu"
       className="mb-4 inline-flex gap-1 rounded-lg border border-border bg-card p-1"
@@ -40,6 +41,6 @@ export function DocsTabs() {
           </Link>
         );
       })}
-    </div>
+    </ScrollTabs>
   );
 }
