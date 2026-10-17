@@ -79,7 +79,7 @@ export function TemplateContentEditor({
           </label>
         </div>
 
-        <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto bg-muted/30 p-5">
+        <div className="min-h-0 min-w-0 flex-1 space-y-1.5 overflow-auto bg-muted/30 p-5">
           {original.length === 0 ? (
             <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" /> Đang mở nội dung mẫu…

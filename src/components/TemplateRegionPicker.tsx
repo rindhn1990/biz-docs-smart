@@ -322,7 +322,7 @@ export function TemplateRegionPicker({
           <div
             ref={bodyRef}
             onMouseUp={captureSelection}
-            className="prose-docx min-h-0 overflow-y-auto border-b border-border px-6 py-5 text-sm leading-relaxed lg:border-b-0 lg:border-r"
+            className="prose-docx min-h-0 min-w-0 overflow-auto border-b border-border px-6 py-5 text-sm leading-relaxed lg:border-b-0 lg:border-r"
           >
             {error ? (
               <p className="text-sm text-destructive">{error}</p>
@@ -331,7 +331,7 @@ export function TemplateRegionPicker({
                 <Loader2 className="size-4 animate-spin" /> Đang mở file Word…
               </p>
             ) : (
-              <div dangerouslySetInnerHTML={{ __html: html }} />
+              <div className="w-[760px] min-w-full" dangerouslySetInnerHTML={{ __html: html }} />
             )}
           </div>
 
