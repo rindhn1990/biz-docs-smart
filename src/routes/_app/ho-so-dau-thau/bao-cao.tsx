@@ -244,6 +244,7 @@ function ReportPage() {
           <header className="border-b border-border px-4 py-3">
             <h2 className="text-sm font-semibold">Chất lượng nhận dạng</h2>
           </header>
+          <div className="max-w-full overflow-x-auto">
           <table className="w-full text-sm">
             <tbody className="divide-y divide-border">
               <tr>
@@ -271,6 +272,7 @@ function ReportPage() {
               </tr>
             </tbody>
           </table>
+          </div>
         </section>
       </div>
     </div>

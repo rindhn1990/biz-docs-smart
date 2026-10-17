@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { ScrollTabs } from "@/components/ScrollTabs";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { cn } from "@/lib/utils";
 
@@ -170,12 +171,14 @@ function WorkflowPage() {
         </p>
       ) : null}
 
-      <div className="mb-4 inline-flex flex-wrap gap-1 rounded-lg border border-border bg-card p-1">
+      <ScrollTabs role="tablist" aria-label="Hình thức lựa chọn nhà thầu" className="mb-4 gap-1 rounded-lg border border-border bg-card p-1">
         {TENDER_METHODS.map((m) => (
           <button
             key={m.value}
             type="button"
             onClick={() => setMethod(m.value)}
+            role="tab"
+            aria-selected={m.value === method}
             className={cn(
               "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
               m.value === method
@@ -186,7 +189,7 @@ function WorkflowPage() {
             {m.label}
           </button>
         ))}
-      </div>
+      </ScrollTabs>
 
       <section className="panel">
         <header className="flex items-center justify-between border-b border-border px-4 py-3">

@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Gavel, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { ScrollTabs } from "@/components/ScrollTabs";
 
 export const MODULE_TABS = [
   { key: "dau-thau", label: "Đấu thầu", to: "/tong-quan", icon: Gavel },
@@ -37,12 +38,12 @@ export function ModuleTabs({ className }: { className?: string }) {
   if (tabs.length < 2) return null;
 
   return (
-    <div
+    <ScrollTabs
       role="tablist"
       aria-label="Phân hệ"
       className={cn("mb-6 inline-flex gap-1 rounded-lg border border-border bg-card p-1", className)}
     >
-      {MODULE_TABS.map((tab) => {
+      {tabs.map((tab) => {
         const isActive = tab.key === active;
         return (
           <Link
@@ -62,6 +63,6 @@ export function ModuleTabs({ className }: { className?: string }) {
           </Link>
         );
       })}
-    </div>
+    </ScrollTabs>
   );
 }

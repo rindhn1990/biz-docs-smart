@@ -29,6 +29,7 @@ import { AutoAssignSources } from "@/components/AutoAssignSources";
 import { suggestForNewPlaceholders, type TemplateModule } from "@/lib/template-resolve";
 import { TemplateContentEditor } from "@/components/TemplateContentEditor";
 import { Button } from "@/components/ui/button";
+import { ScrollTabs } from "@/components/ScrollTabs";
 import {
   extractPlaceholdersFromFile,
   prettifyPlaceholder,
@@ -62,6 +63,8 @@ export const Route = createFileRoute("/_app/mau-van-ban")({
           "Kho mẫu Word thật: tải lên tệp .docx, tự dò chỗ trống [[Ten_bien]] hoặc {{TEN_BIEN}} và xuất văn bản đã điền dữ liệu.",
       },
       { property: "og:title", content: "Mẫu văn bản — OfficeFlow" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       {
         property: "og:description",
         content: "Tải lên mẫu Word thật, gán nguồn dữ liệu cho chỗ trống và xuất file .docx đã điền sẵn.",
@@ -548,10 +551,10 @@ function TemplatesPage() {
         }
       />
 
-      {module === "tender" ? <div
+      {module === "tender" ? <ScrollTabs
         role="tablist"
         aria-label="Hình thức lựa chọn nhà thầu"
-        className="mb-4 inline-flex flex-wrap gap-1 rounded-lg border border-border bg-card p-1"
+        className="mb-4 gap-1 rounded-lg border border-border bg-card p-1"
       >
         {TENDER_METHODS.map((m) => (
           <button
@@ -573,7 +576,7 @@ function TemplatesPage() {
             {m.label}
           </button>
         ))}
-      </div> : null}
+      </ScrollTabs> : null}
 
       <div className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)_minmax(0,1fr)]">
         <section className="panel h-fit">
@@ -1004,7 +1007,7 @@ function TemplatesPage() {
               Phần nền hổ phách là dữ liệu được điền tự động.
             </p>
           </header>
-          <div className="max-h-[70vh] overflow-y-auto px-5 py-4">
+          <div className="min-w-0 max-h-[70vh] overflow-auto px-5 py-4">
             {!current ? (
               <p className="text-sm text-muted-foreground">Chọn một mẫu để xem trước.</p>
             ) : current.body ? (

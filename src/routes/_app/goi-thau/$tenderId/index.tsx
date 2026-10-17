@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { ScrollTabs } from "@/components/ScrollTabs";
 import { StatusBadge } from "@/components/StatusBadge";
 import { methodLabel } from "@/lib/methods";
 import { TENDER_STATUS } from "@/lib/domain";
@@ -125,12 +126,14 @@ function TenderCaseDetail() {
         }
       />
 
-      <div className="mb-4 inline-flex flex-wrap gap-1 rounded-lg border border-border bg-card p-1">
+      <ScrollTabs role="tablist" aria-label="Chi tiết gói thầu" className="mb-4 gap-1 rounded-lg border border-border bg-card p-1">
         {TABS.map((x) => (
           <button
             key={x.key}
             type="button"
             onClick={() => setTab(x.key)}
+            role="tab"
+            aria-selected={x.key === tab}
             className={cn(
               "rounded-md px-3.5 py-2 text-sm font-medium transition-colors",
               x.key === tab
@@ -141,7 +144,7 @@ function TenderCaseDetail() {
             {x.label}
           </button>
         ))}
-      </div>
+      </ScrollTabs>
 
       {tab === "checklist" ? (
         <Checklist tenderId={tenderId} canWrite={canWrite} isAdmin={isAdmin} />
