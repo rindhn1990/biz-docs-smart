@@ -11,6 +11,8 @@
 
 ## Architecture decisions
 
+- Document scan navigation uses native scrolling with image-relative region coordinates; shared scrollbar styling and tab visibility behavior keep overflow consistent across screens.
+
 - Field examples use a module-scoped React Query cache separate from document values; only input placeholders consume it so persistence, synchronization and exports cannot inherit examples.
 
 - All Vietnamese money-to-words output uses `src/lib/money.ts`'s `readVietnameseMoney` so forms, scripts and Word exports stay consistent.
