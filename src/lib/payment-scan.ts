@@ -35,5 +35,5 @@ export function splitPaymentScan(values: Record<string, string>) {
       edits[key] = PAYMENT_DATE_KEYS.has(key) ? normalizePaymentDate(value) : value;
     }
   }
-  return { contractor, edits, amount: values.pay_amount?.trim(), content: values.TT_noidung?.trim() };
+  return { contractor, edits, amount: values["pay_amount"]?.trim(), content: values["TT_noidung"]?.trim() };
 }

@@ -269,7 +269,7 @@ function PaymentsPage() {
             amount: amountNumber,
             total_amount: amountNumber,
             request_date: (() => {
-              const date = parseVnDate(values.TT_ngay);
+              const date = parseVnDate(values["TT_ngay"]);
               return date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` : null;
             })(),
             status: "pending",
