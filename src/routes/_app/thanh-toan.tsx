@@ -456,12 +456,13 @@ function PaymentsPage() {
                     const label = f.label.split(" — ").slice(1).join(" — ") || f.label;
                     const update = (next: string) => setEdits((prev) => ({ ...prev, [f.key]: next }));
                     return (
-                      <label key={f.key} className="text-[11px] font-medium text-muted-foreground">
+                      <label key={f.key} htmlFor={`payment-${f.key}`} className="text-[11px] font-medium text-muted-foreground">
                         {label}
                         {PAYMENT_DATE_KEYS.has(f.key) ? (
-                          <DateField value={values[f.key] ?? ""} onChange={update} className="mt-0.5" />
+                          <DateField id={`payment-${f.key}`} value={values[f.key] ?? ""} onChange={update} className="mt-0.5" />
                         ) : (
                           <input
+                            id={`payment-${f.key}`}
                             value={values[f.key] ?? ""}
                             inputMode={PAYMENT_MONEY_KEYS.has(f.key) ? "numeric" : undefined}
                             onChange={(e) => update(PAYMENT_MONEY_KEYS.has(f.key) ? formatThousands(e.target.value) : e.target.value)}
