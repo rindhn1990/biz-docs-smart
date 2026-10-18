@@ -191,6 +191,7 @@ export function extractFieldsLocally(text: string, fields: Field[]): LocalScanne
     } else if (paymentKey === "hd_ten") {
       set(text.match(/hợp\s*đồng\s*[:\s]*[“"«]([^”"»]{3,300})[”"»]/i)?.[1] ?? null, 0.85);
       set(afterAny(lines, flines, ["ten hop dong"]), 0.85);
+      set(gtMatch?.[1] ?? null, 0.8);
     } else if (paymentKey === "gt_ten") {
       set(gtMatch?.[1] ?? null, 0.85);
       set(afterAny(lines, flines, ["ten goi thau"]), 0.85);
