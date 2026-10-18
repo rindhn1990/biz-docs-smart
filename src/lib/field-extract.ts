@@ -28,6 +28,10 @@ function kindOf(field: Field): Kind {
   const k = field.key.toLowerCase();
   const l = fold(field.label);
   const kl = k + " " + l;
+  if (["hd_ngay", "tt_ngay", "tt_hanthanhtoan"].includes(k)) return "date";
+  if (["hd_giatri", "tt_tongtien"].includes(k)) return "money";
+  if (["hd_so", "tt_dot", "gt_ma"].includes(k)) return "number";
+  if (["hd_ten", "gt_ten"].includes(k)) return "name";
   if (/email|e-mail/.test(kl)) return "email";
   if (/bank_account|so tai khoan|taikhoan/.test(kl)) return "bank_account";
   if (/bank_name|ngan hang|nganhang/.test(kl)) return "bank_name";
@@ -168,6 +172,28 @@ export function extractFieldsLocally(text: string, fields: Field[]): LocalScanne
       if (!value && v) [value, confidence] = [v, c];
     };
 
+    // Payment-specific context must precede generic labels and document dates.
+    const paymentKey = field.key.toLowerCase();
+    if (paymentKey === "hd_so") {
+      const match = text.match(/(?:hợp\s*đồng\s*(?:số\s*)+|số\s*hợp\s*đồng\s*|hđ\s*(?:số\s*)+)[:\s]*([\p{L}\d][\p{L}\d/._-]*)/iu);
+      set(match?.[1] ?? null, 0.95);
+    } else if (paymentKey === "hd_ngay") {
+      const context = text.match(/(?:hợp\s*đồng|hđ)[^\n]{0,300}?ký\s*(ngày\s*[^\n]{0,70})/i);
+      set(context?.[1] ? findDate(context[1]) : null, 0.95);
+    } else if (paymentKey === "tt_ngay") {
+      const header = lines.slice(0, 12).find((line) => /,\s*ngày\s*\d/i.test(line));
+      set(header ? findDate(header) : null, 0.9);
+    } else if (paymentKey === "tt_noidung") {
+      const match = text.match(/(?:thông\s*báo|đề\s*nghị\s*thanh\s*toán)\s*[:\-–]?\s*([^\n]{3,300})/i);
+      set(match?.[1] ? clean(match[1]) : null, 0.8);
+    } else if (paymentKey === "tt_dot") {
+      set(text.match(/đợt\s*(\d+)/i)?.[1] ?? null, 0.9);
+    } else if (paymentKey === "hd_ten") {
+      set(text.match(/hợp\s*đồng\s*[:\s]*[“"«]([^”"»]{3,300})[”"»]/i)?.[1] ?? null, 0.85);
+    } else if (paymentKey === "gt_ten") {
+      set(gtMatch?.[1] ?? null, 0.85);
+    }
+
     // 1) Mẫu câu chuyên biệt (thanh toán / hoá đơn / nhà thầu)
     switch (kind) {
       case "bank_account":
@@ -219,7 +245,7 @@ export function extractFieldsLocally(text: string, fields: Field[]): LocalScanne
     }
 
     // 2) Theo nhãn in sẵn (cụm đầy đủ → từ khoá)
-    if (!value) {
+    if (!value && !["hd_so", "hd_ngay", "tt_ngay", "tt_dot", "hd_ten", "gt_ten"].includes(paymentKey)) {
       const hit = valueAfterLabel(lines, flines, field.label);
       if (hit) {
         let v: string | null = hit.value;
@@ -230,7 +256,7 @@ export function extractFieldsLocally(text: string, fields: Field[]): LocalScanne
     }
 
     // 3) Mẫu câu hành chính chung
-    if (!value) {
+    if (!value && !["hd_so", "hd_ngay", "tt_ngay", "tt_dot", "hd_ten", "gt_ten"].includes(paymentKey)) {
       if (kind === "name" && gtMatch) set(clean(gtMatch[1]!), 0.85);
       else if (kind === "subject" && vvMatch) set(clean(vvMatch[1] ?? vvMatch[2]!), 0.85);
       else if (kind === "recipient" && kgMatch) set(clean(kgMatch[1]!), 0.85);
