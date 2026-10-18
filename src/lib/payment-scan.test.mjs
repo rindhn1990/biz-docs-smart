@@ -19,6 +19,14 @@ describe('Payment scan rules', () => {
   it('uses the signing date rather than the document header date', () => assert.equal(scanned.HD_ngay, '30/01/2026'));
   it('uses the document header for the request date', () => assert.equal(scanned.TT_ngay, '14/09/2026'));
   it('reads the payment amount', () => assert.equal(scanned.pay_amount, '305.532.000'));
+  it('does not mistake header date fragments for bank data or numeric money for words', () => {
+    assert.deepEqual(extractFieldsLocally(text, [
+      {key:'bank_account',label:'Số tài khoản ngân hàng'},
+      {key:'bank_name',label:'Tên ngân hàng và chi nhánh'},
+      {key:'pay_amount_text',label:'Số tiền bằng chữ'},
+      {key:'HD_giatri',label:'Tổng giá trị'},
+    ]), []);
+  });
   it('normalizes word dates and separates contractor, content and edits', () => {
     assert.deepEqual(splitPaymentScan({ name:'Công ty A', HD_ngay:'ngày 3 tháng 1 năm 2026', HD_so:' ', TT_noidung:'Thanh toán đợt 2', pay_amount:'305.532.000' }), {
       contractor:{name:'Công ty A'}, edits:{HD_ngay:'03/01/2026'}, amount:'305.532.000', content:'Thanh toán đợt 2'

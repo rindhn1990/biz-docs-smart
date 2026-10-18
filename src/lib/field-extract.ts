@@ -251,7 +251,7 @@ export function extractFieldsLocally(text: string, fields: Field[]): LocalScanne
     }
 
     // 2) Theo nhãn in sẵn (cụm đầy đủ → từ khoá)
-    if (!value && !["hd_so", "hd_ngay", "tt_ngay", "tt_dot", "hd_ten", "gt_ten", "gt_ma", "hd_giatri"].includes(paymentKey)) {
+    if (!value && !["bank_account", "bank_name", "tax", "phone", "email", "money_text"].includes(kind) && !["hd_so", "hd_ngay", "tt_ngay", "tt_dot", "hd_ten", "gt_ten", "gt_ma", "hd_giatri"].includes(paymentKey)) {
       const hit = valueAfterLabel(lines, flines, field.label);
       if (hit) {
         let v: string | null = hit.value;

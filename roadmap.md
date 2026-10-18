@@ -5,7 +5,7 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
-- [ ] Thanh toán: trường quét theo mẫu, ưu tiên dữ liệu quét, nhận diện số/ngày hợp đồng và kiểm thử xuất Word.
+- [x] Thanh toán: trường quét theo mẫu, ưu tiên dữ liệu quét, nhận diện số/ngày hợp đồng; thử giao diện và Word với dữ liệu trống/có giá trị.
 
 - [ ] Cuộn ngang tài liệu quét/xem trước, tab và bảng; kiểm thử màn hình 1100px/768px.
 
