@@ -19,6 +19,11 @@ import { formatThousands, parseThousands, readVietnameseMoney } from "@/lib/mone
 import { renderAndDownloadDocx, type DelimiterStyle } from "@/lib/docx";
 import { recordExport } from "@/lib/export-history";
 import { CONTRACTOR_SCAN_FIELDS } from "@/lib/contractor";
+import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
+import { PAYMENT_DATE_KEYS, PAYMENT_MONEY_KEYS, paymentScanExtraFields, splitPaymentScan } from "@/lib/payment-scan";
+import { DateField, parseVnDate } from "@/components/DateField";
+import { Button } from "@/components/ui/button";
+import { normKey } from "@/lib/template-resolve";
 
 export const Route = createFileRoute("/_app/thanh-toan")({
   head: () => ({
@@ -105,18 +110,7 @@ function PaymentsPage() {
     setContractId(id);
     setPaymentId("");
     const c = (contractsQ.data ?? []).find((x) => x.id === id);
-    const t = (tenders.data ?? []).find((x) => x.id === (c?.tender_id ?? tenderId));
     if (c?.contractor_id) setContractorId(c.contractor_id);
-    setEdits({
-      GT_ten: t?.name ?? "",
-      GT_ma: t?.code ?? "",
-      HD_ten: c?.title ?? "",
-      HD_so: c?.contract_number ?? "",
-      HD_ngay: c?.sign_date ? formatDate(c.sign_date) : "",
-      HD_giatri: c?.total_value ? formatThousands(String(Math.round(Number(c.total_value)))) : "",
-      NT_ten: c?.contractors?.name ?? "",
-      NT_mst: c?.contractors?.tax_code ?? "",
-    });
   }
 
   const templates = useQuery({
@@ -131,6 +125,23 @@ function PaymentsPage() {
       return data;
     },
   });
+
+  const scanSources = useQuery({
+    queryKey: ["template_mappings", "payment", "scan-sources"],
+    queryFn: async () => {
+      const [{ data, error }, inherited] = await Promise.all([
+        supabase.from("template_mappings")
+          .select("placeholder,source_field,templates!inner(module)")
+          .eq("templates.module", "payment"),
+        loadInheritedSources("payment"),
+      ]);
+      if (error) throw error;
+      return (data ?? []).map((m) => m.source_field || inherited.get(normKey(m.placeholder)) || "");
+    },
+  });
+  const extraScanFields = paymentScanExtraFields(scanSources.data ?? []);
+  const selectedContract = (contractsQ.data ?? []).find((c) => c.id === contractId);
+  const selectedTender = (tenders.data ?? []).find((t) => t.id === (selectedContract?.tender_id || tenderId));
 
   const rows = payments.data ?? [];
   const selected = (contractors.data ?? []).find((c) => c.id === contractorId) ?? null;
@@ -156,11 +167,11 @@ function PaymentsPage() {
     return merged.name || selected ? merged : null;
   }, [selected, scanned]);
 
-  const amountNumber = parseThousands(amount) ?? Number(payment?.total_amount ?? 0);
+  const amountNumber = parseThousands(amount) ?? 0;
 
   /** Bộ giá trị dùng chung cho mọi mẫu văn bản thanh toán. */
   const values = useMemo<Record<string, string>>(() => {
-    const contract = payment?.contracts ?? null;
+    const contract = selectedContract ?? payment?.contracts ?? null;
     const base: Record<string, string> = {
       NT_ten: contractor?.name ?? "",
       NT_mst: contractor?.tax_code ?? "",
@@ -172,24 +183,34 @@ function PaymentsPage() {
       NT_taikhoan: contractor?.bank_account ?? "",
       NT_nganhang: contractor?.bank_name ?? "",
       HD_so: contract?.contract_number ?? "",
-      HD_ngay: "",
+      HD_ngay: selectedContract?.sign_date ? formatDate(selectedContract.sign_date) : "",
       HD_giatri: contract?.total_value ? formatThousands(String(contract.total_value)) : "",
       TT_dot: payment ? String(payment.installment_no) : "",
-      TT_noidung: content || (payment?.description ?? ""),
-      TT_sotien: formatThousands(String(Math.round(amountNumber || 0))),
-      TT_sotien_chu: readVietnameseMoney(amountNumber),
+      TT_noidung: content,
+      TT_sotien: amount.trim() ? formatThousands(String(Math.round(amountNumber))) : "",
+      TT_sotien_chu: amount.trim() ? readVietnameseMoney(amountNumber) : "",
       TT_vat: payment?.vat_rate ? String(payment.vat_rate) : "",
       TT_tongtien: payment ? formatThousands(String(Math.round(Number(payment.total_amount)))) : "",
       TT_ngay: payment?.request_date ? formatDate(payment.request_date) : "",
       TT_hanthanhtoan: payment?.due_date ? formatDate(payment.due_date) : "",
-      GT_ten: "",
-      GT_ma: "",
-      HD_ten: "",
+      GT_ten: selectedTender?.name ?? "",
+      GT_ma: selectedTender?.code ?? "",
+      HD_ten: selectedContract?.title ?? "",
     };
     const out: Record<string, string> = { ...base };
-    for (const [k, v] of Object.entries(edits)) if (v.trim()) out[k] = v.trim();
+    for (const [k, v] of Object.entries(edits)) out[k] = v.trim();
     return out;
-  }, [contractor, payment, content, amountNumber, edits]);
+  }, [contractor, payment, content, amount, amountNumber, edits, selectedContract, selectedTender]);
+
+  const detailFields = PAYMENT_TEMPLATE_FIELDS.filter((f) =>
+    extraScanFields.some((scan) => scan.key === f.key) ||
+    ((contractId || paymentId) && ["GT_ten", "GT_ma", "HD_ten", "HD_so", "HD_ngay", "HD_giatri", "NT_ten", "NT_mst"].includes(f.key)) ||
+    (Object.hasOwn(edits, f.key) && !f.key.startsWith("NT_"))
+  ).filter((f) => !["TT_noidung", "TT_sotien", "TT_sotien_chu"].includes(f.key));
+  const contractWarnings = selectedContract ? [
+    { key: "HD_so", label: "Số hợp đồng", original: selectedContract.contract_number, button: "Dùng số trong hợp đồng" },
+    { key: "HD_ngay", label: "Ngày ký", original: selectedContract.sign_date ? formatDate(selectedContract.sign_date) : "", button: "Dùng ngày trong hợp đồng" },
+  ].filter((f) => edits[f.key]?.trim() && f.original && edits[f.key]?.trim() !== f.original) : [];
 
   type Template = {
     id: string;
@@ -247,7 +268,10 @@ function PaymentsPage() {
             description: content || `Thanh toán đợt ${nextNo}`,
             amount: amountNumber,
             total_amount: amountNumber,
-            request_date: new Date().toISOString().slice(0, 10),
+            request_date: (() => {
+              const date = parseVnDate(values["TT_ngay"]);
+              return date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` : null;
+            })(),
             status: "pending",
             created_by: user?.id ?? null,
           })
@@ -399,7 +423,7 @@ function PaymentsPage() {
               Gói thầu
               <select
                 value={tenderId}
-                onChange={(e) => { setTenderId(e.target.value); setContractId(""); setEdits({}); }}
+                onChange={(e) => { setTenderId(e.target.value); setContractId(""); setPaymentId(""); }}
                 className="mt-1 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
               >
                 <option value="">— Chọn gói thầu —</option>
@@ -424,29 +448,40 @@ function PaymentsPage() {
                 ))}
               </select>
             </label>
-            {contractId ? (
-              <div className="grid gap-2 rounded-md border border-border bg-muted/40 p-3 md:col-span-2 md:grid-cols-4">
-                {[
-                  ["GT_ten", "Tên gói thầu"],
-                  ["GT_ma", "Mã gói thầu"],
-                  ["HD_ten", "Tên hợp đồng"],
-                  ["HD_so", "Số hợp đồng"],
-                  ["HD_ngay", "Ngày ký"],
-                  ["HD_giatri", "Giá trị hợp đồng"],
-                  ["NT_ten", "Tên nhà thầu"],
-                  ["NT_mst", "Mã số thuế"],
-                ].map(([k, label]) => (
-                  <label key={k} className="text-[11px] font-medium text-muted-foreground">
-                    {label}
-                    <input
-                      value={edits[k!] ?? ""}
-                      onChange={(e) => setEdits((prev) => ({ ...prev, [k!]: k === "HD_giatri" ? formatThousands(e.target.value) : e.target.value }))}
-                      className="mt-0.5 w-full rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground outline-none focus:border-primary"
-                    />
-                  </label>
-                ))}
+            {detailFields.length ? (
+              <div className="md:col-span-2">
+                <h3 className="mb-2 text-sm font-semibold">Thông tin gói thầu/hợp đồng và thanh toán</h3>
+                <div className="grid gap-2 md:grid-cols-4">
+                  {detailFields.map((f) => {
+                    const label = f.label.split(" — ").slice(1).join(" — ") || f.label;
+                    const update = (next: string) => setEdits((prev) => ({ ...prev, [f.key]: next }));
+                    return (
+                      <label key={f.key} htmlFor={`payment-${f.key}`} className="text-[11px] font-medium text-muted-foreground">
+                        {label}
+                        {PAYMENT_DATE_KEYS.has(f.key) ? (
+                          <DateField id={`payment-${f.key}`} value={values[f.key] ?? ""} onChange={update} className="mt-0.5" />
+                        ) : (
+                          <input
+                            id={`payment-${f.key}`}
+                            value={values[f.key] ?? ""}
+                            inputMode={PAYMENT_MONEY_KEYS.has(f.key) ? "numeric" : undefined}
+                            onChange={(e) => update(PAYMENT_MONEY_KEYS.has(f.key) ? formatThousands(e.target.value) : e.target.value)}
+                            className="mt-0.5 w-full rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground outline-none focus:border-primary"
+                          />
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             ) : null}
+            {contractWarnings.map((warning) => (
+              <div key={warning.key} className="flex flex-wrap items-center gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs md:col-span-2">
+                <AlertTriangle className="size-4 shrink-0 text-warning" />
+                <span className="flex-1">{warning.label} vừa nhập/quét (<b>{edits[warning.key]}</b>) khác với hợp đồng đang chọn (<b>{warning.original}</b>). Đang dùng giá trị vừa nhập/quét.</span>
+                <Button type="button" variant="outline" size="sm" onClick={() => setEdits((prev) => ({ ...prev, [warning.key]: warning.original }))}>{warning.button}</Button>
+              </div>
+            ))}
             <label className="text-xs font-medium text-muted-foreground">
               <span className="flex flex-wrap items-center justify-between gap-2">
                 Nhà thầu nhận thanh toán
@@ -587,14 +622,18 @@ function PaymentsPage() {
             ...CONTRACTOR_SCAN_FIELDS.map((f) => ({ key: f.key, label: f.label })),
             { key: "pay_amount", label: "Số tiền thanh toán" },
             { key: "pay_amount_text", label: "Số tiền bằng chữ" },
+            ...extraScanFields,
           ]}
           note="Đây là đơn vị thụ hưởng khoản thanh toán."
           onClose={() => setScanning(false)}
           onApply={(v) => {
-            const { pay_amount, pay_amount_text: _text, ...rest } = v;
-            setScanned(rest);
-            if (pay_amount) setAmount(formatThousands(pay_amount.replace(/[^\d]/g, "")));
-            toast.success("Đã lấy thông tin nhà thầu từ tệp", {
+            const result = splitPaymentScan(v);
+            setScanned((prev) => ({ ...prev, ...result.contractor }));
+            setEdits((prev) => ({ ...prev, ...Object.fromEntries(Object.entries(result.edits).map(([key, value]) =>
+              [key, PAYMENT_MONEY_KEYS.has(key) ? formatThousands(value) : value])) }));
+            if (result.amount) setAmount(formatThousands(result.amount.replace(/[^\d]/g, "")));
+            if (result.content) setContent(result.content);
+            toast.success("Đã lấy thông tin thanh toán từ tệp", {
               description: "Thông tin này sẽ được điền vào mẫu thanh toán.",
             });
           }}

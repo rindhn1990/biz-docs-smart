@@ -11,6 +11,8 @@
 
 ## Architecture decisions
 
+- Payment scan field selection and result partitioning live in a browser-safe helper; template sources and default core fields drive one shared scan/edit list without mixing contractor and payment state.
+
 - Document scan navigation uses native scrolling with image-relative region coordinates; shared scrollbar styling and tab visibility behavior keep overflow consistent across screens.
 
 - Field examples use a module-scoped React Query cache separate from document values; only input placeholders consume it so persistence, synchronization and exports cannot inherit examples.
