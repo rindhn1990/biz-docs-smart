@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { EMPLOYEE_CONTRACT_STATUS } from "@/lib/hr";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { HrDelete } from "@/components/HrDelete";
+import { useAuth } from "@/hooks/useAuth";
 import { withTimestampedName } from "@/lib/docx";
 
 export const Route = createFileRoute("/_app/nhan-su/du-lieu")({
@@ -49,6 +51,7 @@ function buildQuery(f: Filters, withCount: boolean) {
 
 function EmployeeDataPage() {
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const [search, setSearch] = useState("");
   const [q, setQ] = useState("");
   const [dept, setDept] = useState("");
@@ -89,6 +92,10 @@ function EmployeeDataPage() {
   const rows = data.data?.rows ?? [];
   const total = data.data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  useEffect(() => {
+    if (data.data && !data.isPlaceholderData && page >= pages) setPage(pages - 1);
+  }, [data.data, data.isPlaceholderData, page, pages]);
 
   const toggleSort = (k: SortKey) => {
     if (sort === k) setAsc(!asc);
@@ -213,6 +220,7 @@ function EmployeeDataPage() {
                 <th className={th}>Bằng cấp</th>
                 <th className={th}>Chuyên ngành</th>
                 <th className={th}>Trường</th>
+                {isAdmin && <th className={th}>Thao tác</th>}
               </tr>
             </thead>
             <tbody className={`divide-y divide-border ${data.isFetching ? "opacity-60" : ""}`}>
@@ -249,6 +257,7 @@ function EmployeeDataPage() {
                   <td className={td}>{r.degree_name ?? "—"}</td>
                   <td className={td}>{r.degree_major ?? "—"}</td>
                   <td className={`max-w-[220px] truncate ${td}`}>{r.degree_school ?? "—"}</td>
+                  {isAdmin && r.id && <td className={td}><HrDelete id={r.id} name={r.full_name ?? "Nhân sự"} kind="employee" /></td>}
                 </tr>
               ))}
             </tbody>

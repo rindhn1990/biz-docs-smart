@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { ModuleTabs } from "@/components/ModuleTabs";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
+import { HrDelete } from "@/components/HrDelete";
 import { DocStepper } from "@/components/DocStepper";
 import { FileTypeIcon } from "@/components/FileTypeIcon";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,7 +57,7 @@ const ROTATION: EmployeeDocType[] = ["quyet_dinh_bo_nhiem", "cccd", "bang_cap"];
 function EmployeeDocumentsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user, canWrite } = useAuth();
+  const { user, canWrite, isAdmin } = useAuth();
   const documents = useEmployeeDocuments();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [docType, setDocType] = useState<EmployeeDocType>("cccd");
@@ -281,6 +282,7 @@ function EmployeeDocumentsPage() {
                       </StatusBadge>
                     </td>
                     <td className="px-4 py-3 text-right">
+                      {isAdmin && <HrDelete id={row.id} name={row.file_name} kind="document" />}
                       {hasFields ? (
                         <ChevronRight className="ml-auto size-4 text-muted-foreground" />
                       ) : null}
