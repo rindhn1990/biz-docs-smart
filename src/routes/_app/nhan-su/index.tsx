@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Upload, Loader2, ChevronRight } from "lucide-react";
@@ -7,6 +7,14 @@ import { PageHeader } from "@/components/PageHeader";
 import { ModuleTabs } from "@/components/ModuleTabs";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
+import { HrUnitsDialog } from "@/components/HrUnitsDialog";
+import { HrUnitSelect } from "@/components/HrUnitSelect";
+import { HrEmployeeDialog } from "@/components/HrEmployeeDialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useHrUnits } from "@/hooks/useHrUnits";
+import { HrDelete } from "@/components/HrDelete";
 import { DocStepper } from "@/components/DocStepper";
 import { FileTypeIcon } from "@/components/FileTypeIcon";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +35,8 @@ export const Route = createFileRoute("/_app/nhan-su/")({
         content:
           "Danh sách hồ sơ nhân sự: quyết định bổ nhiệm, căn cước công dân và bằng cấp, xử lý theo 5 bước từ tải lên đến xác nhận.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { property: "og:title", content: "Hồ sơ nhân sự — OfficeFlow" },
       {
         property: "og:description",
@@ -43,7 +53,7 @@ function useEmployeeDocuments() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("employee_documents")
-        .select("*, employees(full_name), employee_document_fields(id)")
+        .select("*, employees(full_name,unit_id), employee_document_fields(id)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -56,10 +66,24 @@ const ROTATION: EmployeeDocType[] = ["quyet_dinh_bo_nhiem", "cccd", "bang_cap"];
 function EmployeeDocumentsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user, canWrite } = useAuth();
+  const { user, canWrite, isAdmin } = useAuth();
   const documents = useEmployeeDocuments();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [docType, setDocType] = useState<EmployeeDocType>("cccd");
+  const units = useHrUnits();
+  const [unitFilter, setUnitFilter] = useState("");
+  const [uploadEmployee, setUploadEmployee] = useState("unassigned");
+  const [newName, setNewName] = useState("");
+  const [newUnit, setNewUnit] = useState("none");
+  const employees = useQuery({ queryKey: ["employees", "selection"], queryFn: async () => {
+    const all: { id: string; full_name: string; unit_id: string | null }[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase.from("employees").select("id,full_name,unit_id").order("full_name").order("id").range(from, from + 999);
+      if (error) throw error;
+      all.push(...(data ?? [])); if (!data || data.length < 1000) return all;
+    }
+  } });
+  useEffect(() => { if (unitFilter && unitFilter !== "none" && units.data && !units.data.some((u) => u.id === unitFilter)) setUnitFilter(""); }, [unitFilter, units.data]);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -67,6 +91,14 @@ function EmployeeDocumentsPage() {
   const upload = useMutation({
     mutationFn: async (files: File[]) => {
       let completed = 0;
+      let employeeId = uploadEmployee !== "unassigned" && uploadEmployee !== "new" ? uploadEmployee : null;
+      if (uploadEmployee === "new") {
+        if (!newName.trim()) throw new Error("Vui lòng nhập họ tên nhân sự mới.");
+        const { data, error } = await supabase.from("employees").insert({ full_name: newName.trim(), unit_id: newUnit === "none" ? null : newUnit }).select("id").single();
+        if (error) throw error;
+        employeeId = data.id; setUploadEmployee(data.id);
+        void queryClient.invalidateQueries({ predicate: (q) => /^(employee|hr_)/.test(String(q.queryKey[0])) });
+      }
       for (const [fileIndex, file] of files.entries()) {
       const stamp = new Date();
       const seq = `${String(stamp.getTime()).slice(-5)}-${fileIndex + 1}`;
@@ -85,6 +117,7 @@ function EmployeeDocumentsPage() {
       const { data: doc, error } = await supabase
         .from("employee_documents")
         .insert({
+          employee_id: employeeId,
           file_name: fileName,
           storage_path: storagePath,
           doc_type: docType,
@@ -146,7 +179,11 @@ function EmployeeDocumentsPage() {
     },
   });
 
-  const rows = documents.data ?? [];
+  const allRows = documents.data ?? [];
+  const rows = allRows.filter((r) => !unitFilter || (unitFilter === "none" ? !r.employees?.unit_id : r.employees?.unit_id === unitFilter)).sort((a, b) => {
+    const order = (id: string | null | undefined) => id ? (units.data ?? []).findIndex((u) => u.id === id) : Number.MAX_SAFE_INTEGER;
+    return order(a.employees?.unit_id) - order(b.employees?.unit_id) || (a.employees?.full_name ?? "").localeCompare(b.employees?.full_name ?? "", "vi");
+  });
 
   return (
     <div>
@@ -154,7 +191,7 @@ function EmployeeDocumentsPage() {
         title="Hồ sơ nhân sự"
         description="Quyết định bổ nhiệm, căn cước công dân và bằng cấp đi qua đúng 5 bước như hồ sơ đấu thầu. Chọn một hồ sơ đã có dữ liệu để kiểm tra."
         actions={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2"><HrUnitsDialog /><HrEmployeeDialog />
             <input
               ref={fileInput}
               type="file"
@@ -178,9 +215,9 @@ function EmployeeDocumentsPage() {
                 </option>
               ))}
             </select>
-            <button
+            <Button
               type="button"
-              disabled={!canWrite || upload.isPending}
+              disabled={!canWrite || upload.isPending || (uploadEmployee === "new" && !newName.trim())}
               onClick={() => fileInput.current?.click()}
               className="inline-flex items-center gap-2 rounded-md bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
@@ -190,12 +227,22 @@ function EmployeeDocumentsPage() {
                 <Upload className="size-4" />
               )}
               Tải lên nhiều tài liệu
-            </button>
+            </Button>
           </div>
         }
       />
 
       <ModuleTabs />
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <HrUnitSelect value={unitFilter} onChange={setUnitFilter} filter label="Lọc đầu mục" />
+        {canWrite && <><Select value={uploadEmployee} onValueChange={setUploadEmployee} disabled={upload.isPending}>
+          <SelectTrigger aria-label="Nhân sự nhận hồ sơ" className="w-[260px]"><SelectValue /></SelectTrigger>
+          <SelectContent><SelectItem value="unassigned">Hồ sơ chưa gán nhân sự</SelectItem><SelectItem value="new">Nhân sự mới</SelectItem>
+            {(employees.data ?? []).map((e) => <SelectItem value={e.id} key={e.id}>{e.full_name}</SelectItem>)}
+          </SelectContent></Select>
+          {uploadEmployee === "new" && <><Input className="max-w-[240px]" aria-label="Họ tên nhân sự mới" placeholder="Họ tên nhân sự mới" value={newName} onChange={(e) => setNewName(e.target.value)} disabled={upload.isPending} /><HrUnitSelect value={newUnit} onChange={setNewUnit} disabled={upload.isPending} label="Đầu mục nhân sự mới" /></>}
+        </>}
+      </div>
 
       {!canWrite ? (
         <p className="mb-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning-foreground">
@@ -225,11 +272,18 @@ function EmployeeDocumentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {rows.map((row) => {
+              {rows.map((row, index) => {
                 const hasFields = (row.employee_document_fields?.length ?? 0) > 0;
                 const busy = processingId === row.id;
                 const type = EMPLOYEE_DOC_TYPES[row.doc_type as EmployeeDocType];
+                const previous = rows[index - 1];
+                const startsUnit = index === 0 || previous?.employees?.unit_id !== row.employees?.unit_id;
+                const startsEmployee = startsUnit || previous?.employee_id !== row.employee_id;
+                const unit = (units.data ?? []).find((u) => u.id === row.employees?.unit_id);
                 return (
+                  <Fragment key={row.id}>
+                  {startsUnit && <tr className="bg-muted/60"><td colSpan={7} className="px-4 py-3 font-semibold">{unit?.name ?? "Chưa phân loại"}<span className="ml-2 text-xs font-normal text-muted-foreground">{unit?.employee_count ?? (employees.data ?? []).filter((e) => !e.unit_id).length} nhân sự</span></td></tr>}
+                  {startsEmployee && row.employee_id && <tr><td colSpan={7} className="px-4 py-2"><div className="flex items-center justify-between gap-2"><span className="font-medium">{row.employees?.full_name}</span><div className="flex gap-1"><HrEmployeeDialog employee={{ id: row.employee_id, full_name: row.employees?.full_name ?? null, unit_id: row.employees?.unit_id ?? null }} />{isAdmin && <HrDelete id={row.employee_id} name={row.employees?.full_name ?? "Nhân sự"} kind="employee" />}</div></div></td></tr>}
                   <tr
                     key={row.id}
                     onClick={() => {
@@ -281,11 +335,12 @@ function EmployeeDocumentsPage() {
                       </StatusBadge>
                     </td>
                     <td className="px-4 py-3 text-right">
+                      {isAdmin && <HrDelete id={row.id} name={row.file_name} kind="document" />}
                       {hasFields ? (
                         <ChevronRight className="ml-auto size-4 text-muted-foreground" />
                       ) : null}
                     </td>
-                  </tr>
+                  </tr></Fragment>
                 );
               })}
             </tbody>

@@ -829,6 +829,7 @@ export type Database = {
           id_issue_place: string | null
           id_number: string | null
           position: string | null
+          unit_id: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -848,6 +849,7 @@ export type Database = {
           id_issue_place?: string | null
           id_number?: string | null
           position?: string | null
+          unit_id?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -867,10 +869,26 @@ export type Database = {
           id_issue_place?: string | null
           id_number?: string | null
           position?: string | null
+          unit_id?: string | null
           updated_at?: string
           updated_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "employees_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "hr_unit_counts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "hr_units"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       export_history: {
         Row: {
@@ -964,6 +982,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      hr_file_cleanup: {
+        Row: {
+          created_at: string
+          id: string
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          storage_path?: string
+        }
+        Relationships: []
+      }
+      hr_units: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       notifications: {
         Row: {
@@ -1858,12 +1918,44 @@ export type Database = {
           latest_document_id: string | null
           position: string | null
           start_date: string | null
+          unit_id: string | null
+          unit_name: string | null
+          unit_sort_order: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "hr_unit_counts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "hr_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_unit_counts: {
+        Row: {
+          employee_count: number | null
+          id: string | null
+          name: string | null
+          sort_order: number | null
         }
         Relationships: []
       }
     }
     Functions: {
       complete_password_change: { Args: never; Returns: undefined }
+      delete_hr_entity: {
+        Args: { _id: string; _kind: string }
+        Returns: undefined
+      }
+      reorder_hr_units: { Args: { _ids: string[] }; Returns: undefined }
       reset_document_fields: { Args: { _document_id: string }; Returns: number }
     }
     Enums: {

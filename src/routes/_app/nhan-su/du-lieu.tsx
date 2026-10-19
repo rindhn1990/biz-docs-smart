@@ -12,6 +12,13 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { EMPLOYEE_CONTRACT_STATUS } from "@/lib/hr";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { HrDelete } from "@/components/HrDelete";
+import { useAuth } from "@/hooks/useAuth";
+import { HrUnitSelect } from "@/components/HrUnitSelect";
+import { HrUnitsDialog } from "@/components/HrUnitsDialog";
+import { HrEmployeeDialog } from "@/components/HrEmployeeDialog";
+import { useAssignHrUnit, useHrUnits } from "@/hooks/useHrUnits";
+import { Checkbox } from "@/components/ui/checkbox";
 import { withTimestampedName } from "@/lib/docx";
 
 export const Route = createFileRoute("/_app/nhan-su/du-lieu")({
@@ -29,11 +36,11 @@ export const Route = createFileRoute("/_app/nhan-su/du-lieu")({
 });
 
 const PAGE_SIZE = 50;
-type SortKey = "full_name" | "start_date" | "end_date";
+type SortKey = "full_name" | "start_date" | "end_date" | "unit_name";
 
-type Filters = { q: string; dept: string; status: string; sort: SortKey; asc: boolean };
+type Filters = { unit: string; q: string; dept: string; status: string; sort: SortKey; asc: boolean };
 
-const COLS = "id,full_name,date_of_birth,id_number,id_issue_date,id_issue_place,hometown,position,department,degree_name,degree_major,degree_school,contract_number,contract_type,base_salary,start_date,end_date,contract_status,latest_document_id";
+const COLS = "id,full_name,date_of_birth,id_number,id_issue_date,id_issue_place,hometown,position,department,degree_name,degree_major,degree_school,contract_number,contract_type,base_salary,start_date,end_date,contract_status,latest_document_id,unit_id,unit_name";
 
 function buildQuery(f: Filters, withCount: boolean) {
   let q = supabase
@@ -41,6 +48,8 @@ function buildQuery(f: Filters, withCount: boolean) {
     .select(COLS, withCount ? { count: "exact" } : undefined);
   const term = f.q.trim().replace(/[,%()]/g, " ");
   if (term) q = q.or(`full_name.ilike.%${term}%,department.ilike.%${term}%,id_number.ilike.%${term}%`);
+  if (f.unit === "none") q = q.is("unit_id", null);
+  else if (f.unit) q = q.eq("unit_id", f.unit);
   if (f.dept) q = q.eq("department", f.dept);
   if (f.status === "none") q = q.is("contract_status", null);
   else if (f.status) q = q.eq("contract_status", f.status);
@@ -49,6 +58,12 @@ function buildQuery(f: Filters, withCount: boolean) {
 
 function EmployeeDataPage() {
   const navigate = useNavigate();
+  const { isAdmin, canWrite } = useAuth();
+  const units = useHrUnits();
+  const assign = useAssignHrUnit();
+  const [unit, setUnit] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
+  const [bulkUnit, setBulkUnit] = useState("none");
   const [search, setSearch] = useState("");
   const [q, setQ] = useState("");
   const [dept, setDept] = useState("");
@@ -62,9 +77,9 @@ function EmployeeDataPage() {
     const t = setTimeout(() => setQ(search), 350);
     return () => clearTimeout(t);
   }, [search]);
-  useEffect(() => setPage(0), [q, dept, status, sort, asc]);
+  useEffect(() => setPage(0), [q, dept, status, sort, asc, unit]);
 
-  const filters: Filters = { q, dept, status, sort, asc };
+  const filters: Filters = { unit, q, dept, status, sort, asc };
 
   const data = useQuery({
     queryKey: ["employee_summary", filters, page],
@@ -90,6 +105,13 @@ function EmployeeDataPage() {
   const total = data.data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  useEffect(() => {
+    if (data.data && !data.isPlaceholderData && page >= pages) setPage(pages - 1);
+  }, [data.data, data.isPlaceholderData, page, pages]);
+
+  useEffect(() => setSelected([]), [page, q, dept, status, unit]);
+  useEffect(() => { if (unit && unit !== "none" && units.data && !units.data.some((u) => u.id === unit)) setUnit(""); }, [unit, units.data]);
+
   const toggleSort = (k: SortKey) => {
     if (sort === k) setAsc(!asc);
     else {
@@ -113,6 +135,7 @@ function EmployeeDataPage() {
         all.map((r, i) => ({
           STT: i + 1,
           "Họ và tên": r.full_name,
+          "Đầu mục": r.unit_name ?? "Chưa phân loại",
           "Ngày sinh": r.date_of_birth ?? "",
           "Số CCCD": r.id_number ?? "",
           "Ngày cấp CCCD": r.id_issue_date ?? "",
@@ -157,17 +180,19 @@ function EmployeeDataPage() {
     <div>
       <PageHeader
         title="Dữ liệu nhân sự"
-        description="Mỗi nhân viên một dòng, gộp thông tin gốc, dữ liệu mới nhất từ hồ sơ đã quét và hợp đồng hiện tại. Chỉ xem, không chỉnh sửa tại đây."
+        description="Thông tin nhân sự, hồ sơ và hợp đồng lao động hiện tại."
         actions={
+          <div className="flex flex-wrap gap-2"><HrUnitsDialog /><HrEmployeeDialog />
           <Button onClick={() => void exportExcel()} disabled={exporting || total === 0}>
             {exporting ? <Loader2 className="mr-2 size-4 animate-spin" /> : <FileSpreadsheet className="mr-2 size-4" />}
             Xuất Excel
-          </Button>
+          </Button></div>
         }
       />
       <ModuleTabs />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
+        <HrUnitSelect value={unit} onChange={setUnit} filter label="Lọc đầu mục" />
         <div className="relative min-w-[240px] flex-1">
           <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
           <Input className="pl-8" placeholder="Tìm theo tên, phòng ban, số CCCD…" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -187,6 +212,7 @@ function EmployeeDataPage() {
         </select>
       </div>
 
+      {canWrite && selected.length > 0 && <div className="mb-3 flex flex-wrap items-center gap-2 text-sm"><span>{selected.length} nhân sự đã chọn</span><HrUnitSelect value={bulkUnit} onChange={setBulkUnit} label="Chuyển vào đầu mục" /><Button disabled={assign.isPending} onClick={() => assign.mutate({ ids: selected, unitId: bulkUnit === "none" ? null : bulkUnit }, { onSuccess: () => setSelected([]) })}>Chuyển đầu mục</Button></div>}
       <div className="panel overflow-x-auto">
         {data.isLoading ? (
           <p className="px-4 py-12 text-center text-sm text-muted-foreground">Đang tải dữ liệu…</p>
@@ -198,7 +224,9 @@ function EmployeeDataPage() {
           <table className="w-full min-w-[1800px] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                {canWrite && <th className={th}><Checkbox aria-label="Chọn tất cả nhân sự trên trang" checked={rows.length > 0 && rows.every((r) => r.id && selected.includes(r.id))} onCheckedChange={(v) => setSelected(v ? rows.flatMap((r) => r.id ? [r.id] : []) : [])} /></th>}
                 <SortHead k="full_name" label="Họ và tên" />
+                <SortHead k="unit_name" label="Đầu mục" />
                 <th className={th}>Ngày sinh</th>
                 <th className={th}>Số CCCD</th>
                 <th className={th}>Quê quán</th>
@@ -213,6 +241,7 @@ function EmployeeDataPage() {
                 <th className={th}>Bằng cấp</th>
                 <th className={th}>Chuyên ngành</th>
                 <th className={th}>Trường</th>
+                {canWrite && <th className={th}>Thao tác</th>}
               </tr>
             </thead>
             <tbody className={`divide-y divide-border ${data.isFetching ? "opacity-60" : ""}`}>
@@ -226,7 +255,9 @@ function EmployeeDataPage() {
                       : void navigate({ to: "/nhan-su" })
                   }
                 >
+                  {canWrite && r.id && <td className={td} onClick={(e) => e.stopPropagation()}><Checkbox aria-label={`Chọn ${r.full_name}`} checked={selected.includes(r.id)} onCheckedChange={(v) => setSelected((prev) => v ? [...prev, r.id as string] : prev.filter((id) => id !== r.id))} /></td>}
                   <td className="whitespace-nowrap px-3 py-2.5 font-medium">{r.full_name}</td>
+                  <td className={td} onClick={(e) => e.stopPropagation()}>{canWrite && r.id ? <HrUnitSelect value={r.unit_id ?? "none"} onChange={(v) => { if (r.id) assign.mutate({ ids: [r.id], unitId: v === "none" ? null : v }); }} disabled={assign.isPending} label={`Đầu mục của ${r.full_name}`} /> : r.unit_name ?? "Chưa phân loại"}</td>
                   <td className={`num ${td}`}>{r.date_of_birth ?? "—"}</td>
                   <td className={`num ${td}`}>{r.id_number ?? "—"}</td>
                   <td className={`max-w-[220px] truncate ${td}`}>{r.hometown ?? "—"}</td>
@@ -249,6 +280,7 @@ function EmployeeDataPage() {
                   <td className={td}>{r.degree_name ?? "—"}</td>
                   <td className={td}>{r.degree_major ?? "—"}</td>
                   <td className={`max-w-[220px] truncate ${td}`}>{r.degree_school ?? "—"}</td>
+                  {canWrite && r.id && <td className={td}><HrEmployeeDialog employee={{ id: r.id, full_name: r.full_name, unit_id: r.unit_id }} />{isAdmin && <HrDelete id={r.id} name={r.full_name ?? "Nhân sự"} kind="employee" />}</td>}
                 </tr>
               ))}
             </tbody>
