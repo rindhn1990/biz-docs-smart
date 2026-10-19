@@ -965,6 +965,24 @@ export type Database = {
           },
         ]
       }
+      hr_file_cleanup: {
+        Row: {
+          created_at: string
+          id: string
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          storage_path?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string | null
@@ -1864,6 +1882,10 @@ export type Database = {
     }
     Functions: {
       complete_password_change: { Args: never; Returns: undefined }
+      delete_hr_entity: {
+        Args: { _id: string; _kind: string }
+        Returns: undefined
+      }
       reset_document_fields: { Args: { _document_id: string }; Returns: number }
     }
     Enums: {

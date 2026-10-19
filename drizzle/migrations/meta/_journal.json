@@ -8,6 +8,13 @@
       "when": 1791875679108,
       "tag": "0000_tender_documents_cascade_and_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792404375932,
+      "tag": "0001_hr_safe_deletion",
+      "breakpoints": true
     }
   ]
 }
