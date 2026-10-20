@@ -285,7 +285,6 @@ function EmployeeDocumentsPage() {
                   {startsUnit && <tr className="bg-muted/60"><td colSpan={7} className="px-4 py-3 font-semibold">{unit?.name ?? "Chưa phân loại"}<span className="ml-2 text-xs font-normal text-muted-foreground">{unit?.employee_count ?? (employees.data ?? []).filter((e) => !e.unit_id).length} nhân sự</span></td></tr>}
                   {startsEmployee && row.employee_id && <tr><td colSpan={7} className="px-4 py-2"><div className="flex items-center justify-between gap-2"><span className="font-medium">{row.employees?.full_name}</span><div className="flex gap-1"><HrEmployeeDialog employee={{ id: row.employee_id, full_name: row.employees?.full_name ?? null, unit_id: row.employees?.unit_id ?? null }} />{isAdmin && <HrDelete id={row.employee_id} name={row.employees?.full_name ?? "Nhân sự"} kind="employee" />}</div></div></td></tr>}
                   <tr
-                    key={row.id}
                     onClick={() => {
                       if (!hasFields) {
                         toast.info("Hồ sơ này chưa có dữ liệu trích xuất để kiểm tra.");
