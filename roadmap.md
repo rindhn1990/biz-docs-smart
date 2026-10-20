@@ -5,8 +5,8 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
-- [ ] Nhân sự: xoá admin với dọn file và dữ liệu liên quan; kiểm thử trên dữ liệu thử.
-- [ ] Nhân sự: đầu mục độc lập phòng ban, quản lý/gán/lọc/nhóm/xuất Excel; kiểm thử và dọn dữ liệu thử.
+- [ ] Nhân sự: hoàn tất lỗi kiểu dữ liệu; xác minh xoá hợp đồng/tài liệu/file dùng chung và quyền admin; kiểm thử, dọn dữ liệu thử cùng hàng đợi.
+- [ ] Nhân sự: xác minh đầu mục, bộ lọc/đếm/nhóm, đổi tên/thứ tự/gán hàng loạt và cột Excel bằng dữ liệu thử.
 
 - [x] Thanh toán: trường quét theo mẫu, ưu tiên dữ liệu quét, nhận diện số/ngày hợp đồng; thử giao diện và Word với dữ liệu trống/có giá trị.
 
