@@ -6,7 +6,10 @@ export function useHrUnits() {
   return useQuery({ queryKey: ["hr_units"], queryFn: async () => {
     const { data, error } = await supabase.from("hr_unit_counts").select("*").order("sort_order").order("name");
     if (error) throw error;
-    return data ?? [];
+    return (data ?? []).flatMap((unit) => {
+      if (!unit.id || !unit.name) return [];
+      return [{ ...unit, id: unit.id, name: unit.name, sort_order: unit.sort_order ?? 0, employee_count: unit.employee_count ?? 0 }];
+    });
   } });
 }
 

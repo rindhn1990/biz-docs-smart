@@ -50,7 +50,7 @@ export function HrUnitsDialog() {
           <div className="min-w-0 flex-1"><Input aria-label={`Tên đầu mục ${u.name}`} value={names[u.id] ?? u.name ?? ""} readOnly={!canWrite} onChange={(e) => setNames({ ...names, [u.id ?? ""]: e.target.value })} />
             <span className="text-xs text-muted-foreground">{u.employee_count ?? 0} nhân sự</span></div>
           {canWrite && <>
-            <Button variant="ghost" size="icon" aria-label={`Lưu tên ${u.name}`} title="Lưu tên" disabled={!names[u.id]?.trim() || mutation.isPending} onClick={() => mutation.mutate({ kind: "rename", id: u.id ?? undefined, name: names[u.id ?? ""] })}><Check className="size-4" /></Button>
+            <Button variant="ghost" size="icon" aria-label={`Lưu tên ${u.name}`} title="Lưu tên" disabled={!names[u.id]?.trim() || mutation.isPending} onClick={() => mutation.mutate({ kind: "rename", id: u.id, name: names[u.id] ?? u.name })}><Check className="size-4" /></Button>
             <Button variant="ghost" size="icon" aria-label={`Đưa ${u.name} lên`} title="Đưa lên" disabled={index === 0 || mutation.isPending} onClick={() => move(index, -1)}><ArrowUp className="size-4" /></Button>
             <Button variant="ghost" size="icon" aria-label={`Đưa ${u.name} xuống`} title="Đưa xuống" disabled={index === (units.data?.length ?? 0) - 1 || mutation.isPending} onClick={() => move(index, 1)}><ArrowDown className="size-4" /></Button>
           </>}

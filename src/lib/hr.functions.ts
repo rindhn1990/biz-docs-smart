@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { canRemoveHrOriginal } from "@/lib/hr-cleanup";
 
 export const deleteHrEntity = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -19,8 +20,8 @@ export const deleteHrEntity = createServerFn({ method: "POST" })
         supabaseAdmin.from("employee_documents").select("id", { count: "exact", head: true }).eq("storage_path", file.storage_path),
         supabaseAdmin.from("documents").select("id", { count: "exact", head: true }).eq("storage_path", file.storage_path),
       ]);
-      if (hr.error || tender.error) { cleanupPending = true; continue; }
-      if (!hr.count && !tender.count) {
+      if (hr.error || tender.error || hr.count === null || tender.count === null) { cleanupPending = true; continue; }
+      if (canRemoveHrOriginal(hr, tender)) {
         const { error: storageError } = await supabaseAdmin.storage.from("documents").remove([file.storage_path]);
         if (storageError) { cleanupPending = true; continue; }
       }

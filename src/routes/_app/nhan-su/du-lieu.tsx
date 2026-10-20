@@ -280,7 +280,7 @@ function EmployeeDataPage() {
                   <td className={td}>{r.degree_name ?? "—"}</td>
                   <td className={td}>{r.degree_major ?? "—"}</td>
                   <td className={`max-w-[220px] truncate ${td}`}>{r.degree_school ?? "—"}</td>
-                  {canWrite && r.id && <td className={td}><HrEmployeeDialog employee={{ id: r.id, full_name: r.full_name, unit_id: r.unit_id }} />{isAdmin && <HrDelete id={r.id} name={r.full_name ?? "Nhân sự"} kind="employee" />}</td>}
+                  {canWrite && r.id && <td className={td} onClick={(e) => e.stopPropagation()}><HrEmployeeDialog employee={{ id: r.id, full_name: r.full_name, unit_id: r.unit_id }} />{isAdmin && <HrDelete id={r.id} name={r.full_name ?? "Nhân sự"} kind="employee" />}</td>}
                 </tr>
               ))}
             </tbody>
