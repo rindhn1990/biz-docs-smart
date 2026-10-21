@@ -822,6 +822,7 @@ export type Database = {
           degree_name: string | null
           degree_school: string | null
           department: string | null
+          email: string | null
           full_name: string
           hometown: string | null
           id: string
@@ -842,6 +843,7 @@ export type Database = {
           degree_name?: string | null
           degree_school?: string | null
           department?: string | null
+          email?: string | null
           full_name: string
           hometown?: string | null
           id?: string
@@ -862,6 +864,7 @@ export type Database = {
           degree_name?: string | null
           degree_school?: string | null
           department?: string | null
+          email?: string | null
           full_name?: string
           hometown?: string | null
           id?: string
@@ -983,6 +986,30 @@ export type Database = {
           },
         ]
       }
+      hr_email_templates: {
+        Row: {
+          body: string
+          id: string
+          name: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          id?: string
+          name: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          id?: string
+          name?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       hr_file_cleanup: {
         Row: {
           created_at: string
@@ -1000,6 +1027,123 @@ export type Database = {
           storage_path?: string
         }
         Relationships: []
+      }
+      hr_salaries: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          id: string
+          note: string | null
+          period: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          id?: string
+          note?: string | null
+          period: string
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          id?: string
+          note?: string | null
+          period?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_salaries_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employee_summary_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_salaries_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_salary_mail_log: {
+        Row: {
+          amount: number | null
+          created_at: string
+          email: string | null
+          employee_id: string | null
+          employee_name: string | null
+          error: string | null
+          id: string
+          kind: string
+          period: string | null
+          provider_id: string | null
+          sent_by: string | null
+          status: string
+          subject: string | null
+          template_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          email?: string | null
+          employee_id?: string | null
+          employee_name?: string | null
+          error?: string | null
+          id?: string
+          kind?: string
+          period?: string | null
+          provider_id?: string | null
+          sent_by?: string | null
+          status: string
+          subject?: string | null
+          template_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          email?: string | null
+          employee_id?: string | null
+          employee_name?: string | null
+          error?: string | null
+          id?: string
+          kind?: string
+          period?: string | null
+          provider_id?: string | null
+          sent_by?: string | null
+          status?: string
+          subject?: string | null
+          template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_salary_mail_log_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employee_summary_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_salary_mail_log_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       hr_units: {
         Row: {
@@ -1908,6 +2052,7 @@ export type Database = {
           degree_name: string | null
           degree_school: string | null
           department: string | null
+          email: string | null
           end_date: string | null
           full_name: string | null
           hometown: string | null
