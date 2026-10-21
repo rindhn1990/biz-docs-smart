@@ -1,12 +1,13 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Gavel, Users } from "lucide-react";
+import { Gavel, Mail, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { ScrollTabs } from "@/components/ScrollTabs";
 
 export const MODULE_TABS = [
-  { key: "dau-thau", label: "Đấu thầu", to: "/tong-quan", icon: Gavel },
-  { key: "nhan-su", label: "Hợp đồng nhân sự", to: "/nhan-su", icon: Users },
+  { key: "dau-thau", label: "Đấu thầu", to: "/tong-quan", icon: Gavel, adminOnly: false },
+  { key: "nhan-su", label: "Hợp đồng nhân sự", to: "/nhan-su", icon: Users, adminOnly: false },
+  { key: "thong-bao-luong", label: "Thông báo lương", to: "/nhan-su/thong-bao-luong", icon: Mail, adminOnly: true },
 ] as const;
 
 export function currentModule(pathname: string, module?: unknown): "dau-thau" | "nhan-su" {
@@ -32,9 +33,9 @@ export const TENDER_PATHS = [
 
 export function ModuleTabs({ className }: { className?: string }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const active = currentModule(pathname);
-  const { canTender, canHr } = useAuth();
-  const tabs = allowedModuleTabs(canTender, canHr);
+  const active = pathname.startsWith("/nhan-su/thong-bao-luong") ? "thong-bao-luong" : currentModule(pathname);
+  const { canTender, canHr, isAdmin } = useAuth();
+  const tabs = allowedModuleTabs(canTender, canHr).filter((t) => !t.adminOnly || isAdmin);
   if (tabs.length < 2) return null;
 
   return (
