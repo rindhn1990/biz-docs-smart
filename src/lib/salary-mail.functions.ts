@@ -6,12 +6,9 @@ import { buildSalaryMail, isValidEmail, salaryMailValues } from "@/lib/salary-ma
 const MAX_BATCH = 500;
 const SEND_GAP_MS = 350; // giãn cách giữa các thư để không vượt giới hạn tốc độ của Resend
 
-async function requireAdmin(supabase: { from: (t: string) => unknown }, userId: string) {
-  const { data: roles, error } = await (supabase.from("user_roles") as ReturnType<typeof Object>)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .select("role" as never)
-    .eq("user_id" as never, userId as never);
-  if (error || !(roles as { role: string }[] | null)?.some((r) => r.role === "admin")) {
+async function requireAdmin(supabase: { from: (table: "user_roles") => { select: (cols: string) => { eq: (col: string, val: string) => PromiseLike<{ data: { role: string }[] | null; error: { message: string } | null }> } } }, userId: string) {
+  const { data: roles, error } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+  if (error || !roles?.some((r) => r.role === "admin")) {
     throw new Error("Chỉ quản trị viên được dùng chức năng thông báo lương.");
   }
 }
