@@ -621,7 +621,7 @@ function PaymentsPage() {
           fields={[
             ...CONTRACTOR_SCAN_FIELDS.map((f) => ({ key: f.key, label: f.label })),
             { key: "pay_amount", label: "Số tiền thanh toán" },
-            { key: "pay_amount_text", label: "Số tiền bằng chữ" },
+            // "Số tiền bằng chữ" không quét: tự đọc theo ô số tiền thanh toán.
             ...extraScanFields,
           ]}
           note="Đây là đơn vị thụ hưởng khoản thanh toán."
