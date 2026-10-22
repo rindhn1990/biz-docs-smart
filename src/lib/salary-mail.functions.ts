@@ -1,4 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { buildSalaryMail, isValidEmail, salaryMailValues } from "@/lib/salary-mail";
@@ -6,11 +8,11 @@ import { buildSalaryMail, isValidEmail, salaryMailValues } from "@/lib/salary-ma
 const MAX_BATCH = 500;
 const SEND_GAP_MS = 350; // giãn cách giữa các thư để không vượt giới hạn tốc độ của Resend
 
-type AuthContext = Parameters<Parameters<ReturnType<typeof createServerFn>["handler"]>[0]>[0]["context"];
+type AuthContext = { supabase: SupabaseClient<Database>; userId: string };
 
 async function requireAdmin(context: AuthContext) {
   const { data: roles, error } = await context.supabase.from("user_roles").select("role").eq("user_id", context.userId);
-  if (error || !roles?.some((r) => r.role === "admin")) {
+  if (error || !roles?.some((r: { role: string }) => r.role === "admin")) {
     throw new Error("Chỉ quản trị viên được dùng chức năng thông báo lương.");
   }
 }

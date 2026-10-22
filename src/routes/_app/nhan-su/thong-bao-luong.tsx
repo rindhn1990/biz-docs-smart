@@ -316,7 +316,7 @@ function SalaryMailPage() {
 
 // ============ Tab 1: Lương theo kỳ ============
 
-function AmountCell({ employeeId, period, existing }: { employeeId: string; period: string; existing?: SalaryRow }) {
+function AmountCell({ employeeId, period, existing }: { employeeId: string; period: string; existing: SalaryRow | undefined }) {
   const client = useQueryClient();
   const shown = existing ? existing.amount.toLocaleString("vi-VN") : "";
   const [text, setText] = useState(shown);
@@ -383,7 +383,7 @@ function AmountCell({ employeeId, period, existing }: { employeeId: string; peri
   );
 }
 
-function NoteCell({ existing }: { existing?: SalaryRow }) {
+function NoteCell({ existing }: { existing: SalaryRow | undefined }) {
   const client = useQueryClient();
   const shown = existing?.note ?? "";
   const [text, setText] = useState(shown);
@@ -511,7 +511,7 @@ function ExcelImportDialog({
             employee_id: t.empId,
             period,
             amount: t.row.amount!,
-            note: t.row.note,
+            note: t.row.note ?? null,
             source: "excel",
           })),
           { onConflict: "employee_id,period" },
