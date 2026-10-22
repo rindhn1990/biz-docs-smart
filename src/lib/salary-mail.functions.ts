@@ -22,7 +22,7 @@ function sleep(ms: number) {
 export const getSalaryMailConfig = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await requireAdmin(context.supabase, context.userId);
+    await requireAdmin(context);
     const from = process.env["SALARY_MAIL_FROM"] || process.env["PASSWORD_RESET_FROM_EMAIL"];
     return { configured: Boolean(process.env["RESEND_API_KEY"] && from) };
   });
@@ -45,7 +45,7 @@ export const sendSalaryBatch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => batchInput.parse(d))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context.supabase, context.userId);
+    await requireAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const apiKey = process.env["RESEND_API_KEY"];
