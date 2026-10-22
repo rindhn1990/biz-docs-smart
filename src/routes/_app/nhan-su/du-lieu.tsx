@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, FileSpreadsheet, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
@@ -20,6 +20,7 @@ import { HrEmployeeDialog } from "@/components/HrEmployeeDialog";
 import { useAssignHrUnit, useHrUnits } from "@/hooks/useHrUnits";
 import { Checkbox } from "@/components/ui/checkbox";
 import { withTimestampedName } from "@/lib/docx";
+import { isValidEmail } from "@/lib/salary-mail";
 
 export const Route = createFileRoute("/_app/nhan-su/du-lieu")({
   head: () => ({
@@ -54,6 +55,45 @@ function buildQuery(f: Filters, withCount: boolean) {
   if (f.status === "none") q = q.is("contract_status", null);
   else if (f.status) q = q.eq("contract_status", f.status);
   return q.order(f.sort, { ascending: f.asc, nullsFirst: false }).order("id");
+}
+
+/** Ô email sửa nhanh ngay trong bảng; lưu khi rời ô nếu giá trị đổi. */
+function EmailCell({ id, value }: { id: string; value: string | null }) {
+  const client = useQueryClient();
+  const [text, setText] = useState(value ?? "");
+  useEffect(() => setText(value ?? ""), [value]);
+  const save = async () => {
+    const next = text.trim();
+    if (next === (value ?? "")) return;
+    if (next && !isValidEmail(next)) {
+      toast.error("Email không hợp lệ", { description: next });
+      setText(value ?? "");
+      return;
+    }
+    const { error } = await supabase.from("employees").update({ email: next || null }).eq("id", id);
+    if (error) {
+      toast.error("Không lưu được email", { description: error.message });
+      setText(value ?? "");
+      return;
+    }
+    toast.success("Đã lưu email");
+    void client.invalidateQueries({ queryKey: ["employee_summary"] });
+  };
+  return (
+    <Input
+      aria-label="Email nhân sự"
+      className="h-8 w-[200px]"
+      type="email"
+      value={text}
+      placeholder="Chưa có email"
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => void save()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        if (e.key === "Escape") setText(value ?? "");
+      }}
+    />
+  );
 }
 
 function EmployeeDataPage() {
@@ -138,6 +178,7 @@ function EmployeeDataPage() {
           "Đầu mục": r.unit_name ?? "Chưa phân loại",
           "Ngày sinh": r.date_of_birth ?? "",
           "Số CCCD": r.id_number ?? "",
+          Email: r.email ?? "",
           "Ngày cấp CCCD": r.id_issue_date ?? "",
           "Nơi cấp CCCD": r.id_issue_place ?? "",
           "Quê quán": r.hometown ?? "",
@@ -229,6 +270,7 @@ function EmployeeDataPage() {
                 <SortHead k="unit_name" label="Đầu mục" />
                 <th className={th}>Ngày sinh</th>
                 <th className={th}>Số CCCD</th>
+                <th className={th}>Email</th>
                 <th className={th}>Quê quán</th>
                 <th className={th}>Chức vụ</th>
                 <th className={th}>Phòng ban</th>
@@ -260,6 +302,7 @@ function EmployeeDataPage() {
                   <td className={td} onClick={(e) => e.stopPropagation()}>{canWrite && r.id ? <HrUnitSelect value={r.unit_id ?? "none"} onChange={(v) => { if (r.id) assign.mutate({ ids: [r.id], unitId: v === "none" ? null : v }); }} disabled={assign.isPending} label={`Đầu mục của ${r.full_name}`} /> : r.unit_name ?? "Chưa phân loại"}</td>
                   <td className={`num ${td}`}>{r.date_of_birth ?? "—"}</td>
                   <td className={`num ${td}`}>{r.id_number ?? "—"}</td>
+                  <td className={td} onClick={(e) => e.stopPropagation()}>{canWrite && r.id ? <EmailCell id={r.id} value={r.email} /> : r.email ?? "—"}</td>
                   <td className={`max-w-[220px] truncate ${td}`}>{r.hometown ?? "—"}</td>
                   <td className={td}>{r.position ?? "—"}</td>
                   <td className={td}>{r.department ?? "—"}</td>
