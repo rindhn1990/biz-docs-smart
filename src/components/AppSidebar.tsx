@@ -19,6 +19,7 @@ import {
   Receipt,
   History,
   Table2,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -82,7 +83,11 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { isAdmin, canTender, canHr } = useAuth();
   const tabs = allowedModuleTabs(canTender, canHr);
   const effModule = activeModule === "nhan-su" ? (canHr ? "nhan-su" : "dau-thau") : canTender ? "dau-thau" : "nhan-su";
-  const baseGroups = !canTender && !canHr ? [] : effModule === "nhan-su" ? hrGroups : tenderGroups;
+  const hrItems: Item[] = isAdmin
+    ? [...hrGroups[0]!.items, { to: "/nhan-su/thong-bao-luong", label: "Thông báo lương", icon: Mail }]
+    : hrGroups[0]!.items;
+  const effHrGroups = [{ ...hrGroups[0]!, items: hrItems }, ...hrGroups.slice(1)];
+  const baseGroups = !canTender && !canHr ? [] : effModule === "nhan-su" ? effHrGroups : tenderGroups;
   const groups = isAdmin
     ? [
         ...baseGroups,
@@ -163,7 +168,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
                 }
                 const active =
                   item.to === "/nhan-su"
-                    ? pathname === "/nhan-su" || /^\/nhan-su\/(?!hop-dong$|du-lieu$)/.test(pathname)
+                    ? pathname === "/nhan-su" || /^\/nhan-su\/(?!hop-dong$|du-lieu$|thong-bao-luong$)/.test(pathname)
                     : pathname === item.to || pathname.startsWith(`${item.to}/`);
                 return (
                   <li key={item.to}>

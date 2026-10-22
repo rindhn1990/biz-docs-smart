@@ -6,8 +6,10 @@ import { buildSalaryMail, isValidEmail, salaryMailValues } from "@/lib/salary-ma
 const MAX_BATCH = 500;
 const SEND_GAP_MS = 350; // giãn cách giữa các thư để không vượt giới hạn tốc độ của Resend
 
-async function requireAdmin(supabase: { from: (table: "user_roles") => { select: (cols: string) => { eq: (col: string, val: string) => PromiseLike<{ data: { role: string }[] | null; error: { message: string } | null }> } } }, userId: string) {
-  const { data: roles, error } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+type AuthContext = Parameters<Parameters<ReturnType<typeof createServerFn>["handler"]>[0]>[0]["context"];
+
+async function requireAdmin(context: AuthContext) {
+  const { data: roles, error } = await context.supabase.from("user_roles").select("role").eq("user_id", context.userId);
   if (error || !roles?.some((r) => r.role === "admin")) {
     throw new Error("Chỉ quản trị viên được dùng chức năng thông báo lương.");
   }
@@ -20,7 +22,7 @@ function sleep(ms: number) {
 export const getSalaryMailConfig = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await requireAdmin(context.supabase, context.userId);
+    await requireAdmin(context);
     const from = process.env["SALARY_MAIL_FROM"] || process.env["PASSWORD_RESET_FROM_EMAIL"];
     return { configured: Boolean(process.env["RESEND_API_KEY"] && from) };
   });
@@ -43,7 +45,7 @@ export const sendSalaryBatch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => batchInput.parse(d))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context.supabase, context.userId);
+    await requireAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const apiKey = process.env["RESEND_API_KEY"];
@@ -77,6 +79,18 @@ export const sendSalaryBatch = createServerFn({ method: "POST" })
     const salaryByEmp = new Map((salaries.data ?? []).map((s) => [s.employee_id, Number(s.amount)]));
     const sentSet = new Set((sentLogs.data ?? []).map((l) => l.employee_id));
     const template = tpl.data;
+
+    // Gửi lại: xoá nhật ký "đã gửi" cũ để không vi phạm ràng buộc duy nhất theo kỳ.
+    if (!isTest && data.resend && sentSet.size > 0) {
+      const { error: delError } = await supabaseAdmin
+        .from("hr_salary_mail_log")
+        .delete()
+        .eq("period", data.period)
+        .eq("kind", "real")
+        .eq("status", "sent")
+        .in("employee_id", [...sentSet]);
+      if (delError) throw new Error(delError.message);
+    }
 
     const results: SalarySendResult[] = [];
     for (const emp of emps.data ?? []) {
