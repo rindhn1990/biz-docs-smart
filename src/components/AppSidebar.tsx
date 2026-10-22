@@ -84,9 +84,9 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const tabs = allowedModuleTabs(canTender, canHr);
   const effModule = activeModule === "nhan-su" ? (canHr ? "nhan-su" : "dau-thau") : canTender ? "dau-thau" : "nhan-su";
   const hrItems: Item[] = isAdmin
-    ? [...hrGroups[0].items, { to: "/nhan-su/thong-bao-luong", label: "Thông báo lương", icon: Mail }]
-    : hrGroups[0].items;
-  const effHrGroups = [{ ...hrGroups[0], items: hrItems }, ...hrGroups.slice(1)];
+    ? [...hrGroups[0]!.items, { to: "/nhan-su/thong-bao-luong", label: "Thông báo lương", icon: Mail }]
+    : hrGroups[0]!.items;
+  const effHrGroups = [{ ...hrGroups[0]!, items: hrItems }, ...hrGroups.slice(1)];
   const baseGroups = !canTender && !canHr ? [] : effModule === "nhan-su" ? effHrGroups : tenderGroups;
   const groups = isAdmin
     ? [

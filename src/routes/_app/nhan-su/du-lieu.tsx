@@ -40,7 +40,7 @@ type SortKey = "full_name" | "start_date" | "end_date" | "unit_name";
 
 type Filters = { unit: string; q: string; dept: string; status: string; sort: SortKey; asc: boolean };
 
-const COLS = "id,full_name,date_of_birth,id_number,id_issue_date,id_issue_place,hometown,position,department,degree_name,degree_major,degree_school,contract_number,contract_type,base_salary,start_date,end_date,contract_status,latest_document_id,unit_id,unit_name";
+const COLS = "id,full_name,email,date_of_birth,id_number,id_issue_date,id_issue_place,hometown,position,department,degree_name,degree_major,degree_school,contract_number,contract_type,base_salary,start_date,end_date,contract_status,latest_document_id,unit_id,unit_name";
 
 function buildQuery(f: Filters, withCount: boolean) {
   let q = supabase
