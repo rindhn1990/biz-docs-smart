@@ -80,6 +80,18 @@ export const sendSalaryBatch = createServerFn({ method: "POST" })
     const sentSet = new Set((sentLogs.data ?? []).map((l) => l.employee_id));
     const template = tpl.data;
 
+    // Gửi lại: xoá nhật ký "đã gửi" cũ để không vi phạm ràng buộc duy nhất theo kỳ.
+    if (!isTest && data.resend && sentSet.size > 0) {
+      const { error: delError } = await supabaseAdmin
+        .from("hr_salary_mail_log")
+        .delete()
+        .eq("period", data.period)
+        .eq("kind", "real")
+        .eq("status", "sent")
+        .in("employee_id", [...sentSet]);
+      if (delError) throw new Error(delError.message);
+    }
+
     const results: SalarySendResult[] = [];
     for (const emp of emps.data ?? []) {
       const amount = salaryByEmp.get(emp.id) ?? null;
