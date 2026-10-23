@@ -19,6 +19,7 @@ import {
   readVietnameseMoney,
 } from "@/lib/money";
 import { renderAndDownloadDocx, type DelimiterStyle } from "@/lib/docx";
+import { applyMappingDateFormats } from "@/lib/template-resolve";
 
 export const Route = createFileRoute("/_app/lich-su-xuat")({
   head: () => ({
@@ -112,6 +113,14 @@ function ExportHistoryPage() {
     };
   }
 
+  async function prepareValues(row: HistoryRow) {
+    if (!row.template_id) return draft;
+    const { data, error } = await supabase.from("template_mappings")
+      .select("placeholder,date_format").eq("template_id", row.template_id);
+    if (error) throw error;
+    return applyMappingDateFormats(data ?? [], draft);
+  }
+
   async function saveDraft(row: HistoryRow) {
     setBusy(true);
     const { error } = await supabase
@@ -136,7 +145,7 @@ function ExportHistoryPage() {
         fileName: row.file_name,
         source: buffer,
         style,
-        data: draft,
+        data: await prepareValues(row),
       });
     } catch (e) {
       toast.error("Không xem trước được", { description: (e as Error).message });
@@ -149,11 +158,12 @@ function ExportHistoryPage() {
     setBusy(true);
     try {
       const { buffer, style } = await loadSource(row);
-      await renderAndDownloadDocx(buffer, style, draft, row.file_name);
+      const values = await prepareValues(row);
+      await renderAndDownloadDocx(buffer, style, values, row.file_name);
       await recordExport({
         fileName: row.file_name,
         module: (row.module as "tender" | "hr" | "payment") ?? "tender",
-        data: draft,
+        data: values,
         tenderId: row.tender_id,
         templateId: row.template_id,
         templateName: row.template_name,
