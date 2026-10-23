@@ -10,7 +10,7 @@ const options = [
 
 export function DateFormatSelect({ value, onChange, disabled, name = "" }: { value?: string | null; onChange: (value: string | null) => void; disabled?: boolean; name?: string }) {
   return <div className="min-w-[220px] space-y-1">
-    <Select value={value ?? "default"} onValueChange={(next) => onChange(next === "default" ? null : next)} disabled={disabled}>
+    <Select value={value ?? "default"} onValueChange={(next) => onChange(next === "default" ? null : next)} disabled={disabled ?? false}>
       <SelectTrigger aria-label={`Kiểu ngày${name ? ` · ${name}` : ""}`}><SelectValue /></SelectTrigger>
       <SelectContent>
         <SelectItem value="default">Mặc định · dd/mm/yyyy</SelectItem>
