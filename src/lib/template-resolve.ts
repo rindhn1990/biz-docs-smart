@@ -2,19 +2,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { KHLCNT_FIELDS } from "@/lib/khlcnt";
 import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
 import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
+import { normKey, type MappingLike } from "./template-values";
+export { normKey, fillMappings, applyMappingDateFormats } from "./template-values";
 
 export type TemplateModule = "tender" | "hr" | "payment";
 
 /** Chuẩn hoá tên vùng/trường để so khớp: bỏ dấu, chữ thường, bỏ khoảng trắng, gạch dưới, gạch ngang. */
-export function normKey(s: string | null | undefined) {
-  return (s ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/Đ/g, "D")
-    .toLowerCase()
-    .replace(/[\s_\-.:]+/g, "");
-}
 
 export function moduleSourceFields(module: TemplateModule): readonly { key: string; label: string }[] {
   return module === "hr" ? HR_TEMPLATE_FIELDS : module === "payment" ? PAYMENT_TEMPLATE_FIELDS : KHLCNT_FIELDS;
@@ -50,7 +43,6 @@ export async function loadInheritedSources(module: TemplateModule) {
   return out;
 }
 
-type MappingLike = { placeholder: string; label?: string | null; source_field: string | null; value: string | null };
 
 /**
  * Tìm nguồn cho vùng chưa có nguồn: (1) trùng tên chuẩn hoá với khoá dữ liệu sẵn có,
@@ -76,26 +68,6 @@ export function resolveSource(
 }
 
 /** Ghép dữ liệu cho mọi vùng: nguồn đã gán → tự khớp tên/kế thừa. Giá trị ví dụ của mẫu KHÔNG được điền vào file xuất. */
-export function fillMappings(
-  mappings: MappingLike[],
-  data: Record<string, string>,
-  inherited: Map<string, string>,
-) {
-  const byNorm = new Map<string, string>();
-  for (const [k, v] of Object.entries(data)) if (v?.trim()) byNorm.set(normKey(k), v);
-  const out: Record<string, string> = {};
-  for (const m of mappings) {
-    let v = (m.source_field ? data[m.source_field] : data[m.placeholder])?.trim() || "";
-    if (!v && m.source_field) v = byNorm.get(normKey(m.source_field))?.trim() ?? "";
-    if (!v && !m.source_field) {
-      v = byNorm.get(normKey(m.placeholder))?.trim() ?? "";
-      const inh = inherited.get(normKey(m.placeholder));
-      if (!v && inh) v = (data[inh] ?? byNorm.get(normKey(inh)) ?? "").trim();
-    }
-    out[m.placeholder] = v;
-  }
-  return out;
-}
 
 /**
  * Đề xuất nguồn + nhãn cho chỗ trống mới dò được khi tải/thay mẫu.

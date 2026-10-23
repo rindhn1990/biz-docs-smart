@@ -1,3 +1,49 @@
+export type DateVariant = "slash" | "vn_full" | "vn_full_short" | "vn_no_prefix";
+
+export function isDateSource(key: string | null | undefined, label?: string | null) {
+  const name = (key ?? "").split(".").at(-1) ?? "";
+  return /^date_/i.test(name) || /_date$/i.test(name) || /_ngay$/i.test(name) || /^ngày\b/i.test((label ?? "").trim());
+}
+
+function dateParts(value: string) {
+  const slash = /^\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\s*$/.exec(value);
+  const iso = /^\s*(\d{4})-(\d{2})-(\d{2})\s*$/.exec(value);
+  if (!slash && !iso) return null;
+  const d = Number(slash?.[1] ?? iso?.[3]);
+  const m = Number(slash?.[2] ?? iso?.[2]);
+  const y = Number(slash?.[3] ?? iso?.[1]);
+  const leap = y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (y < 1 || m < 1 || m > 12 || d < 1 || d > (days[m - 1] ?? 0)) return null;
+  return { d, m, y };
+}
+
+/** Format only valid, complete dates; null keeps the existing source verbatim. */
+export function formatDateVariant(value: string, variant?: string | null): string {
+  if (!variant) return value;
+  const parts = dateParts(value);
+  if (!parts) return value;
+  const { d, m, y } = parts;
+  const day = String(d).padStart(2, "0");
+  const month = String(m).padStart(2, "0");
+  if (variant === "slash") return `${day}/${month}/${String(y).padStart(4, "0")}`;
+  if (variant === "vn_full") return `ngày ${day} tháng ${month} năm ${String(y).padStart(4, "0")}`;
+  if (variant === "vn_full_short") return `ngày ${d} tháng ${m} năm ${String(y).padStart(4, "0")}`;
+  if (variant === "vn_no_prefix") return `${day} tháng ${month} năm ${String(y).padStart(4, "0")}`;
+  return value;
+}
+
+/** Only complete valid date phrases provide a confident format suggestion. */
+export function detectDateVariant(text: string): DateVariant | null {
+  const full = /^(ngày\s+)?(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(\d{4})$/i.exec(text.trim());
+  if (full) {
+    if (!dateParts(`${full[2]}/${full[3]}/${full[4]}`)) return null;
+    if (!full[1]) return "vn_no_prefix";
+    return full[2]?.length === 2 && full[3]?.length === 2 ? "vn_full" : "vn_full_short";
+  }
+  return /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(text.trim()) && dateParts(text) ? "slash" : null;
+}
+
 export function formatCurrency(value: number | null | undefined, currency = "VND") {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
   return new Intl.NumberFormat("vi-VN", {
