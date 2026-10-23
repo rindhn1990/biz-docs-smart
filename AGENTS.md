@@ -11,6 +11,8 @@
 
 ## Architecture decisions
 
+- Per-region Word date formatting lives in browser-safe format/template-values helpers and runs only at preview/export boundaries; editable source dates remain unchanged, and inherited sources never inherit another region's format.
+
 - Payment scan field selection and result partitioning live in a browser-safe helper; template sources and default core fields drive one shared scan/edit list without mixing contractor and payment state.
 
 - Document scan navigation uses native scrolling with image-relative region coordinates; shared scrollbar styling and tab visibility behavior keep overflow consistent across screens.

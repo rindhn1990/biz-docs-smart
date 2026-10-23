@@ -7,6 +7,8 @@ import { recallTemplateBuffer, rememberTemplateBuffer } from "@/lib/template-cac
 import { KHLCNT_FIELDS } from "@/lib/khlcnt";
 import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
 import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
+import { DateFormatSelect } from "@/components/DateFormatSelect";
+import { detectDateVariant, isDateSource } from "@/lib/format";
 import { prettifyPlaceholder } from "@/lib/docx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -106,6 +108,8 @@ export function TemplateRegionPicker({
   const [placeholder, setPlaceholder] = useState("");
   const [label, setLabel] = useState("");
   const [source, setSource] = useState("");
+  const [dateFormat, setDateFormat] = useState<string | null>(null);
+  const [dateFormatTouched, setDateFormatTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const [phTouched, setPhTouched] = useState(false);
   const [labelTouched, setLabelTouched] = useState(false);
@@ -147,6 +151,7 @@ export function TemplateRegionPicker({
 
   async function chooseSource(next: string) {
     setSource(next);
+    if (!dateFormatTouched) setDateFormat(detectDateVariant(selection));
     if (!next) return;
     const { data } = await supabase
       .from("template_mappings")
@@ -214,6 +219,7 @@ export function TemplateRegionPicker({
     const text = window.getSelection()?.toString().replace(/\s+/g, " ").trim() ?? "";
     if (!text) return;
     setSelection(text);
+    if (!dateFormatTouched) setDateFormat(detectDateVariant(text));
     if (!label) setLabel(text.length > 60 ? `${text.slice(0, 57)}…` : text);
   }
 
@@ -269,10 +275,16 @@ export function TemplateRegionPicker({
           placeholder: key,
           label: label.trim() || prettifyPlaceholder(key),
           source_field: source || null,
+          date_format: isDateSource(source || key) ? dateFormat : null,
           sort_order: (last?.sort_order ?? 0) + 1,
         });
         if (insErr) throw insErr;
         if (module === "tender") await addFieldToTenderDocuments(key, label.trim() || prettifyPlaceholder(key));
+      } else {
+        const { error: updateError } = await supabase.from("template_mappings").update({
+          date_format: isDateSource(source || key) ? dateFormat : null,
+        }).eq("id", existing.id);
+        if (updateError) throw updateError;
       }
 
       setHtml(await docxToHtml(buffer.slice(0)));
@@ -280,6 +292,8 @@ export function TemplateRegionPicker({
       setPlaceholder("");
       setLabel("");
       setSource("");
+      setDateFormat(null);
+      setDateFormatTouched(false);
       setPhTouched(false);
       setLabelTouched(false);
       setSuggestions((prev) =>
@@ -409,6 +423,10 @@ export function TemplateRegionPicker({
                 </span>
               ) : null}
             </label>
+            {isDateSource(source || placeholder) ? <div className="space-y-1">
+              <p className="text-xs font-medium">Kiểu ngày</p>
+              <DateFormatSelect value={dateFormat} disabled={saving} onChange={(next) => { setDateFormat(next); setDateFormatTouched(true); }} />
+            </div> : null}
             {suggestedSource ? (
               <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs">
                 <p>

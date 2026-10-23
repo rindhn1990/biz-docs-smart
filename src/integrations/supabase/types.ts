@@ -1479,6 +1479,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          date_format: string | null
           id: string
           label: string
           placeholder: string
@@ -1492,6 +1493,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          date_format?: string | null
           id?: string
           label: string
           placeholder: string
@@ -1505,6 +1507,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          date_format?: string | null
           id?: string
           label?: string
           placeholder?: string

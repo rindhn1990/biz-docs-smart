@@ -5,6 +5,8 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
+- [ ] Kiểu ngày từng vùng Word cho cả ba phân hệ: lưu lựa chọn, nhận dạng đoạn gốc, điền bù chắc chắn và thử xuất có/trống ngày.
+
 - [x] Nhân sự: sửa lỗi kiểu dữ liệu và rà soát JSX; xác minh cascade hồ sơ/trường/hợp đồng, quyền xoá admin và kiểm thử helper giữ file dùng chung.
 - [x] Nhân sự: thử đầu mục trên dữ liệu tạm, đổi tên/thứ tự/gán hàng loạt qua công cụ dữ liệu, xoá đầu mục đưa nhân sự về Chưa phân loại; trình duyệt xác minh lọc/đếm/nhóm, Excel có Đầu mục và viewer không được xoá; dọn dữ liệu thử.
 - [ ] Nhân sự: thử nút quản trị tạo/đổi tên/lên xuống/gán hàng loạt/xoá và dọn file storage thật qua luồng xoá; chờ phiên có quyền quản trị (phiên hiện tại chỉ viewer, không được cấp phiên admin).

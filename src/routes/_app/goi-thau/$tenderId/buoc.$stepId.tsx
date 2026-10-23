@@ -12,6 +12,7 @@ import { renderAndDownloadDocx, renderDocxToHtml, type DelimiterStyle } from "@/
 import { DateField, isDateField } from "@/components/DateField";
 import { formatThousands, isMoneyNumberField, moneyTextKey, readVietnameseMoney } from "@/lib/money";
 import { recordExport } from "@/lib/export-history";
+import { applyMappingDateFormats, loadInheritedSources, normKey } from "@/lib/template-resolve";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +50,7 @@ type Mapping = {
   placeholder: string;
   label: string;
   source_field: string | null;
+  date_format: string | null;
   value: string | null;
   sort_order: number;
 };
@@ -98,7 +100,7 @@ function StepEditor() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("template_mappings")
-        .select("id,placeholder,label,source_field,value,sort_order")
+        .select("id,placeholder,label,source_field,value,sort_order,date_format")
         .eq("template_id", templateId!)
         .order("sort_order");
       if (error) throw error;
@@ -106,6 +108,7 @@ function StepEditor() {
     },
   });
 
+  const inherited = useQuery({ queryKey: ["template_mappings", "inherited-sources", "tender"], queryFn: () => loadInheritedSources("tender") });
   /** Ưu tiên: dữ liệu đã nhập ở bước → dữ liệu chung của gói thầu → giá trị ví dụ của mẫu không được dùng. */
   const resolved = useMemo(() => {
     const stepData = (step.data?.data ?? {}) as Record<string, string>;
@@ -113,11 +116,14 @@ function StepEditor() {
     const out: Record<string, string> = {};
     for (const m of mappings.data ?? []) {
       const key = m.placeholder;
-      const fromShared = m.source_field ? shared[m.source_field] : shared[key];
+      const source = m.source_field || inherited.data?.get(normKey(key));
+      const fromShared = source ? shared[source] : shared[key];
       out[key] = stepData[key] || fromShared || "";
     }
     return out;
-  }, [step.data, center.data, mappings.data]);
+  }, [step.data, center.data, mappings.data, inherited.data]);
+
+  const exportValues = applyMappingDateFormats(mappings.data ?? [], values);
 
   useEffect(() => setValues(resolved), [resolved]);
 
@@ -139,7 +145,7 @@ function StepEditor() {
         await renderDocxToHtml(
           buffer,
           (tpl.delimiter_style as DelimiterStyle) ?? "curly",
-          values,
+          exportValues,
         ),
       );
     } catch (e) {
@@ -155,7 +161,7 @@ function StepEditor() {
     const id = setTimeout(() => void preview(), 700);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [values, step.data?.templates?.source_docx_path]);
+  }, [values, mappings.data, step.data?.templates?.source_docx_path]);
 
   async function save() {
     setSaving(true);
@@ -210,13 +216,13 @@ function StepEditor() {
       await renderAndDownloadDocx(
         buffer,
         (tpl.delimiter_style as DelimiterStyle) ?? "curly",
-        values,
+        exportValues,
         fileName,
       );
       await recordExport({
         fileName,
         module: "tender",
-        data: values,
+        data: exportValues,
         tenderId,
         templateId: tpl.id,
         templateName: tpl.name,

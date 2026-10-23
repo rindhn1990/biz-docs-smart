@@ -26,7 +26,9 @@ import { EmptyState } from "@/components/EmptyState";
 import { TemplateRegionPicker } from "@/components/TemplateRegionPicker";
 import { TemplateAutoDetect } from "@/components/TemplateAutoDetect";
 import { AutoAssignSources } from "@/components/AutoAssignSources";
-import { suggestForNewPlaceholders, type TemplateModule } from "@/lib/template-resolve";
+import { suggestForNewPlaceholders, loadInheritedSources, normKey, type TemplateModule } from "@/lib/template-resolve";
+import { DateFormatSelect } from "@/components/DateFormatSelect";
+import { isDateSource } from "@/lib/format";
 import { TemplateContentEditor } from "@/components/TemplateContentEditor";
 import { Button } from "@/components/ui/button";
 import { ScrollTabs } from "@/components/ScrollTabs";
@@ -80,6 +82,7 @@ type Mapping = {
   placeholder: string;
   label: string;
   source_field: string | null;
+  date_format: string | null;
   value: string | null;
   sort_order: number;
 };
@@ -152,6 +155,10 @@ function TemplatesPage() {
 
   const current = list.find((t) => t.id === currentId) ?? null;
   const rows = mappings.data ?? [];
+  const inheritedSources = useQuery({
+    queryKey: ["template_mappings", "inherited-sources", module],
+    queryFn: () => loadInheritedSources(module),
+  });
   const sourceFields =
     module === "hr"
       ? HR_TEMPLATE_FIELDS
@@ -287,6 +294,15 @@ function TemplatesPage() {
     }
     await queryClient.invalidateQueries({ queryKey: ["template_mappings", currentId] });
     await queryClient.invalidateQueries({ queryKey: ["template_custom_fields"] });
+  }
+
+  async function saveDateFormat(id: string, next: string | null) {
+    const { error } = await supabase.from("template_mappings").update({ date_format: next }).eq("id", id);
+    if (error) {
+      toast.error("Không lưu được kiểu ngày", { description: error.message });
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["template_mappings"] });
   }
 
   async function handleExport() {
@@ -920,6 +936,7 @@ function TemplatesPage() {
                 <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="px-4 py-2.5 font-medium">Chỗ trống</th>
                   <th className="px-4 py-2.5 font-medium">Trường nguồn</th>
+                  <th className="px-4 py-2.5 font-medium">Kiểu ngày</th>
                   <th className="px-4 py-2.5 font-medium">Ví dụ (không điền khi xuất)</th>
                   {isAdmin ? <th className="px-2 py-2.5" /> : null}
                 </tr>
@@ -935,6 +952,10 @@ function TemplatesPage() {
                     </td>
                     <td className="num px-4 py-2.5 text-xs text-muted-foreground">
                       {m.source_field ?? "Chưa chọn nguồn"}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {isDateSource(m.source_field || inheritedSources.data?.get(normKey(m.placeholder)) || m.placeholder) ?
+                        <DateFormatSelect name={m.placeholder} value={m.date_format} disabled={!isAdmin} onChange={(next) => void saveDateFormat(m.id, next)} /> : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="px-4 py-2.5">
                       <input
@@ -987,7 +1008,7 @@ function TemplatesPage() {
                 {rows.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={isAdmin ? 4 : 3}
+                      colSpan={isAdmin ? 5 : 4}
                       className="px-4 py-8 text-center text-sm text-muted-foreground"
                     >
                       Mẫu này chưa khai báo chỗ trống nào.
