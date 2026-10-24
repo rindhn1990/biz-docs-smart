@@ -357,7 +357,7 @@ function DataPage() {
     /** Dữ liệu hồ sơ ưu tiên; vùng chưa có nguồn tự khớp tên (không phân biệt hoa/thường) hoặc kế thừa nguồn từ mẫu khác. */
     const inherited = await loadInheritedSources("tender");
     const values: Record<string, string> = fillMappings(mappings ?? [], byKey, inherited);
-    for (const key of Object.keys(byKey)) values[key] ??= byKey[key]!;
+    for (const [key, value] of Object.entries(byKey)) values[key] ??= value;
 
     const { data, error } = await supabase.storage.from("templates").download(tpl.source_docx_path);
     if (error) throw error;

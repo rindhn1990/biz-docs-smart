@@ -28,7 +28,7 @@ import { TemplateAutoDetect } from "@/components/TemplateAutoDetect";
 import { AutoAssignSources } from "@/components/AutoAssignSources";
 import { suggestForNewPlaceholders, loadInheritedSources, normKey, type TemplateModule } from "@/lib/template-resolve";
 import { DateFormatSelect } from "@/components/DateFormatSelect";
-import { isDateSource } from "@/lib/format";
+import { detectDateVariant, isDateSource } from "@/lib/format";
 import { TemplateContentEditor } from "@/components/TemplateContentEditor";
 import { Button } from "@/components/ui/button";
 import { ScrollTabs } from "@/components/ScrollTabs";
@@ -954,7 +954,7 @@ function TemplatesPage() {
                       {m.source_field ?? "Chưa chọn nguồn"}
                     </td>
                     <td className="px-4 py-2.5">
-                      {isDateSource(m.source_field || inheritedSources.data?.get(normKey(m.placeholder)) || m.placeholder) ?
+                      {isDateSource(m.source_field || inheritedSources.data?.get(normKey(m.placeholder)) || m.placeholder, m.label) || detectDateVariant(m.label) !== null ?
                         <DateFormatSelect name={m.placeholder} label={m.label} value={m.date_format} disabled={!isAdmin} onChange={(next) => void saveDateFormat(m.id, next)} /> : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="px-4 py-2.5">
