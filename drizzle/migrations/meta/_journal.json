@@ -36,6 +36,13 @@
       "when": 1792721450476,
       "tag": "0004_template_region_date_formats",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792855738434,
+      "tag": "0005_limit_word_date_formats",
+      "breakpoints": true
     }
   ]
 }

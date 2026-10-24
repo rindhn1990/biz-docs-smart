@@ -11,7 +11,7 @@
 
 ## Architecture decisions
 
-- Per-region Word date formatting lives in browser-safe format/template-values helpers and runs only at preview/export boundaries; editable source dates remain unchanged, and inherited sources never inherit another region's format.
+- Per-region Word date formatting and automatic label resolution live in browser-safe format/template-values helpers and run only at preview/export boundaries; query mappings with labels, leave editable source dates unchanged, and never inherit another region's format.
 
 - Payment scan field selection and result partitioning live in a browser-safe helper; template sources and default core fields drive one shared scan/edit list without mixing contractor and payment state.
 

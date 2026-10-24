@@ -1,4 +1,4 @@
-export type DateVariant = "slash" | "vn_full" | "vn_full_short" | "vn_no_prefix";
+export type DateVariant = "slash" | "vn_full";
 
 export function isDateSource(key: string | null | undefined, label?: string | null) {
   const name = (key ?? "").split(".").at(-1) ?? "";
@@ -28,8 +28,6 @@ export function formatDateVariant(value: string, variant?: string | null): strin
   const month = String(m).padStart(2, "0");
   if (variant === "slash") return `${day}/${month}/${String(y).padStart(4, "0")}`;
   if (variant === "vn_full") return `ngày ${day} tháng ${month} năm ${String(y).padStart(4, "0")}`;
-  if (variant === "vn_full_short") return `ngày ${d} tháng ${m} năm ${String(y).padStart(4, "0")}`;
-  if (variant === "vn_no_prefix") return `${day} tháng ${month} năm ${String(y).padStart(4, "0")}`;
   return value;
 }
 
@@ -38,10 +36,14 @@ export function detectDateVariant(text: string): DateVariant | null {
   const full = /^(ngày\s+)?(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(\d{4})$/i.exec(text.trim());
   if (full) {
     if (!dateParts(`${full[2]}/${full[3]}/${full[4]}`)) return null;
-    if (!full[1]) return "vn_no_prefix";
-    return full[2]?.length === 2 && full[3]?.length === 2 ? "vn_full" : "vn_full_short";
+    return full[1] ? "vn_full" : "slash";
   }
   return /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(text.trim()) && dateParts(text) ? "slash" : null;
+}
+
+/** Explicit formats win; automatic mode uses only a confident original-label match. */
+export function resolveDateVariant(variant?: string | null, label?: string | null): string {
+  return variant ?? detectDateVariant(label ?? "") ?? "slash";
 }
 
 export function formatCurrency(value: number | null | undefined, currency = "VND") {

@@ -228,7 +228,7 @@ function PaymentsPage() {
 
     const { data: mappings } = await supabase
       .from("template_mappings")
-      .select("placeholder,source_field,value,date_format")
+      .select("placeholder,label,source_field,value,date_format")
       .eq("template_id", tpl.id);
 
     const inherited = await loadInheritedSources("payment");
