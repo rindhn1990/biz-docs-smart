@@ -425,7 +425,7 @@ export function TemplateRegionPicker({
             </label>
             {isDateSource(source || placeholder) ? <div className="space-y-1">
               <p className="text-xs font-medium">Kiểu ngày</p>
-              <DateFormatSelect value={dateFormat} disabled={saving} onChange={(next) => { setDateFormat(next); setDateFormatTouched(true); }} />
+              <DateFormatSelect value={dateFormat} label={label} disabled={saving} onChange={(next) => { setDateFormat(next); setDateFormatTouched(true); }} />
             </div> : null}
             {suggestedSource ? (
               <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs">

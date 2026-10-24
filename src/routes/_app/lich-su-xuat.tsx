@@ -116,7 +116,7 @@ function ExportHistoryPage() {
   async function prepareValues(row: HistoryRow) {
     if (!row.template_id) return draft;
     const { data, error } = await supabase.from("template_mappings")
-      .select("placeholder,date_format").eq("template_id", row.template_id);
+      .select("placeholder,label,date_format").eq("template_id", row.template_id);
     if (error) throw error;
     return applyMappingDateFormats(data ?? [], draft);
   }

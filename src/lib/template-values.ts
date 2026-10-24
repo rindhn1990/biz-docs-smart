@@ -1,4 +1,4 @@
-import { formatDateVariant } from "./format";
+import { formatDateVariant, resolveDateVariant } from "./format";
 
 export type MappingLike = { placeholder: string; label?: string | null; source_field: string | null; value: string | null; date_format?: string | null };
 
@@ -7,10 +7,10 @@ export function normKey(s: string | null | undefined) {
 }
 
 /** Formatting belongs to each region, never to the editable source value. */
-export function applyMappingDateFormats(mappings: Pick<MappingLike, "placeholder" | "date_format">[], values: Record<string, string>) {
+export function applyMappingDateFormats(mappings: Pick<MappingLike, "placeholder" | "date_format" | "label">[], values: Record<string, string>) {
   const out = { ...values };
   for (const m of mappings) {
-    if (Object.hasOwn(out, m.placeholder)) out[m.placeholder] = formatDateVariant(out[m.placeholder] ?? "", m.date_format);
+    if (Object.hasOwn(out, m.placeholder)) out[m.placeholder] = formatDateVariant(out[m.placeholder] ?? "", resolveDateVariant(m.date_format, m.label));
   }
   return out;
 }
@@ -27,7 +27,7 @@ export function fillMappings(mappings: MappingLike[], data: Record<string, strin
       const inh = inherited.get(normKey(m.placeholder));
       if (!v && inh) v = (data[inh] ?? byNorm.get(normKey(inh)) ?? "").trim();
     }
-    out[m.placeholder] = formatDateVariant(v, m.date_format);
+    out[m.placeholder] = formatDateVariant(v, resolveDateVariant(m.date_format, m.label));
   }
   return out;
 }

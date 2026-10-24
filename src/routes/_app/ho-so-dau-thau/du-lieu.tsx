@@ -337,7 +337,7 @@ function DataPage() {
     }
     const { data: mappings } = await supabase
       .from("template_mappings")
-      .select("placeholder,source_field,value,date_format")
+      .select("placeholder,label,source_field,value,date_format")
       .eq("template_id", tpl.id);
 
     /** Đợi mọi ô vừa sửa lưu xong, rồi đọc thẳng từ CSDL để không dùng dữ liệu cũ trong bộ nhớ đệm. */

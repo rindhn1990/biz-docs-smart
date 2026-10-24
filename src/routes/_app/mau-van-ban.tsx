@@ -955,7 +955,7 @@ function TemplatesPage() {
                     </td>
                     <td className="px-4 py-2.5">
                       {isDateSource(m.source_field || inheritedSources.data?.get(normKey(m.placeholder)) || m.placeholder) ?
-                        <DateFormatSelect name={m.placeholder} value={m.date_format} disabled={!isAdmin} onChange={(next) => void saveDateFormat(m.id, next)} /> : <span className="text-muted-foreground">—</span>}
+                        <DateFormatSelect name={m.placeholder} label={m.label} value={m.date_format} disabled={!isAdmin} onChange={(next) => void saveDateFormat(m.id, next)} /> : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="px-4 py-2.5">
                       <input
