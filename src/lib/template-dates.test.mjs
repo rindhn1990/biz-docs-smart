@@ -1,17 +1,15 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import PizZip from 'pizzip';
-import { formatDateVariant, detectDateVariant, isDateSource } from './format.ts';
+import { formatDateVariant, detectDateVariant, resolveDateVariant, isDateSource } from './format.ts';
 import { fillMappings, applyMappingDateFormats } from './template-values.ts';
 import { renderDocxBuffer } from './docx.ts';
 
 describe('Word region date rules', () => {
   for (const [variant, expected] of [
     ['slash','31/01/2026'], ['vn_full','ngày 31 tháng 01 năm 2026'],
-    ['vn_full_short','ngày 31 tháng 1 năm 2026'], ['vn_no_prefix','31 tháng 01 năm 2026'],
   ]) it(variant, () => assert.equal(formatDateVariant('31/01/2026', variant), expected));
   it('pads single-digit source dates', () => assert.equal(formatDateVariant('3/1/2026', 'vn_full'), 'ngày 03 tháng 01 năm 2026'));
-  it('unpads day and month', () => assert.equal(formatDateVariant('03/01/2026', 'vn_full_short'), 'ngày 3 tháng 1 năm 2026'));
   it('accepts ISO dates without timezone conversion', () => assert.equal(formatDateVariant('2026-01-31', 'vn_full'), 'ngày 31 tháng 01 năm 2026'));
   it('leaves null formats unchanged', () => assert.equal(formatDateVariant('2026-01-31', null), '2026-01-31'));
   it('leaves empty values untouched', () => assert.equal(formatDateVariant('', 'vn_full'), ''));
@@ -20,8 +18,8 @@ describe('Word region date rules', () => {
     assert.equal(formatDateVariant('29/02/2024', 'vn_full'), 'ngày 29 tháng 02 năm 2024');
   });
   for (const [text, expected] of [
-    ['ngày 31 tháng 01 năm 2026','vn_full'], ['ngày 19 tháng 8 năm 2026','vn_full_short'],
-    ['31 tháng 01 năm 2026','vn_no_prefix'], ['31/01/2026','slash'],
+    ['ngày 31 tháng 01 năm 2026','vn_full'], ['ngày 19 tháng 8 năm 2026','vn_full'],
+    ['31 tháng 01 năm 2026','slash'], ['31/01/2026','slash'],
     ['Ngày ký hợp đồng',null], ['ngày 31 tháng 02 năm 2026',null], ['ký ngày 31 tháng 01 năm 2026',null],
   ]) it(`detects only complete dates: ${text}`, () => assert.equal(detectDateVariant(text), expected));
   it('recognizes source keys in all three modules', () => {
@@ -31,13 +29,13 @@ describe('Word region date rules', () => {
 });
 
 const mappings = [
-  {placeholder:'Date_HD', source_field:'HD_ngay',value:'example',date_format:'vn_full'},
-  {placeholder:'Date_Thanhtoan',source_field:null,value:'example',date_format:'vn_full_short'},
+  {placeholder:'Date_HD', label:'ngày 31 tháng 01 năm 2026',source_field:'HD_ngay',value:'example',date_format:null},
+  {placeholder:'Date_Thanhtoan',label:'ngày 19 tháng 8 năm 2026',source_field:null,value:'example',date_format:null},
 ];
 const inherited = new Map([['datethanhtoan','TT_ngay']]);
 it('formats explicit and inherited sources with their own region setting', () => {
   assert.deepEqual(fillMappings(mappings, {HD_ngay:'31/01/2026',TT_ngay:'19/08/2026'}, inherited), {
-    Date_HD:'ngày 31 tháng 01 năm 2026',Date_Thanhtoan:'ngày 19 tháng 8 năm 2026',
+    Date_HD:'ngày 31 tháng 01 năm 2026',Date_Thanhtoan:'ngày 19 tháng 08 năm 2026',
   });
 });
 it('never fills example values or constructs empty wording', () => assert.deepEqual(fillMappings(mappings, {}, inherited), {Date_HD:'',Date_Thanhtoan:''}));
@@ -51,9 +49,42 @@ it('exports both populated and empty date regions without changing Word formatti
   zip.file('word/document.xml','<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>{{Date_HD}} / {{Date_Thanhtoan}}</w:t></w:r></w:p></w:body></w:document>');
   const source = zip.generate({type:'arraybuffer'});
   const filled = new PizZip(renderDocxBuffer(source,'curly',fillMappings(mappings,{HD_ngay:'31/01/2026',TT_ngay:'19/08/2026'},inherited))).file('word/document.xml').asText();
-  assert.ok(filled.includes('ngày 31 tháng 01 năm 2026 / ngày 19 tháng 8 năm 2026'));
+  assert.ok(filled.includes('ngày 31 tháng 01 năm 2026 / ngày 19 tháng 08 năm 2026'));
   assert.ok(filled.includes('<w:b/>'));
   const empty = new PizZip(renderDocxBuffer(source,'curly',fillMappings(mappings,{},inherited))).file('word/document.xml').asText();
   assert.ok(empty.includes('{{Date_HD}} / {{Date_Thanhtoan}}'));
   assert.ok(empty.includes('<w:b/>'));
+});
+
+describe('automatic label resolution', () => {
+  for (const [label, expected] of [
+    ['ngày 31 tháng 01 năm 2026', 'ngày 31 tháng 01 năm 2026'],
+    ['ngày 19 tháng 8 năm 2026', 'ngày 31 tháng 01 năm 2026'],
+    ['31/01/2026', '31/01/2026'],
+    ['31 tháng 01 năm 2026', '31/01/2026'],
+    ['cụm không phải ngày', '31/01/2026'],
+    ['ngày 31 tháng 02 năm 2026', '31/01/2026'],
+  ]) it(`automatic: ${label}`, () => {
+    const m = [{placeholder:'D',label,source_field:'HD_ngay',value:null,date_format:null}];
+    assert.equal(fillMappings(m,{HD_ngay:'31/01/2026'},new Map()).D,expected);
+    assert.equal(applyMappingDateFormats(m,{D:'31/01/2026'}).D,expected);
+  });
+  it('explicit slash wins over Vietnamese label', () => {
+    assert.equal(fillMappings([{...mappings[0],date_format:'slash'}],{HD_ngay:'31/01/2026'},inherited).Date_HD,'31/01/2026');
+  });
+  it('explicit Vietnamese wins over slash label', () => {
+    assert.equal(fillMappings([{...mappings[0],label:'31/01/2026',date_format:'vn_full'}],{HD_ngay:'31/01/2026'},inherited).Date_HD,'ngày 31 tháng 01 năm 2026');
+  });
+  it('keeps empty and invalid sources unchanged in automatic mode', () => {
+    for (const value of ['', '31/02/2026', 'không rõ']) assert.equal(applyMappingDateFormats(mappings,{Date_HD:value}).Date_HD,value);
+  });
+  it('automatic slash pads ISO and single digit sources', () => {
+    assert.equal(formatDateVariant('2026-01-03',resolveDateVariant(null,'không nhận ra')),'03/01/2026');
+    assert.equal(formatDateVariant('3/1/2026',resolveDateVariant(null,'31 tháng 01 năm 2026')),'03/01/2026');
+  });
+  it('formatting never changes editable source values', () => {
+    const source = {HD_ngay:'31/01/2026'};
+    fillMappings(mappings,source,inherited);
+    assert.deepEqual(source,{HD_ngay:'31/01/2026'});
+  });
 });
