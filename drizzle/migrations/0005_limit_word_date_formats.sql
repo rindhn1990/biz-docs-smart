@@ -1,0 +1,3 @@
+ALTER TABLE public.template_mappings DROP CONSTRAINT template_mappings_date_format_check;
+ALTER TABLE public.template_mappings ADD CONSTRAINT template_mappings_date_format_check CHECK (date_format IS NULL OR date_format IN ('slash', 'vn_full'));
+COMMENT ON COLUMN public.template_mappings.date_format IS 'Per-region export format: NULL automatically resolves from label; slash or vn_full explicitly overrides detection.';
