@@ -5,6 +5,8 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
+- [ ] Thông báo lương: sửa gửi lô 10 người/nhật ký/gửi lại, khoá bấm đúp, Email chỉ admin trên giao diện; kiểm thử bộ gửi giả, quyền đọc ba bảng và UI theo phiên hiện có; không gửi email thật.
+
 - [x] Kiểu ngày từng vùng Word: chỉ slash/vn_full, tự động theo nhãn, chuyển Date_Thanhtoan sang vn_full; 43 kiểm tra đạt, xuất mẫu thanh toán thật có/trống ngày đạt; giao diện viewer hiển thị đúng.
 - [ ] Kiểu ngày: thử mở 3 lựa chọn, lưu Tự động và bôi đen/lưu qua giao diện; chờ phiên admin (tài khoản thử hiện tại chỉ viewer).
 
