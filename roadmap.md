@@ -5,6 +5,10 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
+- [x] Thông báo lương: giới hạn 10 người/lô, giãn cách 350ms, xử lý nhật ký riêng từng người, giữ sent cũ khi gửi lại thất bại, khoá bấm đúp; Email chỉ admin trên giao diện; 33 kiểm thử giả/quyền menu đạt và kiểm tra tự động báo build OK.
+- [x] Thông báo lương: phiên viewer bị chặn trang, ẩn menu và ô sửa Email; kiểm tra RLS ba bảng chỉ admin. Không tạo dữ liệu thử và không gửi thư thật; ba bảng vẫn trống.
+- [ ] Thông báo lương: thử nhập lương, lưu mẫu, xem trước, trạng thái/chọn đầu mục, banner/nút gửi và Dừng qua giao diện; chờ phiên admin. Gửi thật chưa thử vì chưa có RESEND_API_KEY/SALARY_MAIL_FROM/PASSWORD_RESET_FROM_EMAIL; không gửi trong lượt này.
+
 - [x] Kiểu ngày từng vùng Word: chỉ slash/vn_full, tự động theo nhãn, chuyển Date_Thanhtoan sang vn_full; 43 kiểm tra đạt, xuất mẫu thanh toán thật có/trống ngày đạt; giao diện viewer hiển thị đúng.
 - [ ] Kiểu ngày: thử mở 3 lựa chọn, lưu Tự động và bôi đen/lưu qua giao diện; chờ phiên admin (tài khoản thử hiện tại chỉ viewer).
 

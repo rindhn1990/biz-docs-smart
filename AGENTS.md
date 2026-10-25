@@ -11,6 +11,8 @@
 
 ## Architecture decisions
 
+- Salary batch orchestration uses injected delivery/log/wait adapters and a shared 10-recipient limit; server functions re-read authoritative data after an admin check so tests cannot deliver email and client values cannot override salaries or recipients.
+
 - Per-region Word date formatting and automatic label resolution live in browser-safe format/template-values helpers and run only at preview/export boundaries; query mappings with labels, leave editable source dates unchanged, and never inherit another region's format.
 
 - Payment scan field selection and result partitioning live in a browser-safe helper; template sources and default core fields drive one shared scan/edit list without mixing contractor and payment state.

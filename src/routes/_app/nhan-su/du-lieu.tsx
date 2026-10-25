@@ -302,7 +302,7 @@ function EmployeeDataPage() {
                   <td className={td} onClick={(e) => e.stopPropagation()}>{canWrite && r.id ? <HrUnitSelect value={r.unit_id ?? "none"} onChange={(v) => { if (r.id) assign.mutate({ ids: [r.id], unitId: v === "none" ? null : v }); }} disabled={assign.isPending} label={`Đầu mục của ${r.full_name}`} /> : r.unit_name ?? "Chưa phân loại"}</td>
                   <td className={`num ${td}`}>{r.date_of_birth ?? "—"}</td>
                   <td className={`num ${td}`}>{r.id_number ?? "—"}</td>
-                  <td className={td} onClick={(e) => e.stopPropagation()}>{canWrite && r.id ? <EmailCell id={r.id} value={r.email} /> : r.email ?? "—"}</td>
+                  <td className={td} onClick={(e) => e.stopPropagation()}>{isAdmin && r.id ? <EmailCell id={r.id} value={r.email} /> : r.email ?? "—"}</td>
                   <td className={`max-w-[220px] truncate ${td}`}>{r.hometown ?? "—"}</td>
                   <td className={td}>{r.position ?? "—"}</td>
                   <td className={td}>{r.department ?? "—"}</td>
@@ -323,7 +323,7 @@ function EmployeeDataPage() {
                   <td className={td}>{r.degree_name ?? "—"}</td>
                   <td className={td}>{r.degree_major ?? "—"}</td>
                   <td className={`max-w-[220px] truncate ${td}`}>{r.degree_school ?? "—"}</td>
-                  {canWrite && r.id && <td className={td} onClick={(e) => e.stopPropagation()}><HrEmployeeDialog employee={{ id: r.id, full_name: r.full_name, unit_id: r.unit_id }} />{isAdmin && <HrDelete id={r.id} name={r.full_name ?? "Nhân sự"} kind="employee" />}</td>}
+                  {canWrite && r.id && <td className={td} onClick={(e) => e.stopPropagation()}><HrEmployeeDialog employee={{ id: r.id, full_name: r.full_name, unit_id: r.unit_id, email: r.email }} />{isAdmin && <HrDelete id={r.id} name={r.full_name ?? "Nhân sự"} kind="employee" />}</td>}
                 </tr>
               ))}
             </tbody>

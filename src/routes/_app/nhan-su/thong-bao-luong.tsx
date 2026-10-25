@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -57,6 +58,7 @@ import {
   type RecipientStatus,
 } from "@/lib/salary-mail";
 import { getSalaryMailConfig, sendSalaryBatch, type SalarySendResult } from "@/lib/salary-mail.functions";
+import { SALARY_BATCH_SIZE } from "@/lib/salary-batch";
 
 export const Route = createFileRoute("/_app/nhan-su/thong-bao-luong")({
   head: () => ({
@@ -110,7 +112,7 @@ const SALARY_SOURCE_LABEL: Record<string, string> = {
   contract: "Hợp đồng",
 };
 
-const SEND_BATCH = 10;
+const SEND_BATCH = SALARY_BATCH_SIZE;
 
 const DEFAULT_TEMPLATE_BODY = `Kính gửi anh/chị {{Ten_NV}},
 
@@ -132,6 +134,7 @@ function currentPeriod(): string {
 
 function SalaryMailPage() {
   const { isAdmin, loading } = useAuth();
+  const readConfig = useServerFn(getSalaryMailConfig);
   const [period, setPeriod] = useState("");
   useEffect(() => {
     if (!period) setPeriod(currentPeriod());
@@ -140,7 +143,7 @@ function SalaryMailPage() {
   const config = useQuery({
     queryKey: ["salary_mail_config"],
     enabled: isAdmin,
-    queryFn: () => getSalaryMailConfig(),
+    queryFn: () => readConfig(),
   });
 
   const employees = useQuery({
@@ -245,13 +248,13 @@ function SalaryMailPage() {
       />
       <ModuleTabs />
 
-      {config.data && !configured && (
+      {(config.data || config.isError) && !configured && (
         <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
           <div>
             <p className="font-medium">Chưa cấu hình gửi email</p>
             <p className="text-muted-foreground">
-              Chưa có khoá Resend hoặc địa chỉ gửi. Bạn vẫn có thể nhập lương, soạn mẫu và xem trước;
+              {config.isError ? "Không kiểm tra được cấu hình gửi email. " : "Chưa có khoá Resend hoặc địa chỉ gửi. "}Bạn vẫn có thể nhập lương, soạn mẫu và xem trước;
               nút gửi thật và gửi thử sẽ mở lại sau khi cấu hình.
             </p>
           </div>
@@ -1082,6 +1085,8 @@ function SendTab({
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [results, setResults] = useState<SalarySendResult[]>([]);
   const stopRef = useRef(false);
+  const busyRef = useRef(false);
+  const sendBatch = useServerFn(sendSalaryBatch);
 
   useEffect(() => {
     if (!templateId && templates.length > 0) setTemplateId(templates[0]!.id);
@@ -1121,6 +1126,8 @@ function SendTab({
   const empById = useMemo(() => new Map(employees.map((e) => [e.id, e])), [employees]);
 
   const runSend = async (ids: string[], isResend: boolean) => {
+    if (busyRef.current || !configured || !templateId || !ids.length) return;
+    busyRef.current = true;
     setSending(true);
     stopRef.current = false;
     setResults([]);
@@ -1130,7 +1137,7 @@ function SendTab({
       if (stopRef.current) break;
       const chunk = ids.slice(i, i + SEND_BATCH);
       try {
-        const res = await sendSalaryBatch({
+        const res = await sendBatch({
           data: { period, templateId, employeeIds: chunk, resend: isResend },
         });
         all.push(...res.results);
@@ -1143,10 +1150,12 @@ function SendTab({
       setResults([...all]);
     }
     setSending(false);
+    busyRef.current = false;
     void client.invalidateQueries({ queryKey: ["salary_mail_log"] });
   };
 
   const sendTest = async () => {
+    if (busyRef.current || !configured || !templateId) return;
     if (!isValidEmail(testEmail)) {
       toast.error("Email gửi thử không hợp lệ.");
       return;
@@ -1156,9 +1165,10 @@ function SendTab({
       toast.error("Chưa chọn nhân sự nào để gửi thử.");
       return;
     }
+    busyRef.current = true;
     setTesting(true);
     try {
-      const res = await sendSalaryBatch({
+      const res = await sendBatch({
         data: { period, templateId, employeeIds: [first.id], resend: true, testEmail: testEmail.trim() },
       });
       const r = res.results[0];
@@ -1169,6 +1179,7 @@ function SendTab({
       toast.error("Gửi thử thất bại", { description: (e as Error).message });
     } finally {
       setTesting(false);
+      busyRef.current = false;
     }
   };
 
@@ -1336,7 +1347,7 @@ function SendTab({
             Gửi thử
           </Button>
           <Button
-            disabled={!configured || sending || !templateId || ready.length === 0}
+            disabled={!configured || sending || testing || !templateId || ready.length === 0}
             onClick={() => setConfirmOpen(true)}
           >
             <Send className="mr-2 size-4" />
@@ -1381,8 +1392,8 @@ function SendTab({
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={!configured}
-                  onClick={() => void runSend(failed.map((f) => f.employeeId), true)}
+                  disabled={!configured || sending || testing}
+                  onClick={() => void runSend(failed.map((f) => f.employeeId), false)}
                 >
                   Gửi lại {failed.length} thư lỗi
                 </Button>
