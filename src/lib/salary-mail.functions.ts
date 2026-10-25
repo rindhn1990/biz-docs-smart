@@ -3,10 +3,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { buildSalaryMail, isValidEmail, salaryMailValues } from "@/lib/salary-mail";
+import { runSalaryBatch, SALARY_BATCH_SIZE } from "@/lib/salary-batch";
+export type { SalarySendResult } from "@/lib/salary-batch";
 
-const MAX_BATCH = 500;
-const SEND_GAP_MS = 350; // giãn cách giữa các thư để không vượt giới hạn tốc độ của Resend
 
 type AuthContext = { supabase: SupabaseClient<Database>; userId: string };
 
@@ -32,16 +31,10 @@ export const getSalaryMailConfig = createServerFn({ method: "GET" })
 const batchInput = z.object({
   period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
   templateId: z.string().uuid(),
-  employeeIds: z.array(z.string().uuid()).min(1).max(MAX_BATCH),
+  employeeIds: z.array(z.string().uuid()).min(1).max(SALARY_BATCH_SIZE),
   resend: z.boolean().default(false),
   testEmail: z.string().trim().email().max(255).optional(),
 });
-
-export type SalarySendResult = {
-  employeeId: string;
-  status: "sent" | "failed" | "skipped";
-  error?: string;
-};
 
 export const sendSalaryBatch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -54,7 +47,6 @@ export const sendSalaryBatch = createServerFn({ method: "POST" })
     const from = process.env["SALARY_MAIL_FROM"] || process.env["PASSWORD_RESET_FROM_EMAIL"];
     if (!apiKey || !from) throw new Error("Chưa cấu hình gửi email (RESEND_API_KEY / địa chỉ gửi).");
 
-    const isTest = Boolean(data.testEmail);
 
     // Tự đọc lại toàn bộ dữ liệu từ CSDL — không tin số tiền/email từ client.
     const [emps, salaries, tpl, sentLogs] = await Promise.all([
@@ -79,98 +71,47 @@ export const sendSalaryBatch = createServerFn({ method: "POST" })
     if (!tpl.data) throw new Error("Không tìm thấy mẫu email.");
 
     const salaryByEmp = new Map((salaries.data ?? []).map((s) => [s.employee_id, Number(s.amount)]));
-    const sentSet = new Set((sentLogs.data ?? []).map((l) => l.employee_id));
-    const template = tpl.data;
-
-    // Gửi lại: xoá nhật ký "đã gửi" cũ để không vi phạm ràng buộc duy nhất theo kỳ.
-    if (!isTest && data.resend && sentSet.size > 0) {
-      const { error: delError } = await supabaseAdmin
-        .from("hr_salary_mail_log")
-        .delete()
-        .eq("period", data.period)
-        .eq("kind", "real")
-        .eq("status", "sent")
-        .in("employee_id", [...sentSet]);
-      if (delError) throw new Error(delError.message);
-    }
-
-    const results: SalarySendResult[] = [];
-    for (const emp of emps.data ?? []) {
-      const amount = salaryByEmp.get(emp.id) ?? null;
-      const unitName = (emp.hr_units as { name: string } | null)?.name ?? null;
-
-      if (!isTest && sentSet.has(emp.id) && !data.resend) {
-        results.push({ employeeId: emp.id, status: "skipped", error: "Đã gửi kỳ này" });
-        continue;
-      }
-
-      const logBase = {
-        employee_id: emp.id,
-        employee_name: emp.full_name,
-        email: isTest ? data.testEmail! : emp.email,
-        period: data.period,
-        template_id: template.id,
-        amount,
-        kind: isTest ? "test" : "real",
-        sent_by: context.userId,
-      };
-
-      const fail = async (reason: string) => {
-        await supabaseAdmin.from("hr_salary_mail_log").insert({ ...logBase, subject: null, status: "failed", error: reason });
-        results.push({ employeeId: emp.id, status: "failed", error: reason });
-      };
-
-      if (!isTest && !isValidEmail(emp.email)) {
-        await fail(emp.email ? "Email không hợp lệ" : "Thiếu email");
-        continue;
-      }
-      if (amount === null) {
-        await fail("Thiếu lương kỳ này");
-        continue;
-      }
-
-      const mail = buildSalaryMail(
-        template.subject,
-        template.body,
-        salaryMailValues({
-          fullName: emp.full_name,
-          period: data.period,
-          amount,
-          unitName,
-          position: emp.position,
-          department: emp.department,
-        }),
-      );
-      if (mail.missing.length > 0) {
-        await fail(`Thiếu: ${mail.missing.join(", ")}`);
-        continue;
-      }
-
-      const subject = isTest ? `[GỬI THỬ] ${mail.subject}` : mail.subject;
-      const to = isTest ? data.testEmail! : emp.email!;
-      try {
+    const sentSet = new Set((sentLogs.data ?? []).flatMap((log) => log.employee_id ? [log.employee_id] : []));
+    const results = await runSalaryBatch({
+      configured: true, period: data.period, template: tpl.data, resend: data.resend,
+      testEmail: data.testEmail, sentEmployeeIds: sentSet,
+      employees: (emps.data ?? []).map((emp) => ({
+        id: emp.id, fullName: emp.full_name, email: emp.email,
+        amount: salaryByEmp.get(emp.id) ?? null,
+        unitName: (emp.hr_units as { name: string } | null)?.name ?? null,
+        position: emp.position, department: emp.department,
+      })),
+    }, {
+      wait: sleep,
+      send: async (mail) => {
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ from, to: [to], subject, html: mail.html }),
+          body: JSON.stringify({ from, to: [mail.to], subject: mail.subject, html: mail.html }),
         });
-        if (!res.ok) {
-          const text = await res.text().catch(() => "");
-          await fail(`Nhà cung cấp từ chối (${res.status}): ${text.slice(0, 200)}`);
-        } else {
-          const body = (await res.json().catch(() => null)) as { id?: string } | null;
-          await supabaseAdmin.from("hr_salary_mail_log").insert({
-            ...logBase,
-            subject,
-            status: "sent",
-            provider_id: body?.id ?? null,
-          });
-          results.push({ employeeId: emp.id, status: "sent" });
-        }
-      } catch {
-        await fail("Lỗi kết nối nhà cung cấp email");
-      }
-      await sleep(SEND_GAP_MS);
-    }
+        // Do not log or persist provider bodies: they may echo sensitive salary content.
+        if (!res.ok) throw new Error(`Nhà cung cấp từ chối (${res.status}).`);
+        const body = await res.json() as { id?: string };
+        if (!body.id) throw new Error("Nhà cung cấp chưa xác nhận mã thư.");
+        return { id: body.id };
+      },
+      writeLog: async (log) => {
+        const row = {
+          employee_id: log.employeeId, employee_name: log.employeeName, email: log.email,
+          amount: log.amount, period: log.period, kind: log.kind, subject: log.subject,
+          status: log.status, error: log.error, provider_id: log.providerId,
+          template_id: data.templateId, sent_by: context.userId,
+        };
+        // Retain the old successful log on resend failure; replace only after delivery succeeds.
+        const query = data.resend && sentSet.has(log.employeeId) && log.kind === "real" && log.status === "sent"
+          ? supabaseAdmin.from("hr_salary_mail_log").update(row)
+              .eq("employee_id", log.employeeId).eq("period", log.period).eq("kind", "real").eq("status", "sent")
+          : supabaseAdmin.from("hr_salary_mail_log").insert(row);
+        const { error } = await query;
+        if (error?.code === "23505") return "duplicate";
+        if (error) throw new Error("Không lưu được nhật ký.");
+        return "saved";
+      },
+    });
     return { results };
   });
