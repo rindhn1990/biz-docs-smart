@@ -81,7 +81,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = location.pathname;
   const activeModule = currentModule(pathname, (location.search as { module?: unknown }).module);
   const { isAdmin, canTender, canHr } = useAuth();
-  const tabs = allowedModuleTabs(canTender, canHr);
+  const tabs = allowedModuleTabs(canTender, canHr, isAdmin);
   const effModule = activeModule === "nhan-su" ? (canHr ? "nhan-su" : "dau-thau") : canTender ? "dau-thau" : "nhan-su";
   const hrItems: Item[] = isAdmin
     ? [...hrGroups[0]!.items, { to: "/nhan-su/thong-bao-luong", label: "Thông báo lương", icon: Mail }]

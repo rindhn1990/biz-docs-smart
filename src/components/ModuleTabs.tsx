@@ -15,8 +15,8 @@ export function currentModule(pathname: string, module?: unknown): "dau-thau" | 
 }
 
 /** Chỉ giữ lại phân hệ mà tài khoản được cấp quyền sử dụng. */
-export function allowedModuleTabs(canTender: boolean, canHr: boolean) {
-  return MODULE_TABS.filter((t) => (t.key === "dau-thau" ? canTender : canHr));
+export function allowedModuleTabs(canTender: boolean, canHr: boolean, isAdmin = false) {
+  return MODULE_TABS.filter((t) => (!t.adminOnly || isAdmin) && (t.key === "dau-thau" ? canTender : canHr));
 }
 
 /** Các đường dẫn thuộc phân hệ Đấu thầu (ngoài /nhan-su là phân hệ nhân sự). */
@@ -35,7 +35,7 @@ export function ModuleTabs({ className }: { className?: string }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const active = pathname.startsWith("/nhan-su/thong-bao-luong") ? "thong-bao-luong" : currentModule(pathname);
   const { canTender, canHr, isAdmin } = useAuth();
-  const tabs = allowedModuleTabs(canTender, canHr).filter((t) => !t.adminOnly || isAdmin);
+  const tabs = allowedModuleTabs(canTender, canHr, isAdmin);
   if (tabs.length < 2) return null;
 
   return (
