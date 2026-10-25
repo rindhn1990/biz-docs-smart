@@ -14,7 +14,7 @@ export type SalaryBatchLog = {
 };
 type BatchInput = {
   configured: boolean; period: string; template: { subject: string; body: string };
-  employees: SalaryBatchEmployee[]; sentEmployeeIds: ReadonlySet<string>; resend: boolean; testEmail?: string;
+  employees: SalaryBatchEmployee[]; sentEmployeeIds: ReadonlySet<string>; resend: boolean; testEmail?: string | undefined;
 };
 type BatchDependencies = {
   send: (mail: { to: string; subject: string; html: string; employeeId: string }) => Promise<{ id: string }>;
