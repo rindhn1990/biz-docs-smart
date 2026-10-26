@@ -77,3 +77,52 @@ export function isMoneyNumberField(key: string, label: string) {
 export function moneyTextKey(key: string) {
   return key.replace(/_numb$/i, "_text");
 }
+
+const WORD_DIGITS: Record<string, number> = {
+  khong: 0, mot: 1, hai: 2, ba: 3, bon: 4, tu: 4, nam: 5, lam: 5, nham: 5,
+  sau: 6, bay: 7, tam: 8, chin: 9,
+};
+const WORD_SCALES: Record<string, number> = { nghin: 1e3, ngan: 1e3, trieu: 1e6, ty: 1e9, ti: 1e9 };
+
+/**
+ * Đọc ngược số tiền bằng chữ thành số (nghịch đảo của readVietnameseMoney).
+ * Chịu có/không dấu, nghìn/ngàn, tỷ/tỉ, lăm/nhăm, mốt, tư, lẻ/linh; trả null khi có từ lạ (OCR hỏng).
+ */
+export function parseVietnameseMoneyWords(input: string | null | undefined): number | null {
+  const folded = (input ?? "")
+    .replace(/[đĐ]/g, "d").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/\b(dong\s*chan|dong|chan|vnd|vn\s*d)\b/g, " ")
+    .replace(/[,.;:\-–()]/g, " ");
+  const tokens = folded.split(/\s+/).filter(Boolean);
+  if (!tokens.length) return null;
+  const stack: { value: number; scale: number }[] = [];
+  let chunk = 0;
+  let pend: number | null = null;
+  let seen = false;
+  for (const token of tokens) {
+    if (token === "le" || token === "linh") continue;
+    if (token in WORD_DIGITS) {
+      if (pend !== null) return null;
+      pend = WORD_DIGITS[token]!;
+      seen = true;
+    } else if (token === "tram") {
+      if (pend === null) return null;
+      chunk += pend * 100;
+      pend = null;
+    } else if (token === "muoi") {
+      chunk += (pend ?? 1) * 10;
+      pend = null;
+      seen = true;
+    } else if (token in WORD_SCALES) {
+      const scale = WORD_SCALES[token]!;
+      let value = chunk + (pend ?? 0);
+      chunk = 0;
+      pend = null;
+      while (stack.length && stack[stack.length - 1]!.scale < scale) value += stack.pop()!.value;
+      if (value === 0) return null;
+      stack.push({ value: value * scale, scale });
+    } else return null;
+  }
+  if (!seen) return null;
+  return stack.reduce((sum, item) => sum + item.value, 0) + chunk + (pend ?? 0);
+}
