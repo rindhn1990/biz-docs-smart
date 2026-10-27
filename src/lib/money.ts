@@ -92,7 +92,7 @@ export function parseVietnameseMoneyWords(input: string | null | undefined): num
   const folded = (input ?? "")
     .replace(/[đĐ]/g, "d").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
     .replace(/\bd6ng\s+chin\b/g, "dong chan")
-    .replace(/\btrigu\b/g, "trieu").replace(/\bmudi\b/g, "muoi")
+    .replace(/\b(khong|mot|hai|ba|bon|tu|nam|lam|sau|bay|tam|chin)\s+trigu\b/g, "$1 trieu").replace(/\bmudi\b/g, "muoi")
     .replace(/\bmuoi\s+ben\b/g, "muoi bon")
     .replace(/\b(dong\s*chan|dong|chan|vnd|vn\s*d)\b/g, " ")
     .replace(/[,.;:\-–()]/g, " ");
@@ -118,8 +118,6 @@ export function parseVietnameseMoneyWords(input: string | null | undefined): num
       seen = true;
     } else if (token in WORD_SCALES) {
       const scale = WORD_SCALES[token] ?? 1;
-      // A hundreds group must not end prematurely at a scale after OCR loss.
-      if (pend === null && chunk >= 100 && chunk % 100 === 0) return null;
       let value = chunk + (pend ?? 0);
       chunk = 0;
       pend = null;
