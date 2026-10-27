@@ -217,6 +217,7 @@ export function ScanFileDialog({
             ". Kiểm tra lại trước khi xác nhận.",
         });
       }
+      return true;
     } catch (error) {
       toast.error("Không quét được tệp", { description: (error as Error).message });
       return false;
