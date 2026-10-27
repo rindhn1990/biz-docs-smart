@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ClipboardPaste, Loader2, ScanLine, X } from "lucide-react";
+import { ClipboardPaste, Focus, Loader2, RotateCcw, ScanLine, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DocumentRegionSelector } from "@/components/DocumentRegionSelector";
 import { scanFileFields } from "@/lib/scan.functions";
 import { buildScanPayload } from "@/lib/scan-client";
-import { extractFieldsLocally } from "@/lib/field-extract";
+import { extractFieldsLocallyDetailed, normalizeRegionValue } from "@/lib/field-extract";
+import { mergeScanRows, WholeFileTextCache, type ScanRow } from "@/lib/scan-session";
 
 async function extractLocalText(file: File, onProgress: (msg: string) => void) {
   const mod = await import("@/lib/local-ocr");
@@ -14,7 +15,7 @@ async function extractLocalText(file: File, onProgress: (msg: string) => void) {
 }
 
 export type ScanField = { key: string; label: string };
-type Row = ScanField & { value: string; confidence: number; selected: boolean };
+type Row = ScanRow;
 
 /**
  * Hộp thoại dùng chung: chọn ảnh chụp / PDF / Word, để AI đọc nội dung và đề xuất giá trị
@@ -46,10 +47,17 @@ export function ScanFileDialog({
   const [regionCount, setRegionCount] = useState(0);
   const [thumb, setThumb] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [targetField, setTargetField] = useState<ScanField | null>(null);
+  const [selectorVersion, setSelectorVersion] = useState(0);
+  const textCache = useRef(new WholeFileTextCache());
   const busyRef = useRef(false);
   busyRef.current = busy;
 
   function pickFile(file: File) {
+    textCache.current.clear();
+    setWarnings([]);
+    setTargetField(null);
     setFileName(file.name);
     setRows([]);
     setRegionCount(0);
@@ -118,11 +126,19 @@ export function ScanFileDialog({
     }
   }
 
-  async function handleFile(file: File, selectedRegions = 0) {
-    setBusy(true);
-    setFileName(file.name);
-    setRegionCount(selectedRegions);
+  function restartScan() {
     setRows([]);
+    setWarnings([]);
+    setTargetField(null);
+    setRegionCount(0);
+    textCache.current.clear();
+    setSelectorVersion((value) => value + 1);
+  }
+
+  async function handleFile(file: File, selectedRegions = 0, regionNumbers: number[] = []) {
+    setBusy(true);
+    setRegionCount(selectedRegions);
+    const source = selectedRegions ? `vùng ${regionNumbers.join(", ") || selectedRegions}` : "toàn trang";
     try {
       if (file.size === 0) throw new Error("Tệp rỗng, không đọc được nội dung.");
       if (file.size > 10 * 1024 * 1024) throw new Error("Tệp lớn hơn 10MB. Hãy giảm dung lượng rồi thử lại.");
@@ -131,8 +147,10 @@ export function ScanFileDialog({
       let text = "";
       let techError: string | null = null;
       try {
-        const local = await extractLocalText(file, setProgress);
-        text = local.text;
+        text = await textCache.current.read(file, selectedRegions === 0 && !targetField, async () => {
+          const local = await extractLocalText(file, setProgress);
+          return local.text;
+        });
         if (text.replace(/\s/g, "").length < 5) techError = "Bộ đọc chữ không trả về nội dung nào (ảnh quá mờ hoặc trang trắng).";
       } catch (err) {
         techError = `Lỗi hệ thống khi đọc tệp: ${(err as Error).message || "không rõ nguyên nhân"}`;
@@ -140,21 +158,25 @@ export function ScanFileDialog({
       if (techError && mode === "local") {
         throw new Error(`${techError} Đây là lỗi đọc chữ, không phải do tài liệu thiếu thông tin — hãy thử lại hoặc dùng "Quét bằng AI".`);
       }
-      const found = new Map<string, { value: string; confidence: number }>();
-      for (const v of extractFieldsLocally(text, fields)) found.set(v.key, v);
+      if (targetField && selectedRegions > 0) {
+        if (techError) throw new Error(techError);
+        const value = normalizeRegionValue(targetField, text);
+        if (!value) throw new Error("Không đọc được giá trị trong vùng đã khoanh.");
+        setRows((current) => current.map((row) => row.key === targetField.key
+          ? { ...row, value, confidence: 0.9, selected: true, source, edited: true }
+          : row));
+        setTargetField(null);
+        toast.success(`Đã đọc vùng cho ${targetField.label}`);
+        return true;
+      }
+      const localResult = extractFieldsLocallyDetailed(text, fields);
+      setWarnings((current) => [...new Set([...current, ...localResult.warnings])]);
+      const found = new Map<string, { key: string; value: string; confidence: number; source?: string }>();
+      for (const v of localResult.values) found.set(v.key, v);
       const localCount = found.size;
 
-      const build = () =>
-        fields.map((field) => {
-          const hit = found.get(field.key);
-          return {
-            ...field,
-            value: hit?.value ?? "",
-            confidence: hit?.confidence ?? 0,
-            selected: Boolean(hit?.value),
-          };
-        });
-      setRows(build());
+      const updateRows = () => setRows((current) => mergeScanRows(current, fields, [...found.values()], source));
+      updateRows();
 
       // Bước 2: chỉ gửi AI các trường còn thiếu
       let aiCount = 0;
@@ -178,7 +200,7 @@ export function ScanFileDialog({
             aiCount++;
           }
         }
-        setRows(build());
+        updateRows();
       }
 
       if (localCount + aiCount === 0) {
@@ -195,8 +217,10 @@ export function ScanFileDialog({
             ". Kiểm tra lại trước khi xác nhận.",
         });
       }
+      return true;
     } catch (error) {
       toast.error("Không quét được tệp", { description: (error as Error).message });
+      return false;
     } finally {
       setBusy(false);
       setProgress("");
@@ -249,20 +273,21 @@ export function ScanFileDialog({
                 ["ai", "Quét bằng AI", "Bổ sung các trường mà quét thường không đọc được"],
               ] as const
             ).map(([value, label, desc]) => (
-              <button
+              <Button
                 key={value}
                 type="button"
                 role="radio"
                 aria-checked={mode === value}
                 disabled={busy}
                 onClick={() => setMode(value)}
-                className={`rounded-md border px-3 py-2 text-left transition-colors ${
+                variant="outline"
+                className={`h-auto flex-col items-start whitespace-normal rounded-md border px-3 py-2 text-left transition-colors ${
                   mode === value ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
                 }`}
               >
                 <span className="block text-sm font-medium">{label}</span>
                 <span className="block text-xs text-muted-foreground">{desc}</span>
-              </button>
+              </Button>
             ))}
           </div>
           <div
@@ -304,15 +329,19 @@ export function ScanFileDialog({
             </Button>
             {fileName ? <span className="text-sm text-muted-foreground">{fileName}</span> : null}
             {progress ? <span className="text-xs text-muted-foreground">{progress}</span> : null}
+            {fileName ? <Button variant="outline" size="sm" disabled={busy} onClick={restartScan}><RotateCcw /> Quét lại từ đầu</Button> : null}
           </div>
 
+          {warnings.map((warning) => <p key={warning} role="alert" className="mb-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{warning}</p>)}
+          {targetField ? <div className="mb-3 flex items-center justify-between gap-2 border border-primary p-3 text-sm"><span>Khoanh vùng: {targetField.label}</span><Button variant="ghost" size="sm" disabled={busy} onClick={() => setTargetField(null)}>Huỷ khoanh riêng</Button></div> : null}
           {selectedFile ? (
             <DocumentRegionSelector
+              key={selectorVersion}
               file={selectedFile}
               disabled={busy}
-              onScan={async (scanFile, count) => {
-                await handleFile(scanFile, count);
-                setSelectedFile(null);
+              targetField={targetField?.key}
+              onScan={async (scanFile, count, numbers) => {
+                return handleFile(scanFile, count, numbers);
               }}
             />
           ) : null}
@@ -326,6 +355,8 @@ export function ScanFileDialog({
                   <th className="px-2 py-2">Thông tin</th>
                   <th className="px-2 py-2">Giá trị đọc được</th>
                   <th className="px-2 py-2">Tin cậy</th>
+                   <th className="px-2 py-2">Nguồn</th>
+                   <th className="px-2 py-2" aria-label="Khoanh vùng riêng" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -360,6 +391,8 @@ export function ScanFileDialog({
                                     ...item,
                                     value: event.target.value,
                                     selected: Boolean(event.target.value),
+                                     edited: true,
+                                     source: "nhập tay",
                                   }
                                 : item,
                             ),
@@ -369,6 +402,13 @@ export function ScanFileDialog({
                     </td>
                     <td className="whitespace-nowrap px-2 py-2 text-xs text-muted-foreground">
                       {row.value ? `${Math.round(row.confidence * 100)}%` : "—"}
+                    </td>
+                    <td className="px-2 py-2 text-xs text-muted-foreground">{row.source || "—"}</td>
+                    <td className="px-2 py-2">
+                      <Button variant="ghost" size="icon" disabled={busy || !selectedFile} aria-label={`Khoanh vùng cho trường này: ${row.label}`} title="Khoanh vùng cho trường này" onClick={() => {
+                        setTargetField({ key: row.key, label: row.label });
+                        document.querySelector('[aria-label="Khung tài liệu"]')?.scrollIntoView({ block: "center", behavior: "smooth" });
+                      }}><Focus /></Button>
                     </td>
                   </tr>
                 ))}

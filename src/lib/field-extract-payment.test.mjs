@@ -89,10 +89,11 @@ describe('Văn bản B (OCR mất dấu)', () => {
   const { v } = run(B);
   it('tài khoản, tiền', () => { assert.equal(v.bank_account.value,'0705000003979'); assert.equal(v.pay_amount.value,'1.698.664.015'); assert.ok(v.pay_amount.confidence>=0.7); });
   it('hợp đồng/ngày', () => { assert.equal(v.HD_so.value,'31/2026/PVGAS/TMPC-VIETTRANS/D4'); assert.equal(v.HD_ngay.value,'30/01/2026'); assert.equal(v.TT_ngay.value,'14/09/2026'); });
-  it('chữ hai dòng', () => assert.ok(v.pay_amount_text.value.includes('d6ng chin')));
+  it('chữ hai dòng và kiểm tra chéo', () => { assert.ok(v.pay_amount_text.value.includes('d6ng chin')); assert.ok(v.pay_amount_text.confidence >= 0.95); assert.ok(v.pay_amount.confidence >= 0.95); });
+  it('ngân hàng', () => assert.equal(v.bank_name.value,'Ngan hang Public Bank Chi nhanh Cho Léon'));
   it('nội dung', () => { assert.ok(fold(v.TT_noidung.value).startsWith('se tien thue xe thang 08/2026')); assert.ok(!v.TT_noidung.value.includes('Kinh giri')); });
   it('tên đơn vị', () => { assert.ok(fold(v.name.value).includes('cong ty tnhh tmdv van tai viettrans')); assert.ok(!fold(v.name.value).includes('cong hoa xa hoi')); });
-  it('không đoán MST', () => { for (const k of ['tax_code','phone','email']) assert.equal(v[k], undefined, k); });
+  it('không đoán MST/điện thoại/email/địa chỉ', () => { for (const k of ['tax_code','phone','email','address']) assert.equal(v[k], undefined, k); });
 });
 describe('Đọc ngược chữ thành số', () => {
   for (const n of [1698664015, 305532000, 12000000, 1000015, 500]) it(String(n), () => assert.equal(parseVietnameseMoneyWords(readVietnameseMoney(n)), n));

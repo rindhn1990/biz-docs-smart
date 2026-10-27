@@ -24,6 +24,7 @@
 - All Vietnamese money-to-words output uses `src/lib/money.ts`'s `readVietnameseMoney` so forms, scripts and Word exports stay consistent.
 
 - Document scan cropping lives in `DocumentRegionSelector`; it outputs one composite image so local OCR and AI fallback share the same selected-region input.
+- Incremental scan merging and whole-file OCR caching live in browser-safe scan-session helpers; manual edits are protected and region OCR bypasses the per-dialog cache.
 - Role-check functions `has_role`/`can_write` live in the `private` schema (not exposed via API); RLS policies and triggers call `private.*` so signed-in users cannot invoke them directly.
 - The HR summary table reads the security_invoker view `employee_summary_view` with server-side filter/sort/range, so large datasets load one page per query without N+1 calls.
 - HR unit view rows are narrowed and nullable counts/order normalized in the shared hook so selectors and mutation controls use valid keys.

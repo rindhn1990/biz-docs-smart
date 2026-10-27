@@ -119,10 +119,12 @@ export function DocumentRegionSelector({
   file,
   disabled,
   onScan,
+  targetField,
 }: {
   file: File;
   disabled?: boolean;
-  onScan: (file: File, regionCount: number) => Promise<void> | void;
+  onScan: (file: File, regionCount: number, regionNumbers?: number[]) => Promise<boolean | void> | boolean | void;
+  targetField?: string | undefined;
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -142,6 +144,14 @@ export function DocumentRegionSelector({
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
   const [preparing, setPreparing] = useState(false);
+  const scannedRegions = useRef(new Set<string>());
+  const [, setScanRevision] = useState(0);
+  const targetStart = useRef(new Set<string>());
+
+  useEffect(() => {
+    targetStart.current = new Set(regions.map((region) => region.id));
+    setTool("select");
+  }, [targetField]);
 
   useEffect(() => {
     let alive = true;
@@ -149,6 +159,7 @@ export function DocumentRegionSelector({
     setLoading(true);
     setError("");
     setRegions([]);
+    scannedRegions.current.clear();
     setPageIndex(0);
     void loadPages(file, setProgress)
       .then((result) => {
@@ -286,10 +297,15 @@ export function DocumentRegionSelector({
   }
 
   async function scanRegions() {
-    if (!regions.length) return;
+    const pending = targetField ? regions.filter((region) => !targetStart.current.has(region.id)).slice(-1) : regions.filter((region) => !scannedRegions.current.has(region.id));
+    if (!pending.length) return;
     setPreparing(true);
     try {
-      await onScan(await cropRegions(pages, regions, file.name), regions.length);
+      const numbers = pending.map((region) => regions.findIndex((item) => item.id === region.id) + 1);
+      const success = await onScan(await cropRegions(pages, pending, file.name), pending.length, numbers);
+      if (success === false) return;
+      pending.forEach((region) => scannedRegions.current.add(region.id));
+      setScanRevision((value) => value + 1);
     } catch (reason) {
       toast.error("Không chuẩn bị được vùng đã chọn", { description: (reason as Error).message });
     } finally {
@@ -298,6 +314,7 @@ export function DocumentRegionSelector({
   }
 
   const page = pages[pageIndex];
+  const pendingCount = targetField ? Math.min(1, regions.filter((region) => !targetStart.current.has(region.id)).length) : regions.filter((region) => !scannedRegions.current.has(region.id)).length;
   const pageRegions = regions.filter((region) => region.page === pageIndex);
   const displayWidth = page ? Math.min(760, page.width) : 760;
   const displayHeight = page ? (page.height / page.width) * displayWidth : 900;
@@ -398,10 +415,10 @@ export function DocumentRegionSelector({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" disabled={disabled || loading || preparing} onClick={() => void onScan(file, 0)}>Quét toàn bộ</Button>
-          <Button disabled={disabled || loading || preparing || regions.length === 0} onClick={() => void scanRegions()}>
+          <Button variant="outline" disabled={disabled || loading || preparing || Boolean(targetField)} onClick={() => void onScan(file, 0)}>Quét toàn bộ</Button>
+          <Button disabled={disabled || loading || preparing || pendingCount === 0} onClick={() => void scanRegions()}>
             {preparing ? <Loader2 className="animate-spin" /> : <ScanLine />}
-            Quét {regions.length} vùng đã chọn
+            {targetField ? "Quét vùng cho trường này" : `Quét ${pendingCount} vùng đã chọn`}
           </Button>
         </div>
       </div>

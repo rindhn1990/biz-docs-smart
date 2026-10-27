@@ -91,6 +91,9 @@ const WORD_SCALES: Record<string, number> = { nghin: 1e3, ngan: 1e3, trieu: 1e6,
 export function parseVietnameseMoneyWords(input: string | null | undefined): number | null {
   const folded = (input ?? "")
     .replace(/[đĐ]/g, "d").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/\bd6ng\s+chin\b/g, "dong chan")
+    .replace(/\b(khong|mot|hai|ba|bon|tu|nam|lam|sau|bay|tam|chin)\s+trigu\b/g, "$1 trieu").replace(/\bmudi\b/g, "muoi")
+    .replace(/\bmuoi\s+ben\b/g, "muoi bon")
     .replace(/\b(dong\s*chan|dong|chan|vnd|vn\s*d)\b/g, " ")
     .replace(/[,.;:\-–()]/g, " ");
   const tokens = folded.split(/\s+/).filter(Boolean);
@@ -103,7 +106,7 @@ export function parseVietnameseMoneyWords(input: string | null | undefined): num
     if (token === "le" || token === "linh") continue;
     if (token in WORD_DIGITS) {
       if (pend !== null) return null;
-      pend = WORD_DIGITS[token]!;
+      pend = WORD_DIGITS[token] ?? null;
       seen = true;
     } else if (token === "tram") {
       if (pend === null) return null;
@@ -114,11 +117,11 @@ export function parseVietnameseMoneyWords(input: string | null | undefined): num
       pend = null;
       seen = true;
     } else if (token in WORD_SCALES) {
-      const scale = WORD_SCALES[token]!;
+      const scale = WORD_SCALES[token] ?? 1;
       let value = chunk + (pend ?? 0);
       chunk = 0;
       pend = null;
-      while (stack.length && stack[stack.length - 1]!.scale < scale) value += stack.pop()!.value;
+      while (stack.length && (stack.at(-1)?.scale ?? Infinity) < scale) value += stack.pop()?.value ?? 0;
       if (value === 0) return null;
       stack.push({ value: value * scale, scale });
     } else return null;

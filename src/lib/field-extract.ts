@@ -195,10 +195,11 @@ function afterAny(
   ctx: Ctx,
   needles: string[],
   validate: (v: string) => string | null = (v) => v || null,
-  opts: { multiline?: boolean; preferLineStart?: boolean } = {},
+  opts: { multiline?: boolean; preferLineStart?: boolean; lineStartOnly?: boolean } = {},
 ): string | null {
   for (const needle of needles) {
     let hits = phraseHits(ctx.flines, needle);
+    if (opts.lineStartOnly) hits = hits.filter((h) => h.lineStart);
     if (opts.preferLineStart) hits = [...hits.filter((h) => h.lineStart), ...hits.filter((h) => !h.lineStart)];
     for (const hit of hits) {
       const raw = restAt(ctx, hit, Boolean(opts.multiline));
@@ -307,7 +308,7 @@ function paymentContent(ctx: Ctx): string | null {
 
 function orgName(ctx: Ctx): { value: string; confidence: number } | null {
   const byLabel = afterAny(ctx, ["ten don vi", "ten nha thau", "don vi thu huong", "ten cong ty", "ten tai khoan"], pickText(3), {
-    preferLineStart: true,
+    preferLineStart: true, lineStartOnly: true,
   });
   if (byLabel) return { value: byLabel, confidence: 0.75 };
   const sentence = ctx.ftext.match(/((?:tong\s+)?cong\s+ty\s[^\n]{3,120}?)\s+(?:chan\s+thanh\s+cam\s+on|xin\s+thong\s+bao|de\s+nghi)/);

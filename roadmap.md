@@ -5,6 +5,9 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
+- [ ] Quét thường: sửa nhận diện văn bản A/B, kiểm thử đầy đủ và kiểm tra kiểu.
+- [ ] Quét thêm vùng: giữ tài liệu, gộp nguồn/giữ sửa tay, khoanh riêng từng trường, bộ nhớ OCR và cảnh báo tiền; thử giao diện không AI/email.
+
 - [x] Thông báo lương: giới hạn 10 người/lô, giãn cách 350ms, xử lý nhật ký riêng từng người, giữ sent cũ khi gửi lại thất bại, khoá bấm đúp; Email chỉ admin trên giao diện; 33 kiểm thử giả/quyền menu đạt và kiểm tra tự động báo build OK.
 - [x] Thông báo lương: phiên viewer bị chặn trang, ẩn menu và ô sửa Email; kiểm tra RLS ba bảng chỉ admin. Không tạo dữ liệu thử và không gửi thư thật; ba bảng vẫn trống.
 - [ ] Thông báo lương: thử nhập lương, lưu mẫu, xem trước, trạng thái/chọn đầu mục, banner/nút gửi và Dừng qua giao diện; chờ phiên admin. Gửi thật chưa thử vì chưa có RESEND_API_KEY/SALARY_MAIL_FROM/PASSWORD_RESET_FROM_EMAIL; không gửi trong lượt này.
