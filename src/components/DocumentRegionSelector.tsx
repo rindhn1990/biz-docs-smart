@@ -123,8 +123,8 @@ export function DocumentRegionSelector({
 }: {
   file: File;
   disabled?: boolean;
-  onScan: (file: File, regionCount: number, regionNumbers?: number[]) => Promise<void> | void;
-  targetField?: string;
+  onScan: (file: File, regionCount: number, regionNumbers?: number[]) => Promise<boolean | void> | boolean | void;
+  targetField?: string | undefined;
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -145,11 +145,11 @@ export function DocumentRegionSelector({
   const [error, setError] = useState("");
   const [preparing, setPreparing] = useState(false);
   const scannedRegions = useRef(new Set<string>());
-  const [scanRevision, setScanRevision] = useState(0);
-  const targetStart = useRef(0);
+  const [, setScanRevision] = useState(0);
+  const targetStart = useRef(new Set<string>());
 
   useEffect(() => {
-    targetStart.current = regions.length;
+    targetStart.current = new Set(regions.map((region) => region.id));
     setTool("select");
   }, [targetField]);
 
@@ -297,12 +297,13 @@ export function DocumentRegionSelector({
   }
 
   async function scanRegions() {
-    const pending = targetField ? regions.slice(targetStart.current).slice(-1) : regions.filter((region) => !scannedRegions.current.has(region.id));
+    const pending = targetField ? regions.filter((region) => !targetStart.current.has(region.id)).slice(-1) : regions.filter((region) => !scannedRegions.current.has(region.id));
     if (!pending.length) return;
     setPreparing(true);
     try {
       const numbers = pending.map((region) => regions.findIndex((item) => item.id === region.id) + 1);
-      await onScan(await cropRegions(pages, pending, file.name), pending.length, numbers);
+      const success = await onScan(await cropRegions(pages, pending, file.name), pending.length, numbers);
+      if (success === false) return;
       pending.forEach((region) => scannedRegions.current.add(region.id));
       setScanRevision((value) => value + 1);
     } catch (reason) {
@@ -313,7 +314,7 @@ export function DocumentRegionSelector({
   }
 
   const page = pages[pageIndex];
-  const pendingCount = targetField ? Math.min(1, regions.length - targetStart.current) : regions.filter((region) => !scannedRegions.current.has(region.id)).length;
+  const pendingCount = targetField ? Math.min(1, regions.filter((region) => !targetStart.current.has(region.id)).length) : regions.filter((region) => !scannedRegions.current.has(region.id)).length;
   const pageRegions = regions.filter((region) => region.page === pageIndex);
   const displayWidth = page ? Math.min(760, page.width) : 760;
   const displayHeight = page ? (page.height / page.width) * displayWidth : 900;

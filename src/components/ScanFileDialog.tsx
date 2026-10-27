@@ -51,8 +51,6 @@ export function ScanFileDialog({
   const [targetField, setTargetField] = useState<ScanField | null>(null);
   const [selectorVersion, setSelectorVersion] = useState(0);
   const textCache = useRef(new WholeFileTextCache());
-  const rowsRef = useRef(rows);
-  rowsRef.current = rows;
   const busyRef = useRef(false);
   busyRef.current = busy;
 
@@ -130,7 +128,6 @@ export function ScanFileDialog({
 
   function restartScan() {
     setRows([]);
-    rowsRef.current = [];
     setWarnings([]);
     setTargetField(null);
     setRegionCount(0);
@@ -170,7 +167,7 @@ export function ScanFileDialog({
           : row));
         setTargetField(null);
         toast.success(`Đã đọc vùng cho ${targetField.label}`);
-        return;
+        return true;
       }
       const localResult = extractFieldsLocallyDetailed(text, fields);
       setWarnings((current) => [...new Set([...current, ...localResult.warnings])]);
@@ -222,6 +219,7 @@ export function ScanFileDialog({
       }
     } catch (error) {
       toast.error("Không quét được tệp", { description: (error as Error).message });
+      return false;
     } finally {
       setBusy(false);
       setProgress("");
@@ -342,7 +340,7 @@ export function ScanFileDialog({
               disabled={busy}
               targetField={targetField?.key}
               onScan={async (scanFile, count, numbers) => {
-                await handleFile(scanFile, count, numbers);
+                return handleFile(scanFile, count, numbers);
               }}
             />
           ) : null}
