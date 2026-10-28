@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   FileText,
@@ -91,6 +91,7 @@ type Mapping = {
 const ADMIN_ONLY_NOTE = "Chỉ quản trị viên được chỉnh sửa mẫu";
 
 function TemplatesPage() {
+  const navigate = useNavigate();
   const { module, tpl } = Route.useSearch();
   const queryClient = useQueryClient();
   const { user, isAdmin } = useAuth();
@@ -569,7 +570,7 @@ function TemplatesPage() {
       />
 
       <div className="mb-4 flex flex-wrap gap-2" aria-label="Kho mẫu theo phân hệ">
-        {([['tender', 'Đấu thầu'], ['payment', 'Thanh toán'], ['notice', 'Thông báo nhà thầu'], ['hr', 'Nhân sự']] as const).map(([key, label]) => <Button key={key} variant={module === key ? 'secondary' : 'outline'} size="sm" onClick={() => void Route.router.navigate({ to: '/mau-van-ban', search: {module:key, tpl:undefined} })}>{label}</Button>)}
+        {([['tender', 'Đấu thầu'], ['payment', 'Thanh toán'], ['notice', 'Thông báo nhà thầu'], ['hr', 'Nhân sự']] as const).map(([key, label]) => <Button key={key} variant={module === key ? 'secondary' : 'outline'} size="sm" onClick={() => void navigate({ to: '/mau-van-ban', search: {module:key, tpl:undefined} })}>{label}</Button>)}
       </div>
       {module === "tender" ? <ScrollTabs
         role="tablist"
