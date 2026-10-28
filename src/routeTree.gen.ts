@@ -20,6 +20,7 @@ import { Route as AppNhaThauRouteImport } from './routes/_app/nha-thau'
 import { Route as AppQuanTriRouteImport } from './routes/_app/quan-tri'
 import { Route as AppQuyTrinhRouteImport } from './routes/_app/quy-trinh'
 import { Route as AppThanhToanRouteImport } from './routes/_app/thanh-toan'
+import { Route as AppThongBaoRouteImport } from './routes/_app/thong-bao'
 import { Route as AppTongQuanRouteImport } from './routes/_app/tong-quan'
 import { Route as AppGoiThauIndexRouteImport } from './routes/_app/goi-thau/index'
 import { Route as AppHoSoDauThauIndexRouteImport } from './routes/_app/ho-so-dau-thau/index'
@@ -86,6 +87,11 @@ const AppQuyTrinhRoute = AppQuyTrinhRouteImport.update({
 const AppThanhToanRoute = AppThanhToanRouteImport.update({
   id: '/thanh-toan',
   path: '/thanh-toan',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppThongBaoRoute = AppThongBaoRouteImport.update({
+  id: '/thong-bao',
+  path: '/thong-bao',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppTongQuanRoute = AppTongQuanRouteImport.update({
@@ -167,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/quan-tri': typeof AppQuanTriRoute
   '/quy-trinh': typeof AppQuyTrinhRoute
   '/thanh-toan': typeof AppThanhToanRoute
+  '/thong-bao': typeof AppThongBaoRoute
   '/tong-quan': typeof AppTongQuanRoute
   '/ho-so-dau-thau/$documentId': typeof AppHoSoDauThauDocumentIdRoute
   '/ho-so-dau-thau/bao-cao': typeof AppHoSoDauThauBaoCaoRoute
@@ -192,6 +199,7 @@ export interface FileRoutesByTo {
   '/quan-tri': typeof AppQuanTriRoute
   '/quy-trinh': typeof AppQuyTrinhRoute
   '/thanh-toan': typeof AppThanhToanRoute
+  '/thong-bao': typeof AppThongBaoRoute
   '/tong-quan': typeof AppTongQuanRoute
   '/ho-so-dau-thau/$documentId': typeof AppHoSoDauThauDocumentIdRoute
   '/ho-so-dau-thau/bao-cao': typeof AppHoSoDauThauBaoCaoRoute
@@ -219,6 +227,7 @@ export interface FileRoutesById {
   '/_app/quan-tri': typeof AppQuanTriRoute
   '/_app/quy-trinh': typeof AppQuyTrinhRoute
   '/_app/thanh-toan': typeof AppThanhToanRoute
+  '/_app/thong-bao': typeof AppThongBaoRoute
   '/_app/tong-quan': typeof AppTongQuanRoute
   '/_app/ho-so-dau-thau/$documentId': typeof AppHoSoDauThauDocumentIdRoute
   '/_app/ho-so-dau-thau/bao-cao': typeof AppHoSoDauThauBaoCaoRoute
@@ -246,6 +255,7 @@ export interface FileRouteTypes {
     | '/quan-tri'
     | '/quy-trinh'
     | '/thanh-toan'
+    | '/thong-bao'
     | '/tong-quan'
     | '/ho-so-dau-thau/$documentId'
     | '/ho-so-dau-thau/bao-cao'
@@ -271,6 +281,7 @@ export interface FileRouteTypes {
     | '/quan-tri'
     | '/quy-trinh'
     | '/thanh-toan'
+    | '/thong-bao'
     | '/tong-quan'
     | '/ho-so-dau-thau/$documentId'
     | '/ho-so-dau-thau/bao-cao'
@@ -297,6 +308,7 @@ export interface FileRouteTypes {
     | '/_app/quan-tri'
     | '/_app/quy-trinh'
     | '/_app/thanh-toan'
+    | '/_app/thong-bao'
     | '/_app/tong-quan'
     | '/_app/ho-so-dau-thau/$documentId'
     | '/_app/ho-so-dau-thau/bao-cao'
@@ -395,6 +407,13 @@ declare module '@tanstack/react-router' {
       path: '/thanh-toan'
       fullPath: '/thanh-toan'
       preLoaderRoute: typeof AppThanhToanRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/_app/thong-bao': {
+      id: '/_app/thong-bao'
+      path: '/thong-bao'
+      fullPath: '/thong-bao'
+      preLoaderRoute: typeof AppThongBaoRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/_app/tong-quan': {
@@ -500,6 +519,7 @@ interface AppRouteRouteChildren {
   AppQuanTriRoute: typeof AppQuanTriRoute
   AppQuyTrinhRoute: typeof AppQuyTrinhRoute
   AppThanhToanRoute: typeof AppThanhToanRoute
+  AppThongBaoRoute: typeof AppThongBaoRoute
   AppTongQuanRoute: typeof AppTongQuanRoute
   AppHoSoDauThauDocumentIdRoute: typeof AppHoSoDauThauDocumentIdRoute
   AppHoSoDauThauBaoCaoRoute: typeof AppHoSoDauThauBaoCaoRoute
@@ -524,6 +544,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppQuanTriRoute: AppQuanTriRoute,
   AppQuyTrinhRoute: AppQuyTrinhRoute,
   AppThanhToanRoute: AppThanhToanRoute,
+  AppThongBaoRoute: AppThongBaoRoute,
   AppTongQuanRoute: AppTongQuanRoute,
   AppHoSoDauThauDocumentIdRoute: AppHoSoDauThauDocumentIdRoute,
   AppHoSoDauThauBaoCaoRoute: AppHoSoDauThauBaoCaoRoute,
