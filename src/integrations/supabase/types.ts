@@ -1607,6 +1607,7 @@ export type Database = {
       }
       tender_contractors: {
         Row: {
+          bid_received_date: string | null
           contractor_id: string
           created_at: string
           created_by: string | null
@@ -1620,6 +1621,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          bid_received_date?: string | null
           contractor_id: string
           created_at?: string
           created_by?: string | null
@@ -1633,6 +1635,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          bid_received_date?: string | null
           contractor_id?: string
           created_at?: string
           created_by?: string | null
