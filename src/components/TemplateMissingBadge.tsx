@@ -8,7 +8,7 @@ import { loadInheritedSources, moduleSourceFields, resolveSource } from "@/lib/t
  * Đếm vùng sẽ thực sự ra trống khi xuất: chưa có nguồn
  * và không tự khớp tên/kế thừa nguồn được. Bấm để mở mẫu trong kho.
  */
-export function TemplateMissingBadge({ templateId, module }: { templateId: string; module: "tender" | "hr" | "payment" }) {
+export function TemplateMissingBadge({ templateId, module }: { templateId: string; module: "tender" | "hr" | "payment" | "notice" }) {
   const q = useQuery({
     queryKey: ["template_mappings", "missing", templateId],
     queryFn: async () => {

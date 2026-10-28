@@ -20,6 +20,7 @@ import {
   History,
   Table2,
   Mail,
+  Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -57,6 +58,7 @@ const tenderGroups: { title: string; items: Item[] }[] = [
       { to: "/mau-van-ban", label: "Mẫu văn bản", icon: FileText, search: { module: "tender" } },
       { to: "/hop-dong", label: "Hợp đồng", icon: FileSignature },
       { to: "/thanh-toan", label: "Thanh toán", icon: Receipt },
+      { to: "/thong-bao", label: "Thông báo nhà thầu", icon: Megaphone },
       { to: "/lich-su-xuat", label: "Lịch sử xuất file", icon: History },
     ],
   },
