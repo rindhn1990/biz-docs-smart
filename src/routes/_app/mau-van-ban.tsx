@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   FileText,
@@ -42,6 +42,7 @@ import {
 import { KHLCNT_FIELDS } from "@/lib/khlcnt";
 import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
 import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
+import { NOTICE_TEMPLATE_FIELDS } from "@/lib/notice";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { cn } from "@/lib/utils";
 import { recallTemplateBuffer, rememberTemplateBuffer } from "@/lib/template-cache";
@@ -53,7 +54,7 @@ export const Route = createFileRoute("/_app/mau-van-ban")({
         ? ("hr" as const)
         : search["module"] === "payment"
           ? ("payment" as const)
-          : ("tender" as const),
+          : search["module"] === "notice" ? ("notice" as const) : ("tender" as const),
     tpl: typeof search["tpl"] === "string" ? (search["tpl"] as string) : undefined,
   }),
   head: () => ({
@@ -90,6 +91,7 @@ type Mapping = {
 const ADMIN_ONLY_NOTE = "Chỉ quản trị viên được chỉnh sửa mẫu";
 
 function TemplatesPage() {
+  const navigate = useNavigate();
   const { module, tpl } = Route.useSearch();
   const queryClient = useQueryClient();
   const { user, isAdmin } = useAuth();
@@ -164,7 +166,7 @@ function TemplatesPage() {
       ? HR_TEMPLATE_FIELDS
       : module === "payment"
         ? PAYMENT_TEMPLATE_FIELDS
-        : KHLCNT_FIELDS;
+        : module === "notice" ? NOTICE_TEMPLATE_FIELDS : KHLCNT_FIELDS;
   const wrap: [string, string] =
     current?.delimiter_style === "square" ? ["[[", "]]"] : ["{{", "}}"];
 
@@ -514,7 +516,7 @@ function TemplatesPage() {
             ? "Kho mẫu Word dành riêng cho hồ sơ và hợp đồng nhân sự."
             : module === "payment"
               ? "Kho mẫu Word dành riêng cho hồ sơ thanh toán, dữ liệu lấy từ thông tin nhà thầu."
-              : "Chọn hình thức lựa chọn nhà thầu, rồi tải một hoặc nhiều mẫu Word lên."
+              : module === "notice" ? "Mẫu thông báo nhà thầu." : "Chọn hình thức lựa chọn nhà thầu, rồi tải một hoặc nhiều mẫu Word lên."
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
@@ -567,6 +569,9 @@ function TemplatesPage() {
         }
       />
 
+      <div className="mb-4 flex flex-wrap gap-2" aria-label="Kho mẫu theo phân hệ">
+        {([['tender', 'Đấu thầu'], ['payment', 'Thanh toán'], ['notice', 'Thông báo nhà thầu'], ['hr', 'Nhân sự']] as const).map(([key, label]) => <Button key={key} variant={module === key ? 'secondary' : 'outline'} size="sm" onClick={() => void navigate({ to: '/mau-van-ban', search: {module:key, tpl:undefined} })}>{label}</Button>)}
+      </div>
       {module === "tender" ? <ScrollTabs
         role="tablist"
         aria-label="Hình thức lựa chọn nhà thầu"
@@ -842,7 +847,7 @@ function TemplatesPage() {
                 <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
                 <AutoAssignSources
                   rows={rows}
-                  module={module as "tender" | "hr" | "payment"}
+                  module={module}
                   onSaved={() => {
                     void queryClient.invalidateQueries({ queryKey: ["template_mappings"] });
                   }}

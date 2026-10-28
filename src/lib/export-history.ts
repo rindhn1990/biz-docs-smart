@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type ExportHistoryInput = {
   fileName: string;
-  module: "tender" | "hr" | "payment";
+  module: "tender" | "hr" | "payment" | "notice";
   data: Record<string, string>;
   tenderId?: string | null;
   contractId?: string | null;

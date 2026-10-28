@@ -5,6 +5,11 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
+- [ ] A: kiểm chứng khoanh riêng Số tài khoản và Quét lại từ đầu bằng trình duyệt.
+- [ ] B1-2: module notice, tab Thông báo nhà thầu, ngày nhận hồ sơ, quét/nhập riêng, Word/ZIP và lịch sử.
+- [ ] B3: quy tắc quét giấy đăng ký doanh nghiệp và kiểm thử không hồi quy.
+- [ ] B4: kiểm tra toàn bộ kiểm thử, kiểu và giao diện xuất thông báo; không AI/email.
+
 - [ ] Quét thường: sửa nhận diện văn bản A/B, kiểm thử đầy đủ và kiểm tra kiểu.
 - [ ] Quét thêm vùng: giữ tài liệu, gộp nguồn/giữ sửa tay, khoanh riêng từng trường, bộ nhớ OCR và cảnh báo tiền; thử giao diện không AI/email.
 

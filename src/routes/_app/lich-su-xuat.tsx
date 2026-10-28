@@ -162,7 +162,7 @@ function ExportHistoryPage() {
       await renderAndDownloadDocx(buffer, style, values, row.file_name);
       await recordExport({
         fileName: row.file_name,
-        module: (row.module as "tender" | "hr" | "payment") ?? "tender",
+        module: (row.module as "tender" | "hr" | "payment" | "notice") ?? "tender",
         data: values,
         tenderId: row.tender_id,
         templateId: row.template_id,

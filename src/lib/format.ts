@@ -2,7 +2,7 @@ export type DateVariant = "slash" | "vn_full";
 
 export function isDateSource(key: string | null | undefined, label?: string | null) {
   const name = (key ?? "").split(".").at(-1) ?? "";
-  return /^date_/i.test(name) || /_date$/i.test(name) || /_ngay$/i.test(name) || name === "TT_hanthanhtoan" || /^ngày\b/i.test((label ?? "").trim());
+  return /^date_/i.test(name) || /_date$/i.test(name) || /_ngay$/i.test(name) || ["TT_hanthanhtoan", "TB_ngay_ky", "TB_ngay_nhan_hs"].includes(name) || /^ngày\b/i.test((label ?? "").trim());
 }
 
 function dateParts(value: string) {

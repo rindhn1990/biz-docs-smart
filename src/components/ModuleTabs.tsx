@@ -27,6 +27,7 @@ export const TENDER_PATHS = [
   "/nha-thau",
   "/hop-dong",
   "/thanh-toan",
+  "/thong-bao",
   "/lich-su-xuat",
   "/quy-trinh",
 ];
