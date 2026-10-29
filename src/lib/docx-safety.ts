@@ -1,7 +1,7 @@
 import PizZip from "pizzip";
 import { DOMParser as XmlDOMParser } from "@xmldom/xmldom";
 
-export const WORD_TEXT_RE = /(<w:t(?:\s[^>]*[^\/>])?>)([\s\S]*?)(<\/w:t>)/g;
+export const WORD_TEXT_RE = /(<w:t(?=[\s>])(?![^>]*\/>)[^>]*>)([\s\S]*?)(<\/w:t>)/g;
 export const UNSAFE_DOCX_MESSAGE = "Không lưu để tránh làm hỏng file mẫu";
 
 export function validateDocx(source: ArrayBuffer) {

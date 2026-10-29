@@ -24,7 +24,7 @@ export const NOTICE_CONTRACTOR_KEYS: Record<string, string> = {
 };
 type Contractor = { name: string; tax_code?: string | null; address?: string | null; representative?: string | null; representative_title?: string | null; phone?: string | null; email?: string | null; bank_account?: string | null; bank_name?: string | null };
 type Tender = { name: string; code?: string | null; package_value?: number | null; funding_source?: string | null; location?: string | null; method?: string | null; tender_type?: string | null };
-export function noticeValues(contractor: Contractor, tender: Tender, link: { role: string; price: number | null; bid_received_date?: string | null }, common: { number: string; date: string; content: string }, overrides: Record<string,string> = {}, tenderData: Record<string,string> = {}) {
+export function noticeValues(contractor: Contractor, tender: Tender, link: { role: string; price: number | null; bid_received_date?: string | null }, common: { number: string; date: string; content: string }, overrides: Record<string,string> = {}, tenderData: Record<string,string> = {}): Record<string,string> {
   const values: Record<string,string> = {};
   for (const [key, column] of Object.entries(NOTICE_CONTRACTOR_KEYS)) values[key] = overrides[column] ?? contractor[column as keyof Contractor] ?? '';
   const money = (n: number | null | undefined) => n == null ? '' : formatThousands(String(n));
