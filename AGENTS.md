@@ -32,3 +32,4 @@
 - HR unit view rows are narrowed and nullable counts/order normalized in the shared hook so selectors and mutation controls use valid keys.
 - HR deletion uses database cascades for employee-linked records and a server-authorized storage cleanup queue with shared-file reference checks so unrelated originals survive.
 - The template content editor edits paragraph text in place inside the original document.xml (no HTML round-trip), so Word formatting, tables, images and headers survive saves.
+- Word text mutations use exact w:t matching and verify intended paragraph text, XML structure and unchanged package bytes; shared template-file-save backs up authoritative storage bytes before overwrites, while explicit whole-file replacement validates the new package independently because its layout may intentionally differ.
