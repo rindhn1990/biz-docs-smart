@@ -16,6 +16,8 @@ export function DocxPreviewDialog({
   data,
   onClose,
   onExported,
+  onExport,
+  readOnly = false,
 }: {
   title: string;
   fileName: string;
@@ -25,6 +27,8 @@ export function DocxPreviewDialog({
   onClose: () => void;
   /** Gọi sau khi người dùng tải file thành công (ghi lịch sử, làm mới biểu mẫu…). */
   onExported?: () => void;
+  onExport?: (() => Promise<void>) | undefined;
+  readOnly?: boolean;
 }) {
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +51,8 @@ export function DocxPreviewDialog({
   async function download() {
     setDownloading(true);
     try {
-      await renderAndDownloadDocx(source, style, data, fileName);
+      if (onExport) await onExport();
+      else await renderAndDownloadDocx(source, style, data, fileName);
       toast.success("Đã tải file Word", { description: fileName });
       onExported?.();
       onClose();
@@ -95,7 +100,7 @@ export function DocxPreviewDialog({
           <Button variant="outline" onClick={onClose}>
             Đóng
           </Button>
-          <Button disabled={downloading} onClick={() => void download()}>
+          <Button disabled={downloading || readOnly} onClick={() => void download()}>
             {downloading ? <Loader2 className="animate-spin" /> : <Download />}
             Tải file Word
           </Button>

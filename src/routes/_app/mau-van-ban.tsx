@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   ChevronUp,
   ChevronDown,
+  Undo2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,7 +46,9 @@ import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
 import { NOTICE_TEMPLATE_FIELDS } from "@/lib/notice";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { cn } from "@/lib/utils";
-import { recallTemplateBuffer, rememberTemplateBuffer } from "@/lib/template-cache";
+import { recallTemplateBuffer } from "@/lib/template-cache";
+import { saveTemplateFile, undoTemplateFile } from "@/lib/template-file-save";
+import { previousDocxPath, validateDocx } from "@/lib/docx-safety";
 
 export const Route = createFileRoute("/_app/mau-van-ban")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -194,6 +197,7 @@ function TemplatesPage() {
   }, [current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function uploadOneDocx(file: File) {
+      validateDocx(await file.arrayBuffer());
       const { placeholders, style } = await extractPlaceholdersFromFile(file);
       const name = file.name.replace(/\.docx$/i, "");
 
@@ -426,17 +430,13 @@ function TemplatesPage() {
     }
   }
 
-  async function handleReplaceDocx(file: File) {
-    if (!current) return;
+  async function handleReplaceDocx(file: File, expectedSource?: ArrayBuffer) {
+    if (!current || !isAdmin) return;
     setBusy("replace");
     try {
       const { placeholders, style } = await extractPlaceholdersFromFile(file);
       const path = current.source_docx_path ?? `templates/${current.id}/source.docx`;
-      const up = await supabase.storage
-        .from("templates")
-        .upload(path, file, { upsert: true, cacheControl: "0" });
-      if (up.error) throw up.error;
-      rememberTemplateBuffer(path, await file.arrayBuffer());
+      await saveTemplateFile(path, await file.arrayBuffer(), !!current.source_docx_path, expectedSource);
 
       const { error } = await supabase
         .from("templates")
@@ -481,9 +481,28 @@ function TemplatesPage() {
 
     } catch (e) {
       toast.error("Không thay được file", { description: (e as Error).message });
+      throw e;
     } finally {
       setBusy(null);
     }
+  }
+
+  async function handleUndo() {
+    if (!current?.source_docx_path || !isAdmin) return;
+    setBusy("replace");
+    try {
+      const buffer = await undoTemplateFile(current.source_docx_path);
+      const detected = await extractPlaceholdersFromFile(new Blob([buffer]));
+      const { error } = await supabase.from("templates").update({ delimiter_style: detected.style, updated_by: user?.id ?? null }).eq("id", current.id);
+      if (error) throw error;
+      setPicking(false);
+      setContentSource(null);
+      await queryClient.invalidateQueries({ queryKey: ["templates"] });
+      await queryClient.invalidateQueries({ queryKey: ["template_mappings", current.id] });
+      toast.success("Đã hoàn tác lần sửa gần nhất", { description: "Nguồn dữ liệu đã khai báo vẫn được giữ lại." });
+    } catch (e) {
+      toast.error("Không hoàn tác được", { description: (e as Error).message });
+    } finally { setBusy(null); }
   }
 
   async function handleDeleteTemplate() {
@@ -494,7 +513,7 @@ function TemplatesPage() {
       const { error } = await supabase.from("templates").delete().eq("id", current.id);
       if (error) throw error;
       if (current.source_docx_path) {
-        await supabase.storage.from("templates").remove([current.source_docx_path]);
+        await supabase.storage.from("templates").remove([current.source_docx_path, previousDocxPath(current.source_docx_path)]);
       }
       setSelectedId(null);
       await queryClient.invalidateQueries({ queryKey: ["templates"] });
@@ -689,7 +708,7 @@ function TemplatesPage() {
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   e.target.value = "";
-                  if (file) void handleReplaceDocx(file);
+                  if (file) void handleReplaceDocx(file).catch(() => undefined);
                 }}
               />
               <div className="flex flex-wrap items-center gap-2">
@@ -748,9 +767,14 @@ function TemplatesPage() {
                     fileName={sourceFileName()}
                     source={contentSource}
                     onClose={() => setContentSource(null)}
-                    onSave={(file) => handleReplaceDocx(file)}
+                    onSave={(file) => handleReplaceDocx(file, contentSource)}
                   />
                 ) : null}
+                <ConfirmDelete title="Hoàn tác lần sửa gần nhất?" description="Khôi phục file Word trước lần sửa gần nhất. Các nguồn dữ liệu đã khai báo vẫn được giữ lại." onConfirm={handleUndo}>
+                  <Button variant="outline" size="sm" disabled={!current.source_docx_path || busy !== null}>
+                    <Undo2 /> Hoàn tác lần sửa gần nhất
+                  </Button>
+                </ConfirmDelete>
                 <Button
                   type="button"
                   variant="outline"

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { docxToHtml, replacePhraseWithToken, type DelimiterStyle } from "@/lib/docx";
 import { recallTemplateBuffer, rememberTemplateBuffer } from "@/lib/template-cache";
+import { saveTemplateFile } from "@/lib/template-file-save";
 import { KHLCNT_FIELDS } from "@/lib/khlcnt";
 import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
 import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
@@ -243,18 +244,12 @@ export function TemplateRegionPicker({
     setSaving(true);
     try {
       // Thay trực tiếp trên bản đang giữ trong bộ nhớ, không tải lại từ storage (tránh bản cũ do cache).
-      const { buffer } = replacePhraseWithToken(
+      const { buffer, count } = replacePhraseWithToken(
         current.slice(0),
         selection,
         `${wrap[0]}${key}${wrap[1]}`,
       );
-      const up = await supabase.storage.from("templates").upload(storagePath, buffer, {
-        upsert: true,
-        cacheControl: "0",
-        contentType:
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      });
-      if (up.error) throw up.error;
+      await saveTemplateFile(storagePath, buffer, true, current);
       bufferRef.current = buffer;
       rememberTemplateBuffer(storagePath, buffer);
 
@@ -305,7 +300,7 @@ export function TemplateRegionPicker({
       );
       onSaved();
       toast.success("Đã đánh dấu vùng dữ liệu", {
-        description: `Đoạn chữ đã được thay bằng ${wrap[0]}${key}${wrap[1]} trong file Word.`,
+        description: `Đã thay ${count} vị trí trong văn bản bằng ${wrap[0]}${key}${wrap[1]}.`,
       });
     } catch (e) {
       toast.error("Không lưu được vùng dữ liệu", { description: (e as Error).message });

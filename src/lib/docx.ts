@@ -1,6 +1,7 @@
 import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
 import { saveAs } from "file-saver";
+import { WORD_TEXT_RE, assertSafeDocxEdit, xmlParagraphTexts } from "./docx-safety";
 
 export type DelimiterStyle = "curly" | "square";
 
@@ -105,7 +106,7 @@ function paragraphTexts(source: ArrayBuffer): string[] {
   return (xml.match(/<w:p[\s>][\s\S]*?<\/w:p>/g) ?? [])
     .map((paragraph) =>
       decodeXml(
-        (paragraph.match(/<w:t[^>]*>[\s\S]*?<\/w:t>/g) ?? [])
+        (paragraph.match(new RegExp(WORD_TEXT_RE.source, "g")) ?? [])
           .map((run) => run.replace(/<[^>]+>/g, ""))
           .join(""),
       )
@@ -261,8 +262,9 @@ export function replacePhraseWithToken(
 
   const paragraphRe = /<w:p[\s>][\s\S]*?<\/w:p>/g;
   let count = 0;
+  const expected: string[] = [];
   xml = xml.replace(paragraphRe, (paragraph) => {
-    const runRe = /(<w:t[^>]*>)([\s\S]*?)(<\/w:t>)/g;
+    const runRe = new RegExp(WORD_TEXT_RE.source, "g");
     type Slot = { open: string; close: string; text: string; at: number; len: number; start: number };
     const slots: Slot[] = [];
     let merged = "";
@@ -280,11 +282,11 @@ export function replacePhraseWithToken(
       });
       merged += text;
     }
-    if (slots.length === 0) return paragraph;
+    if (slots.length === 0) { expected.push(""); return paragraph; }
 
     const normalized = merged.replace(/\s+/g, " ");
     const idxNorm = normalized.indexOf(target);
-    if (idxNorm === -1) return paragraph;
+    if (idxNorm === -1) { expected.push(merged); return paragraph; }
 
     // Ánh xạ vị trí trên chuỗi đã chuẩn hoá về chuỗi gốc.
     const mapping: number[] = [];
@@ -300,11 +302,13 @@ export function replacePhraseWithToken(
     const start = mapping[idxNorm] ?? 0;
     const endNorm = idxNorm + target.length;
     const end = endNorm >= mapping.length ? merged.length : (mapping[endNorm] ?? merged.length);
+    expected.push(merged.slice(0, start) + token + merged.slice(end));
 
     let out = paragraph;
     let inserted = false;
     for (let i = slots.length - 1; i >= 0; i--) {
-      const slot = slots[i]!;
+      const slot = slots[i];
+      if (!slot) continue;
       const s = slot.start;
       const e = s + slot.text.length;
       if (e <= start || s >= end) continue;
@@ -330,18 +334,17 @@ export function replacePhraseWithToken(
   const uint = zip.generate({ type: "uint8array", compression: "DEFLATE" }) as Uint8Array;
   const buffer = new ArrayBuffer(uint.byteLength);
   new Uint8Array(buffer).set(uint);
+  assertSafeDocxEdit(source, buffer, expected);
   return { buffer, count };
 }
 
 const PARA_RE = /<w:p[\s>][\s\S]*?<\/w:p>/g;
-const RUN_T_RE = /(<w:t[^>]*>)([\s\S]*?)(<\/w:t>)/g;
+const RUN_T_RE = WORD_TEXT_RE;
 
 /** Văn bản của từng đoạn trong document.xml (giữ đúng thứ tự, kể cả đoạn rỗng). */
 export function listDocxParagraphs(source: ArrayBuffer): string[] {
   const xml = new PizZip(source).file("word/document.xml")?.asText() ?? "";
-  return (xml.match(PARA_RE) ?? []).map((p) =>
-    decodeXml((p.match(/<w:t[^>]*>[\s\S]*?<\/w:t>/g) ?? []).map((r) => r.replace(/<[^>]+>/g, "")).join("")),
-  );
+  return xmlParagraphTexts(xml);
 }
 
 function editParagraph(paragraph: string, next: string): string {
@@ -376,7 +379,8 @@ function editParagraph(paragraph: string, next: string): string {
   if (target === -1) target = slots.length - 1;
   let out = paragraph;
   for (let i = slots.length - 1; i >= 0; i--) {
-    const slot = slots[i]!;
+    const slot = slots[i];
+    if (!slot) continue;
     const s = slot.start;
     const e = s + slot.text.length;
     const touches = i === target || (e > start && s < end);
@@ -404,6 +408,8 @@ export function applyDocxParagraphEdits(source: ArrayBuffer, texts: string[]): A
   const uint = zip.generate({ type: "uint8array", compression: "DEFLATE" }) as Uint8Array;
   const buffer = new ArrayBuffer(uint.byteLength);
   new Uint8Array(buffer).set(uint);
+  const original = listDocxParagraphs(source);
+  assertSafeDocxEdit(source, buffer, original.map((text, index) => texts[index] ?? text));
   return buffer;
 }
 
