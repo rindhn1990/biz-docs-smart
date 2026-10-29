@@ -5,8 +5,9 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
-- [ ] Word: sửa regex w:t, kiểm thử tab/bảng, chặn lưu XML hỏng và thay ngoài phạm vi.
-- [ ] Word: sao lưu bản gần nhất, hoàn tác admin, thông báo số vị trí và kiểm chứng cuối.
+- [x] Word: sửa regex w:t, kiểm thử tab/bảng, chặn lưu XML hỏng và thay ngoài phạm vi; 124/124 kiểm thử, tsgo sạch và build OK.
+- [x] Word: sao lưu bản gần nhất trước ghi đè, hoàn tác admin có xác nhận, thông báo số vị trí; ba lần thay vùng bằng DOMParser trình duyệt giữ bảng/nội dung cuối.
+- [ ] Word: thử lưu 2–3 vùng, đóng/mở lại và hoàn tác qua giao diện với storage thật; chờ phiên admin (phiên thử hiện chỉ viewer). Không tạo dữ liệu thử trong database/storage.
 
 - [ ] A: kiểm chứng khoanh riêng Số tài khoản và Quét lại từ đầu bằng trình duyệt.
 - [ ] B1-2: module notice, tab Thông báo nhà thầu, ngày nhận hồ sơ, quét/nhập riêng, Word/ZIP và lịch sử.

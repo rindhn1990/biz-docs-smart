@@ -46,7 +46,7 @@ import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
 import { NOTICE_TEMPLATE_FIELDS } from "@/lib/notice";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { cn } from "@/lib/utils";
-import { recallTemplateBuffer, rememberTemplateBuffer } from "@/lib/template-cache";
+import { recallTemplateBuffer } from "@/lib/template-cache";
 import { saveTemplateFile, undoTemplateFile } from "@/lib/template-file-save";
 import { previousDocxPath, validateDocx } from "@/lib/docx-safety";
 
