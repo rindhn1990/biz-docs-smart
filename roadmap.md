@@ -5,6 +5,9 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
+- [ ] Word: sửa regex w:t, kiểm thử tab/bảng, chặn lưu XML hỏng và thay ngoài phạm vi.
+- [ ] Word: sao lưu bản gần nhất, hoàn tác admin, thông báo số vị trí và kiểm chứng cuối.
+
 - [ ] A: kiểm chứng khoanh riêng Số tài khoản và Quét lại từ đầu bằng trình duyệt.
 - [ ] B1-2: module notice, tab Thông báo nhà thầu, ngày nhận hồ sơ, quét/nhập riêng, Word/ZIP và lịch sử.
 - [ ] B3: quy tắc quét giấy đăng ký doanh nghiệp và kiểm thử không hồi quy.
