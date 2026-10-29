@@ -249,7 +249,7 @@ export function TemplateRegionPicker({
         selection,
         `${wrap[0]}${key}${wrap[1]}`,
       );
-      await saveTemplateFile(storagePath, buffer, true);
+      await saveTemplateFile(storagePath, buffer, true, current);
       bufferRef.current = buffer;
       rememberTemplateBuffer(storagePath, buffer);
 

@@ -430,13 +430,13 @@ function TemplatesPage() {
     }
   }
 
-  async function handleReplaceDocx(file: File) {
+  async function handleReplaceDocx(file: File, expectedSource?: ArrayBuffer) {
     if (!current || !isAdmin) return;
     setBusy("replace");
     try {
       const { placeholders, style } = await extractPlaceholdersFromFile(file);
       const path = current.source_docx_path ?? `templates/${current.id}/source.docx`;
-      await saveTemplateFile(path, await file.arrayBuffer(), !!current.source_docx_path);
+      await saveTemplateFile(path, await file.arrayBuffer(), !!current.source_docx_path, expectedSource);
 
       const { error } = await supabase
         .from("templates")
@@ -767,7 +767,7 @@ function TemplatesPage() {
                     fileName={sourceFileName()}
                     source={contentSource}
                     onClose={() => setContentSource(null)}
-                    onSave={(file) => handleReplaceDocx(file)}
+                    onSave={(file) => handleReplaceDocx(file, contentSource)}
                   />
                 ) : null}
                 <ConfirmDelete title="Hoàn tác lần sửa gần nhất?" description="Khôi phục file Word trước lần sửa gần nhất. Các nguồn dữ liệu đã khai báo vẫn được giữ lại." onConfirm={handleUndo}>
