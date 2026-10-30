@@ -35,7 +35,7 @@ export function usePayments() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payments")
-        .select("*, contracts(contract_number,total_value,customer_id,customers(name))")
+        .select("*, contracts(contract_number,total_value,customer_id,tender_id,tenders(name),customers(name))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;

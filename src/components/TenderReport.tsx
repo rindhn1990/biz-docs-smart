@@ -73,10 +73,11 @@ export function TenderReport() {
         </Select>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] text-sm">
+        <table className="w-full min-w-[1300px] text-sm">
           <thead className="text-left text-xs uppercase text-muted-foreground">
             <tr className="border-b border-border">
-              <th className="py-2 pr-2">Gói thầu / Hợp đồng</th>
+              <th className="min-w-72 py-2 pr-4">Tên gói thầu</th>
+              <th className="min-w-52 whitespace-nowrap pr-4">Số hợp đồng</th>
               <th className="whitespace-nowrap pr-2">Nhà thầu</th>
               <th className="whitespace-nowrap pr-2 text-right">Giá gói</th>
               <th className="whitespace-nowrap pr-2 text-right">Giá trúng</th>
@@ -88,7 +89,7 @@ export function TenderReport() {
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={8} className="py-6 text-center text-muted-foreground">Không có gói thầu phù hợp.</td></tr>
+              <tr><td colSpan={9} className="py-6 text-center text-muted-foreground">Không có gói thầu phù hợp.</td></tr>
             ) : rows.map(({ t, list, value, paid }) => (
               <FragmentRows key={t.id}>
                 <tr className="border-t border-border bg-muted/40 font-medium">
@@ -96,6 +97,7 @@ export function TenderReport() {
                     <span className="ml-2 whitespace-nowrap text-xs font-normal text-muted-foreground">{TENDER_STATUS[t.status]?.label}</span>
                   </td>
                   <td className="whitespace-nowrap pr-2 text-muted-foreground">{list.length} hợp đồng</td>
+                  <td />
                   <td className="num pr-2 text-right">{money(t.package_value)}</td>
                   <td className="num pr-2 text-right">{money(t.won_value)}</td>
                   <td className="num pr-2 text-right">{money(value)}</td>
@@ -105,7 +107,8 @@ export function TenderReport() {
                 </tr>
                 {list.map(({ c, value: v, paid: p }) => (
                   <tr key={c.id} className="border-t border-border/60">
-                    <td className="py-1.5 pl-4 pr-2">{c.contract_number}</td>
+                    <td className="py-1.5 pr-2 text-muted-foreground">{t.name}</td>
+                    <td className="py-1.5 pr-2">{c.contract_number}</td>
                     <td className="pr-2">{c.contractors?.name ?? "—"}</td>
                     <td /><td />
                     <td className="num pr-2 text-right">{money(v)}</td>

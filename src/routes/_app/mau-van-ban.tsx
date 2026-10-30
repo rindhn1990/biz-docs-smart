@@ -46,6 +46,7 @@ import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
 import { NOTICE_TEMPLATE_FIELDS } from "@/lib/notice";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { cn } from "@/lib/utils";
+import { formatDateTime } from "@/lib/format";
 import { recallTemplateBuffer } from "@/lib/template-cache";
 import { saveTemplateFile, undoTemplateFile } from "@/lib/template-file-save";
 import { previousDocxPath, validateDocx } from "@/lib/docx-safety";
@@ -120,7 +121,7 @@ function TemplatesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("templates")
-        .select("id,name,category,description,body,source_docx_path,delimiter_style,method,module,sort_order")
+        .select("id,name,category,description,body,source_docx_path,delimiter_style,method,module,sort_order,created_at")
         .order("sort_order")
         .order("created_at");
       if (error) throw error;
@@ -688,6 +689,9 @@ function TemplatesPage() {
                       <span className="block truncate text-xs text-muted-foreground">
                         {t.category ?? "—"}
                         {t.source_docx_path ? " · có tệp Word" : " · chỉ văn bản"}
+                      </span>
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        Tải lên: <time dateTime={t.created_at}>{formatDateTime(t.created_at)}</time>
                       </span>
                     </span>
                   </button>

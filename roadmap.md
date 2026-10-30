@@ -5,6 +5,8 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
+- [x] Hiển thị: thời gian tải mẫu; tách tên gói/số hợp đồng trong Tổng quan; lọc gói và thời gian nhập ở theo dõi thanh toán. Đã thử dữ liệu thật qua phiên viewer, 124/124 kiểm thử đạt, build OK.
+
 - [x] Word: sửa regex w:t, kiểm thử tab/bảng, chặn lưu XML hỏng và thay ngoài phạm vi; 124/124 kiểm thử, tsgo sạch và build OK.
 - [x] Word: sao lưu bản gần nhất trước ghi đè, hoàn tác admin có xác nhận, thông báo số vị trí; ba lần thay vùng bằng DOMParser trình duyệt giữ bảng/nội dung cuối.
 - [ ] Word: thử lưu 2–3 vùng, đóng/mở lại và hoàn tác qua giao diện với storage thật; chờ phiên admin (phiên thử hiện chỉ viewer). Không tạo dữ liệu thử trong database/storage.
