@@ -73,11 +73,11 @@ export function TenderReport() {
         </Select>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] text-sm">
+        <table className="w-full min-w-[1300px] text-sm">
           <thead className="text-left text-xs uppercase text-muted-foreground">
             <tr className="border-b border-border">
-              <th className="py-2 pr-2">Tên gói thầu</th>
-              <th className="whitespace-nowrap pr-2">Số hợp đồng</th>
+              <th className="min-w-72 py-2 pr-4">Tên gói thầu</th>
+              <th className="min-w-52 whitespace-nowrap pr-4">Số hợp đồng</th>
               <th className="whitespace-nowrap pr-2">Nhà thầu</th>
               <th className="whitespace-nowrap pr-2 text-right">Giá gói</th>
               <th className="whitespace-nowrap pr-2 text-right">Giá trúng</th>
