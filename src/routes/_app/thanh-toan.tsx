@@ -14,7 +14,7 @@ import { ScanFileDialog } from "@/components/ScanFileDialog";
 import { DocxPreviewDialog } from "@/components/DocxPreviewDialog";
 import { usePayments } from "@/hooks/useData";
 import { PAYMENT_STATUS } from "@/lib/domain";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { formatThousands, parseThousands, readVietnameseMoney } from "@/lib/money";
 import { renderAndDownloadDocx, type DelimiterStyle } from "@/lib/docx";
 import { recordExport } from "@/lib/export-history";
@@ -23,6 +23,7 @@ import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
 import { PAYMENT_DATE_KEYS, PAYMENT_MONEY_KEYS, paymentScanExtraFields, splitPaymentScan } from "@/lib/payment-scan";
 import { DateField, parseVnDate } from "@/components/DateField";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { normKey } from "@/lib/template-resolve";
 
 export const Route = createFileRoute("/_app/thanh-toan")({
@@ -51,6 +52,7 @@ function PaymentsPage() {
   const qc = useQueryClient();
   const { user } = useAuth();
   const [tenderId, setTenderId] = useState("");
+  const [trackingTenderId, setTrackingTenderId] = useState("__all");
   const [contractId, setContractId] = useState("");
   /** Giá trị tự điền từ gói thầu/hợp đồng, người dùng vẫn sửa tay được. */
   const [edits, setEdits] = useState<Record<string, string>>({});
@@ -144,6 +146,8 @@ function PaymentsPage() {
   const selectedTender = (tenders.data ?? []).find((t) => t.id === (selectedContract?.tender_id || tenderId));
 
   const rows = payments.data ?? [];
+  const trackingRows = rows.filter((p) => trackingTenderId === "__all" ||
+    (trackingTenderId === "__none" ? !p.contracts?.tender_id : p.contracts?.tender_id === trackingTenderId));
   const selected = (contractors.data ?? []).find((c) => c.id === contractorId) ?? null;
   const payment = rows.find((p) => p.id === paymentId) ?? null;
 
@@ -339,39 +343,56 @@ function PaymentsPage() {
 
       <div className="space-y-4">
         <section className="panel overflow-x-auto">
-          <header className="border-b border-border px-4 py-3">
-            <h2 className="text-sm font-semibold">Đợt thanh toán ({rows.length})</h2>
+          <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+            <div>
+            <h2 className="text-sm font-semibold">Đợt thanh toán ({trackingRows.length})</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
               Chọn một đợt để đưa số liệu sang phần xuất văn bản bên dưới.
             </p>
+            </div>
+            <Select value={trackingTenderId} onValueChange={setTrackingTenderId}>
+              <SelectTrigger aria-label="Lọc thanh toán theo gói thầu" className="w-full sm:w-80">
+                <SelectValue placeholder="Tên gói thầu" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">Tất cả gói thầu</SelectItem>
+                <SelectItem value="__none">Chưa gắn gói thầu</SelectItem>
+                {(tenders.data ?? []).map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </header>
           {payments.isLoading ? (
             <p className="px-4 py-10 text-center text-sm text-muted-foreground">Đang tải…</p>
-          ) : rows.length === 0 ? (
+          ) : trackingRows.length === 0 ? (
             <EmptyState
               icon={Receipt}
-              title="Chưa có đợt thanh toán nào"
+              title={rows.length ? "Không có đợt thanh toán trong gói đã chọn" : "Chưa có đợt thanh toán nào"}
               description="Các đợt thanh toán sẽ hiện ở đây khi hợp đồng có kế hoạch giải ngân."
             />
           ) : (
-            <table className="w-full min-w-[900px] text-sm">
+            <table className="w-full min-w-[1200px] text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="px-4 py-3 font-medium">Tên gói thầu</th>
                   <th className="px-4 py-3 font-medium">Hợp đồng</th>
                   <th className="px-4 py-3 font-medium">Đợt</th>
                   <th className="px-4 py-3 font-medium">Nội dung</th>
                   <th className="px-4 py-3 text-right font-medium">Số tiền</th>
                   <th className="px-4 py-3 font-medium">Hạn thanh toán</th>
+                  <th className="px-4 py-3 font-medium">Thời gian nhập</th>
                   <th className="px-4 py-3 font-medium">Trạng thái</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {rows.map((p) => (
+                {trackingRows.map((p) => (
                   <tr
                     key={p.id}
                     className={`transition-colors hover:bg-accent/50 ${p.id === paymentId ? "bg-accent/60" : ""}`}
                   >
+                    <td className="min-w-48 max-w-72 px-4 py-3 text-muted-foreground">
+                      {p.contracts?.tenders?.name ?? "Chưa gắn gói thầu"}
+                    </td>
                     <td className="px-4 py-3 font-medium">
                       {p.contracts?.contract_number ?? "—"}
                     </td>
@@ -384,6 +405,9 @@ function PaymentsPage() {
                     </td>
                     <td className="num whitespace-nowrap px-4 py-3 text-muted-foreground">
                       {formatDate(p.due_date)}
+                    </td>
+                    <td className="num whitespace-nowrap px-4 py-3 text-muted-foreground">
+                      <time dateTime={p.created_at}>{formatDateTime(p.created_at)}</time>
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge tone={PAYMENT_STATUS[p.status]?.tone}>

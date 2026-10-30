@@ -28,6 +28,8 @@ export const Route = createFileRoute("/_app/tong-quan")({
           "Bảng điều khiển tổng quan: gói thầu, hợp đồng, thanh toán và hồ sơ đang chờ xử lý trong toàn doanh nghiệp.",
       },
       { property: "og:title", content: "Tổng quan — OfficeFlow" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       {
         property: "og:description",
         content: "Theo dõi toàn bộ hoạt động đấu thầu, hợp đồng và thanh toán trên một màn hình.",
