@@ -1,6 +1,6 @@
 import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
-import { saveAs } from "file-saver";
+import saveAs from "file-saver";
 import { WORD_TEXT_RE, assertSafeDocxEdit, xmlParagraphTexts } from "./docx-safety";
 
 export type DelimiterStyle = "curly" | "square";

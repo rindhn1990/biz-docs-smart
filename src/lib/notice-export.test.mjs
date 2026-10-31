@@ -1,0 +1,11 @@
+import { it } from 'node:test';
+import assert from 'node:assert/strict';
+import PizZip from 'pizzip';
+import { noticeFileName,packageNoticeFiles } from './notice-export.ts';
+const at=new Date(2026,9,31,15,58);
+const buffer=value=>new TextEncoder().encode(value).buffer;
+it('timestamped safe file name',()=>assert.equal(noticeFileName('Nhà thầu/A','Mẫu: 1',at),'ThongBao_Nhà_thầu_A_Mẫu__1_15_58_31_10.docx'));
+it('single output stays Word and keeps bytes',async()=>{const v=packageNoticeFiles([{name:'A.docx',buffer:buffer('one')}],at);assert.equal(v.name,'A.docx');assert.equal(v.blob.type,'application/vnd.openxmlformats-officedocument.wordprocessingml.document');assert.equal(await v.blob.text(),'one');assert.deepEqual(v.fileNames,['A.docx']);});
+it('two outputs form zip with exact bytes',async()=>{const v=packageNoticeFiles([{name:'A.docx',buffer:buffer('one')},{name:'B.docx',buffer:buffer('two')}],at);assert.equal(v.name,'ThongBao_15_58_31_10.zip');assert.equal(v.blob.type,'application/zip');const zip=new PizZip(await v.blob.arrayBuffer());assert.equal(zip.file('A.docx').asText(),'one');assert.equal(zip.file('B.docx').asText(),'two');});
+it('duplicate names match entries reported for history',async()=>{const v=packageNoticeFiles(['a','b','c'].map(x=>({name:'A.docx',buffer:buffer(x)})),at);assert.deepEqual(v.fileNames,['A.docx','A_2.docx','A_3.docx']);const zip=new PizZip(await v.blob.arrayBuffer());assert.deepEqual(v.fileNames.map(n=>zip.file(n).asText()),['a','b','c']);});
+it('reject empty package',()=>assert.throws(()=>packageNoticeFiles([]),/Chưa có file/));
