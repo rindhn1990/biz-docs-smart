@@ -11,7 +11,8 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 - [x] Word: sao lưu bản gần nhất trước ghi đè, hoàn tác admin có xác nhận, thông báo số vị trí; ba lần thay vùng bằng DOMParser trình duyệt giữ bảng/nội dung cuối.
 - [ ] Word: thử lưu 2–3 vùng, đóng/mở lại và hoàn tác qua giao diện với storage thật; chờ phiên admin (phiên thử hiện chỉ viewer). Không tạo dữ liệu thử trong database/storage.
 
-- [ ] A: kiểm chứng khoanh riêng Số tài khoản và Quét lại từ đầu bằng trình duyệt.
+- [x] A: kiểm chứng khoanh riêng Số tài khoản và Quét lại từ đầu bằng trình duyệt (lượt trước đã đạt).
+- [ ] Lượt hiện tại: hoàn thiện notice, quét đăng ký doanh nghiệp, kiểm thử giá trị/ZIP, kiểm chứng UI theo quyền phiên và dọn dữ liệu thử; không sửa docx.ts, không AI/email.
 - [ ] B1-2: module notice, tab Thông báo nhà thầu, ngày nhận hồ sơ, quét/nhập riêng, Word/ZIP và lịch sử.
 - [ ] B3: quy tắc quét giấy đăng ký doanh nghiệp và kiểm thử không hồi quy.
 - [ ] B4: kiểm tra toàn bộ kiểm thử, kiểu và giao diện xuất thông báo; không AI/email.

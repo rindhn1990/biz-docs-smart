@@ -391,6 +391,47 @@ const PAYMENT_SPECIFIC = ["hd_so", "hd_ngay", "tt_ngay", "tt_dot", "hd_ten", "gt
 const PAIR_AMOUNT = /^(pay_amount|tt_tongtien|tt_sotien)$/i;
 const PAIR_TEXT = /^(pay_amount_text|tt_sotien_chu|tt_tongtien_chu)$/i;
 
+/** Registry-specific labels: never fall back to foreign names or unrelated signatures. */
+function businessRegistration(ctx: Ctx): Record<string, string> | null {
+  if (!phraseHits(ctx.flines, 'ten cong ty viet bang tieng viet').length) return null;
+  const stopLabels = ['ten cong ty viet bang tieng nuoc ngoai', 'ten cong ty viet tat', 'dia chi tru so chinh', 'dien thoai', 'email', 'fax', 'website', 'nguoi dai dien theo phap luat', 'ho va ten', 'gioi tinh', 'chuc danh', 'sinh ngay', 'ma so doanh nghiep', 'ma so thue'];
+  const cut = (line:string) => {
+    const hits = stopLabels.flatMap(label=>phraseHits([foldKeepIndex(line)],label));
+    const start = hits.reduce((at,h)=>Math.min(at,h.start),line.length);
+    return clean(line.slice(0,start));
+  };
+  function read(labels:string[], scope=ctx, multiline=false) {
+    for (const label of labels) for (const hit of phraseHits(scope.flines,label)) {
+      const parts:string[]=[];
+      const first=cut(scope.lines[hit.line]?.slice(hit.end)??'');
+      if(first)parts.push(first);
+      if(multiline||!first) for(let i=hit.line+1;i<scope.lines.length&&parts.length<6;i++) {
+        const line=scope.lines[i]??'';
+        if(stopLabels.some(l=>phraseHits([foldKeepIndex(line)],l).length))break;
+        const value=cut(line);
+        if(!value){if(parts.length)break;continue;}
+        parts.push(value);
+        if(!multiline)break;
+      }
+      if(parts.length)return clean(parts.join(' '));
+    }
+    return '';
+  }
+  const repHit=phraseHits(ctx.flines,'nguoi dai dien theo phap luat')[0];
+  const repLines=repHit?ctx.lines.slice(repHit.line+1):[];
+  const repCtx:Ctx={text:repLines.join('\n'),ftext:foldKeepIndex(repLines.join('\n')),lines:repLines,flines:repLines.map(foldKeepIndex)};
+  return {
+    name:read(['ten cong ty viet bang tieng viet'],ctx,true),
+    tax_code:pickTax(read(['ma so doanh nghiep','ma so thue']))??'',
+    address:read(['dia chi tru so chinh'],ctx,true),
+    phone:pickPhone(read(['dien thoai']))??'',
+    email:ctx.text.match(EMAIL)?.[0]??'',
+    representative:read(['ho va ten'],repCtx),
+    representative_title:read(['chuc danh'],repCtx),
+    bank_account:'',bank_name:'',
+  };
+}
+
 export function extractFieldsLocallyDetailed(input: string, fields: Field[]): LocalScanResult {
   if (!input || input.trim().length < 5) return { values: [], warnings: [] };
   const text = input.normalize("NFC");
@@ -398,6 +439,7 @@ export function extractFieldsLocallyDetailed(input: string, fields: Field[]): Lo
   const ctx: Ctx = { text, ftext: foldKeepIndex(text), lines, flines: lines.map(foldKeepIndex) };
   const out: LocalScannedValue[] = [];
   const warnings: string[] = [];
+  const registration = businessRegistration(ctx);
 
   const at = (re: RegExp) => {
     const m = ctx.ftext.match(re);
@@ -425,6 +467,11 @@ export function extractFieldsLocallyDetailed(input: string, fields: Field[]): Lo
   const amountWords = afterAny(ctx, ["bang chu"], pickText(3), { multiline: true });
 
   for (const field of fields) {
+    if (registration && Object.hasOwn(registration,field.key)) {
+      const value=registration[field.key];
+      if(value)out.push({key:field.key,value,confidence:0.9});
+      continue;
+    }
     const kind = fieldKind(field);
     const key = field.key.toLowerCase();
     let value: string | null = null;
