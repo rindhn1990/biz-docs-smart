@@ -3,7 +3,7 @@ import type { Database } from '@/integrations/supabase/types';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, Eye, FileText, Loader2, Megaphone, ScanLine } from 'lucide-react';
-import { saveAs } from 'file-saver';
+import saveAs from 'file-saver';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -83,7 +83,7 @@ function NoticePage() {
     const values=noticeValues(row.contractors,{...tender,method},row,common,overrides[id],tenderData.data);
     const [{data:mappings,error},inherited]=await Promise.all([supabase.from('template_mappings').select('placeholder,label,source_field,value,date_format').eq('template_id',tpl.id),loadInheritedSources('notice')]);if(error)throw error;
     const {data:blob,error:downloadError}=await supabase.storage.from('templates').download(tpl.source_docx_path);if(downloadError)throw downloadError;
-    return {source:await blob.arrayBuffer(),style:tpl.delimiter_style==='square'?'square':'curly',data:{...values,...fillMappings(mappings??[],values,inherited),_notice_contractor_id:row.contractor_id},fileName:noticeFileName(values['NT_ten'] ?? '',tpl.name,at)};
+    return {source:await blob.arrayBuffer(),style:tpl.delimiter_style==='square'?'square':'curly',data:{...values,...fillMappings(mappings??[],values,inherited)},fileName:noticeFileName(values['NT_ten'] ?? '',tpl.name,at)};
   }
   async function view(tpl:Template,id:string){setBusy(true);try{setPreview({...await prepare(tpl,id),title:tpl.name,templateId:tpl.id,templateName:tpl.name,contractorId:allLinks.find(r=>r.id===id)?.contractor_id??''});}catch(e){toast.error('Không xem trước được',{description:(e as Error).message});}finally{setBusy(false);}}
   async function history(ready:Ready,tpl:Template){await recordExport({fileName:ready.fileName,module:'notice',data:ready.data,tenderId,templateId:tpl.id,templateName:tpl.name,userId:user?.id??null,userEmail:user?.email??null});}
@@ -96,6 +96,7 @@ function NoticePage() {
         const ready=await prepare(tpl,row.id,at);files.push({name:ready.fileName,buffer:renderDocxBuffer(ready.source,ready.style,ready.data)});entries.push({ready,tpl});
       }
       const packaged=packageNoticeFiles(files,at);saveAs(packaged.blob,packaged.name);
+      entries.forEach((entry,index)=>{entry.ready.fileName=packaged.fileNames[index]??entry.ready.fileName;});
       for(const entry of entries)await history(entry.ready,entry.tpl);
       await qc.invalidateQueries({queryKey:['export_history']});toast.success(`Đã xuất ${files.length} thông báo`);
     }catch(e){toast.error('Không xuất được thông báo',{description:(e as Error).message});}finally{lock.current=false;setBusy(false);}
@@ -110,7 +111,7 @@ function NoticePage() {
     </section>
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-base font-semibold">Nhà thầu ({selected.length} đã chọn)</h2><select aria-label="Lọc nhà thầu" className="input w-auto" value={onlyWinners?'winner':'all'} onChange={e=>{setOnlyWinners(e.target.value==='winner');setSelected([]);}}><option value="all">Tất cả</option><option value="winner">Chỉ nhà thầu trúng</option></select></div>
-      <div className="flex flex-wrap items-center gap-2"><div className="w-56"><DateField id="notice-bulk-date" value={bulkDate} onChange={setBulkDate} readOnly={!canWrite} placeholder="Ngày nhận hồ sơ chung"/></div><Button variant="outline" disabled={!canWrite||busy||!selected.length} onClick={()=>void saveDates(selected,bulkDate)}>Áp dụng ngày nhận hồ sơ cho tất cả nhà thầu đã chọn</Button></div>
+      <div className="flex flex-wrap items-center gap-2"><div className="w-56"><DateField id="notice-bulk-date" value={bulkDate} onChange={setBulkDate} readOnly={!canWrite} placeholder="Ngày nhận hồ sơ chung"/></div><Button variant="outline" disabled={!canWrite||busy||!selected.length||!isoDate(bulkDate)} onClick={()=>void saveDates(selected,bulkDate)}>Áp dụng ngày nhận hồ sơ cho tất cả nhà thầu đã chọn</Button></div>
       {links.error?<p role="alert" className="text-destructive">Không tải được nhà thầu: {links.error.message}</p>:null}
       <div className="table-scroll overflow-x-auto"><table className="w-full min-w-[1050px] text-sm"><thead><tr className="border-b border-border text-left"><th className="p-2"><input aria-label="Chọn tất cả nhà thầu" type="checkbox" checked={visible.length>0&&visible.every(r=>selected.includes(r.id))} onChange={e=>setSelected(e.target.checked?visible.map(r=>r.id):[])}/></th><th className="p-2">Nhà thầu</th><th className="p-2">Vai trò</th><th className="p-2">Mã số thuế</th><th className="p-2">Email</th><th className="p-2">Giá</th><th className="p-2">Ngày nhận hồ sơ</th><th className="p-2">Thao tác</th></tr></thead><tbody>
         {visible.map(r=>{const c=r.contractors;const o=overrides[r.id];return <tr key={r.id} className="border-b border-border"><td className="p-2"><input aria-label={`Chọn ${c?.name??'nhà thầu'}`} type="checkbox" checked={selected.includes(r.id)} onChange={()=>setSelected(s=>toggle(s,r.id))}/></td><td className="p-2 font-medium">{o?.['name']??c?.name??'Thiếu tên'}</td><td className="p-2">{r.role==='winner'?'Trúng thầu':'Tham dự'}</td><td className="p-2">{o?.['tax_code']??c?.tax_code??'Thiếu dữ liệu'}</td><td className="p-2">{o?.['email']??c?.email??'Thiếu dữ liệu'}</td><td className="p-2 whitespace-nowrap">{formatCurrency(r.price)}</td><td className="p-2 min-w-44"><DateField value={formatDateVariant(r.bid_received_date??'','slash')} onChange={date=>void saveDates([r.id],date)} readOnly={!canWrite||busy}/></td><td className="p-2"><div className="flex gap-1"><Button size="sm" variant="outline" onClick={()=>setEditing(editing===r.id?null:r.id)}>Dữ liệu</Button><Button size="icon" variant="ghost" aria-label={`Quét giấy đăng ký kinh doanh: ${c?.name}`} title="Quét giấy đăng ký kinh doanh" disabled={!canWrite||busy} onClick={()=>{setScanning(r.id);setSaveScanned(false);}}><ScanLine/></Button></div></td></tr>;})}

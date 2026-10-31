@@ -99,7 +99,7 @@ function ExportHistoryPage() {
 
   function open(row: HistoryRow) {
     setOpenId(row.id);
-    setDraft({ ...(row.data ?? {}) });
+    setDraft(Object.fromEntries(Object.entries(row.data ?? {}).filter(([key]) => row.module !== 'notice' || !key.startsWith('_notice_'))));
   }
 
   async function loadSource(row: HistoryRow) {

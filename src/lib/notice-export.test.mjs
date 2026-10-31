@@ -1,0 +1,28 @@
+import { it } from 'node:test';
+import assert from 'node:assert/strict';
+import PizZip from 'pizzip';
+import { noticeFileName,packageNoticeFiles } from './notice-export.ts';
+import { Document, Packer, Paragraph } from 'docx';
+import { renderDocxBuffer } from './docx.ts';
+import { fillMappings } from './template-values.ts';
+const at=new Date(2026,9,31,15,58);
+const buffer=value=>new TextEncoder().encode(value).buffer;
+it('timestamped safe file name',()=>assert.equal(noticeFileName('Nhà thầu/A','Mẫu: 1',at),'ThongBao_Nhà_thầu_A_Mẫu__1_15_58_31_10.docx'));
+it('single output stays Word and keeps bytes',async()=>{const v=packageNoticeFiles([{name:'A.docx',buffer:buffer('one')}],at);assert.equal(v.name,'A.docx');assert.equal(v.blob.type,'application/vnd.openxmlformats-officedocument.wordprocessingml.document');assert.equal(await v.blob.text(),'one');assert.deepEqual(v.fileNames,['A.docx']);});
+it('two outputs form zip with exact bytes',async()=>{const v=packageNoticeFiles([{name:'A.docx',buffer:buffer('one')},{name:'B.docx',buffer:buffer('two')}],at);assert.equal(v.name,'ThongBao_15_58_31_10.zip');assert.equal(v.blob.type,'application/zip');const zip=new PizZip(await v.blob.arrayBuffer());assert.equal(zip.file('A.docx').asText(),'one');assert.equal(zip.file('B.docx').asText(),'two');});
+it('duplicate names match entries reported for history',async()=>{const v=packageNoticeFiles(['a','b','c'].map(x=>({name:'A.docx',buffer:buffer(x)})),at);assert.deepEqual(v.fileNames,['A.docx','A_2.docx','A_3.docx']);const zip=new PizZip(await v.blob.arrayBuffer());assert.deepEqual(v.fileNames.map(n=>zip.file(n).asText()),['a','b','c']);});
+it('reject empty package',()=>assert.throws(()=>packageNoticeFiles([]),/Chưa có file/));
+it('notice Word resolves individual dates, inherits sources, and preserves missing placeholders instead of examples',async()=>{
+ const source=await Packer.toBuffer(new Document({sections:[{children:[new Paragraph('{{NT_ten}} | {{TB_ngay_ky}} | {{Received}} | {{TÊN}}')]}]}));
+ const original=source.buffer.slice(source.byteOffset,source.byteOffset+source.byteLength);
+ const mappings=[{placeholder:'TB_ngay_ky',source_field:'TB_ngay_ky',value:null,date_format:'vn_full',label:null},{placeholder:'Received',source_field:null,value:'EXAMPLE',date_format:'slash',label:null},{placeholder:'TÊN',source_field:null,value:'EXAMPLE',label:null}];
+ const inherited=new Map([['received','TB_ngay_nhan_hs']]);
+ const data={NT_ten:'VIETTRANS',TB_ngay_ky:'31/10/2026',TB_ngay_nhan_hs:'08/11/2026'};
+ const filled=fillMappings(mappings,data,inherited);
+ const xml=new PizZip(renderDocxBuffer(original,'curly',{...data,...filled})).file('word/document.xml').asText();
+ assert.ok(xml.includes('VIETTRANS | ngày 31 tháng 10 năm 2026 | 08/11/2026 | {{TÊN}}'));
+ assert.ok(!xml.includes('EXAMPLE'));
+ const empty={NT_ten:'VIETTRANS',TB_ngay_ky:'',TB_ngay_nhan_hs:''};
+ const emptyXml=new PizZip(renderDocxBuffer(original,'curly',{...empty,...fillMappings(mappings,empty,inherited)})).file('word/document.xml').asText();
+ assert.ok(emptyXml.includes('{{TB_ngay_ky}} | {{Received}} | {{TÊN}}'));
+});
