@@ -12,6 +12,7 @@
 ## Architecture decisions
 
 - Contractor notices use browser-safe value/export helpers and module-scoped template mappings; per-link received dates persist while per-export overrides stay isolated, and opt-in contractor saves conditionally fill only empty columns to avoid overwriting concurrent updates.
+- Business registration extraction uses scoped accent-insensitive labels before generic rules so foreign names, signatures, bank fields and payment extraction cannot contaminate registry results.
 
 - Salary batch orchestration uses injected delivery/log/wait adapters and a shared 10-recipient limit; server functions re-read authoritative data after an admin check so tests cannot deliver email and client values cannot override salaries or recipients.
 

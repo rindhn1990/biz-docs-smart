@@ -398,7 +398,7 @@ function businessRegistration(ctx: Ctx): Record<string, string> | null {
   const cut = (line:string) => {
     const hits = stopLabels.flatMap(label=>phraseHits([foldKeepIndex(line)],label));
     const start = hits.reduce((at,h)=>Math.min(at,h.start),line.length);
-    return clean(line.slice(0,start));
+    return line.slice(0,start).replace(/^[\s:–—\-.,;"“”]+/g,'').trim();
   };
   function read(labels:string[], scope=ctx, multiline=false) {
     for (const label of labels) for (const hit of phraseHits(scope.flines,label)) {
