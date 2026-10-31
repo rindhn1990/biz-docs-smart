@@ -12,10 +12,11 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 - [ ] Word: thử lưu 2–3 vùng, đóng/mở lại và hoàn tác qua giao diện với storage thật; chờ phiên admin (phiên thử hiện chỉ viewer). Không tạo dữ liệu thử trong database/storage.
 
 - [x] A: kiểm chứng khoanh riêng Số tài khoản và Quét lại từ đầu bằng trình duyệt (lượt trước đã đạt).
-- [ ] Lượt hiện tại: hoàn thiện notice, quét đăng ký doanh nghiệp, kiểm thử giá trị/ZIP, kiểm chứng UI theo quyền phiên và dọn dữ liệu thử; không sửa docx.ts, không AI/email.
-- [ ] B1-2: module notice, tab Thông báo nhà thầu, ngày nhận hồ sơ, quét/nhập riêng, Word/ZIP và lịch sử.
-- [ ] B3: quy tắc quét giấy đăng ký doanh nghiệp và kiểm thử không hồi quy.
-- [ ] B4: kiểm tra toàn bộ kiểm thử, kiểu và giao diện xuất thông báo; không AI/email.
+- [x] Notice: sửa lỗi import tải file để trang mở được, không sửa replacePhraseWithToken/regex trong docx.ts; bỏ khóa nội bộ khỏi dữ liệu xuất, tên ZIP trùng khớp lịch sử, chặn ngày hàng loạt rỗng.
+- [x] B1-2: module notice, tab Thông báo nhà thầu, ngày nhận hồ sơ, quét/nhập riêng, Word/ZIP và lịch sử đã có; xác nhận các cột updated_by/bid_received_date và constraint notice trên dữ liệu thật.
+- [x] B3: quét đăng ký doanh nghiệp chuẩn/mất dấu, 19 tests; payment 22 tests không hồi quy; giá trị notice/ZIP/Word có-trống ngày được kiểm thử.
+- [x] B4: 155/155 tests, build OK; UI viewer chọn nhà thầu/mẫu thật, xem trước đúng tên/MST/ngày nhận và giữ placeholder trống; kho mẫu chuyển sang notice được. Không AI/email, không tạo hay thay dữ liệu thử.
+- [ ] Notice: UI lưu ngày bằng popup, upload mẫu thử, xuất DOCX/ZIP, ghi lịch sử và Xuất lại; chờ phiên writer/admin (phiên hiện tại viewer). Chưa chạy tsgo riêng.
 
 - [ ] Quét thường: sửa nhận diện văn bản A/B, kiểm thử đầy đủ và kiểm tra kiểu.
 - [ ] Quét thêm vùng: giữ tài liệu, gộp nguồn/giữ sửa tay, khoanh riêng từng trường, bộ nhớ OCR và cảnh báo tiền; thử giao diện không AI/email.
