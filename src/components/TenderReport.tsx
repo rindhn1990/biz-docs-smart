@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useContracts, usePayments, useTenders } from "@/hooks/useData";
 import { TENDER_STATUS } from "@/lib/domain";
 import { formatNumber } from "@/lib/format";
+import { summarizePayments } from "@/lib/payment-summary";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const ALL = "__all";
@@ -15,13 +16,9 @@ export function TenderReport() {
   const [status, setStatus] = useState(ALL);
 
   const paidBy = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const p of payments) {
-      if (p.status !== "paid") continue;
-      m.set(p.contract_id, (m.get(p.contract_id) ?? 0) + Number(p.total_amount ?? 0));
-    }
-    return m;
-  }, [payments]);
+    const { rows } = summarizePayments(contracts, payments);
+    return new Map(rows.map((r) => [r.contractId, r.paid]));
+  }, [contracts, payments]);
 
   const contractors = useMemo(() => {
     const m = new Map<string, string>();
