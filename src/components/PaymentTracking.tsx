@@ -96,7 +96,7 @@ function Card({ label, value, note, warn }: { label: string; value: string; note
   );
 }
 
-type StatusKey = keyof typeof PAYMENT_STATUS;
+type StatusKey = "draft" | "pending" | "approved" | "rejected" | "paid";
 
 export function PaymentStatusControl({ payment }: { payment: { id: string; status: string; paid_date: string | null; installment_no: number } }) {
   const qc = useQueryClient();
