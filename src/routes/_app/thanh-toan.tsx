@@ -13,6 +13,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ScanFileDialog } from "@/components/ScanFileDialog";
 import { DocxPreviewDialog } from "@/components/DocxPreviewDialog";
 import { usePayments } from "@/hooks/useData";
+import { PaymentStatusControl, PaymentSummaryPanel } from "@/components/PaymentTracking";
 import { PAYMENT_STATUS } from "@/lib/domain";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { formatThousands, parseThousands, readVietnameseMoney } from "@/lib/money";
@@ -50,7 +51,7 @@ export const Route = createFileRoute("/_app/thanh-toan")({
 function PaymentsPage() {
   const payments = usePayments();
   const qc = useQueryClient();
-  const { user } = useAuth();
+  const { user, canWrite } = useAuth();
   const [tenderId, setTenderId] = useState("");
   const [trackingTenderId, setTrackingTenderId] = useState("__all");
   const [contractId, setContractId] = useState("");
@@ -148,6 +149,8 @@ function PaymentsPage() {
   const rows = payments.data ?? [];
   const trackingRows = rows.filter((p) => trackingTenderId === "__all" ||
     (trackingTenderId === "__none" ? !p.contracts?.tender_id : p.contracts?.tender_id === trackingTenderId));
+  const trackingContracts = (contractsQ.data ?? []).filter((c) => trackingTenderId === "__all" ||
+    (trackingTenderId === "__none" ? !c.tender_id : c.tender_id === trackingTenderId));
   const selected = (contractors.data ?? []).find((c) => c.id === contractorId) ?? null;
   const payment = rows.find((p) => p.id === paymentId) ?? null;
 
@@ -361,6 +364,9 @@ function PaymentsPage() {
               </SelectContent>
             </Select>
           </header>
+          {!payments.isLoading && !contractsQ.isLoading && (
+            <PaymentSummaryPanel contracts={trackingContracts} payments={trackingRows} />
+          )}
           {payments.isLoading ? (
             <p className="px-4 py-10 text-center text-sm text-muted-foreground">Đang tải…</p>
           ) : trackingRows.length === 0 ? (
@@ -381,6 +387,7 @@ function PaymentsPage() {
                   <th className="px-4 py-3 font-medium">Hạn thanh toán</th>
                   <th className="px-4 py-3 font-medium">Thời gian nhập</th>
                   <th className="px-4 py-3 font-medium">Trạng thái</th>
+                  <th className="px-4 py-3 font-medium">Ngày thanh toán</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -410,9 +417,16 @@ function PaymentsPage() {
                       <time dateTime={p.created_at}>{formatDateTime(p.created_at)}</time>
                     </td>
                     <td className="px-4 py-3">
-                      <StatusBadge tone={PAYMENT_STATUS[p.status]?.tone}>
-                        {PAYMENT_STATUS[p.status]?.label ?? p.status}
-                      </StatusBadge>
+                      {canWrite ? (
+                        <PaymentStatusControl payment={p} />
+                      ) : (
+                        <StatusBadge tone={PAYMENT_STATUS[p.status]?.tone}>
+                          {PAYMENT_STATUS[p.status]?.label ?? p.status}
+                        </StatusBadge>
+                      )}
+                    </td>
+                    <td className="num whitespace-nowrap px-4 py-3 text-muted-foreground">
+                      {p.paid_date ? formatDate(p.paid_date) : "—"}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
