@@ -86,7 +86,7 @@ export function PaymentSummaryPanel({ contracts, payments }: { contracts: ScopeC
   );
 }
 
-function Card({ label, value, note, warn }: { label: string; value: string; note?: string; warn?: boolean }) {
+function Card({ label, value, note, warn }: { label: string; value: string; note?: string | undefined; warn?: boolean }) {
   return (
     <div className={`rounded-md border p-3 ${warn ? "border-destructive/50 bg-destructive/5" : "border-border"}`}>
       <p className="text-xs text-muted-foreground">{label}</p>
@@ -106,11 +106,11 @@ export function PaymentStatusControl({ payment }: { payment: { id: string; statu
   const [date, setDate] = useState("");
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
-  const save = async (status: string, paidDate: string | null) => {
+  const save = async (status: StatusKey, paidDate: string | null) => {
     setBusy(true);
     const { error } = await supabase
       .from("payments")
-      .update({ status: status as StatusKey, paid_date: paidDate, updated_by: user?.id ?? null })
+      .update({ status, paid_date: paidDate, updated_by: user?.id ?? null })
       .eq("id", payment.id);
     setBusy(false);
     if (error) {
@@ -132,7 +132,7 @@ export function PaymentStatusControl({ payment }: { payment: { id: string; statu
     } else if (payment.status === "paid") {
       setPendingStatus(next);
     } else {
-      void save(next, null);
+      void save(next as StatusKey, null);
     }
   };
 
@@ -184,7 +184,7 @@ export function PaymentStatusControl({ payment }: { payment: { id: string; statu
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Huỷ</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { const s = pendingStatus; setPendingStatus(null); if (s) void save(s, null); }}>
+            <AlertDialogAction onClick={() => { const s = pendingStatus; setPendingStatus(null); if (s) void save(s as StatusKey, null); }}>
               Đồng ý
             </AlertDialogAction>
           </AlertDialogFooter>
