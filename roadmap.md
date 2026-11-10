@@ -5,6 +5,9 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
+- [ ] Yêu cầu 10/11: kiểm chứng lỗi điền Word; sửa nguồn dữ liệu và cho đổi thứ tự vùng/trường.
+- [ ] Yêu cầu 10/11: nhận dữ liệu sẵn có đúng gói thầu, lưu tender_id khi xuất và kiểm thử không lẫn gói.
+
 - [x] Hiển thị: thời gian tải mẫu; tách tên gói/số hợp đồng trong Tổng quan; lọc gói và thời gian nhập ở theo dõi thanh toán. Đã thử dữ liệu thật qua phiên viewer, 124/124 kiểm thử đạt, build OK.
 
 - [x] Word: sửa regex w:t, kiểm thử tab/bảng, chặn lưu XML hỏng và thay ngoài phạm vi; 124/124 kiểm thử, tsgo sạch và build OK.
