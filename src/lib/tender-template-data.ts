@@ -3,7 +3,7 @@ import { normKey, type MappingLike } from './template-values';
 /** Verified names used by the tender Word templates; never infer from example values. */
 const SOURCES: Record<string, string> = {
   tengoithau: 'Ten_goi_thau', cvchutruong: 'Numb_CVCT',
-  datechutruong: 'Date_CVCT', numpvcv: 'Numb_SOW',
+  datechutruong: 'Date_CVCT', numpvcv: 'Numb_SOW', datepvcv: 'Date_SOW',
 };
 export function tenderSourceKey(key: string) { return SOURCES[normKey(key)] ?? key; }
 export function tenderMappings(mappings: MappingLike[]) {

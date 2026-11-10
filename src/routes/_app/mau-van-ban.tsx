@@ -1018,7 +1018,7 @@ function TemplatesPage() {
                       <select aria-label={`Nguồn dữ liệu ${m.placeholder}`} value={m.source_field ?? ''} disabled={!isAdmin}
                         onChange={e => void saveSource(m.id, e.target.value)}
                         className="max-w-64 rounded-md border border-input bg-background px-2 py-1.5 text-xs">
-                        <option value="">Tự nhận theo tên vùng</option>
+                        <option value="">{module === 'tender' && tenderSourceKey(m.placeholder) !== m.placeholder ? `Tự nhận: ${tenderSourceKey(m.placeholder)}` : 'Tự nhận theo tên vùng'}</option>
                         {sourceOptions.map(f => <option key={f.key} value={f.key}>{f.label} ({f.key})</option>)}
                       </select>
                     </td>
@@ -1051,7 +1051,7 @@ function TemplatesPage() {
                         }}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30 read-only:bg-muted placeholder:text-muted-foreground placeholder:italic"
                       />
-                      {!m.source_field ? (
+                      {!m.source_field && !(module === 'tender' && tenderSourceKey(m.placeholder) !== m.placeholder) ? (
                         <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
                           <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
                           Chưa chọn trường nguồn: khi xuất file, vùng này giữ nguyên{" "}

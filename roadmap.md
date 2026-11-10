@@ -5,8 +5,9 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
-- [ ] Yêu cầu 10/11: kiểm chứng lỗi điền Word; sửa nguồn dữ liệu và cho đổi thứ tự vùng/trường.
-- [ ] Yêu cầu 10/11: nhận dữ liệu sẵn có đúng gói thầu, lưu tender_id khi xuất và kiểm thử không lẫn gói.
+- [x] Yêu cầu 10/11: sửa nguồn vùng Word đã xác nhận; nút lên/xuống cho vùng mẫu và trường hồ sơ; lưu nguồn trực tiếp. Xuất Word mẫu thật có số/ngày chủ trương đúng; ví dụ vẫn không xuất.
+- [x] Yêu cầu 10/11: chọn gói cả khi chưa có hồ sơ, nhận dữ liệu chung đúng gói; liên kết từ chi tiết gói, ghi tender_id khi xuất. Thử hai gói không lẫn dữ liệu; 164 kiểm thử đạt.
+- [ ] Yêu cầu 10/11: thử lưu nguồn/đổi thứ tự và ghi lịch sử qua giao diện; chờ phiên writer/admin (phiên hiện tại viewer). Tải Word thật đã đạt, không thay dữ liệu thật.
 
 - [x] Hiển thị: thời gian tải mẫu; tách tên gói/số hợp đồng trong Tổng quan; lọc gói và thời gian nhập ở theo dõi thanh toán. Đã thử dữ liệu thật qua phiên viewer, 124/124 kiểm thử đạt, build OK.
 
