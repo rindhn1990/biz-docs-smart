@@ -1,6 +1,6 @@
-import { TENDER_SHARED_KEYS, invalidateTenderSharedQueries } from "@/lib/tender-shared";
+import { TENDER_SHARED_KEYS, invalidateTenderSharedQueries, loadTenderSharedValues } from "@/lib/tender-shared";
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, Eye, FileText, Loader2, Plus, RotateCcw, ScanLine } from "lucide-react";
 import { toast } from "sonner";
@@ -32,10 +32,13 @@ import { renderAndDownloadDocx, type DelimiterStyle } from "@/lib/docx";
 import { recordExport } from "@/lib/export-history";
 import { cn } from "@/lib/utils";
 import { TenderSelect, filterByTender, useTenderFilter } from "@/components/TenderFilter";
+import { tenderExportData, tenderMappings, tenderSourceKey } from '@/lib/tender-template-data';
+import { useTenders } from '@/hooks/useData';
 
 export const Route = createFileRoute("/_app/ho-so-dau-thau/du-lieu")({
   validateSearch: (search: Record<string, unknown>) => ({
     doc: typeof search["doc"] === "string" ? (search["doc"] as string) : undefined,
+    tender: typeof search['tender'] === 'string' ? search['tender'] : undefined,
   }),
   head: () => ({
     meta: [
@@ -58,11 +61,12 @@ export const Route = createFileRoute("/_app/ho-so-dau-thau/du-lieu")({
 });
 
 function DataPage() {
-  const { doc } = Route.useSearch();
+  const { doc, tender } = Route.useSearch();
   const { canWrite, isAdmin, user, profile } = useAuth();
   const queryClient = useQueryClient();
   const [docId, setDocId] = useState<string | null>(null);
   const [tenderFilter, setTenderFilter] = useTenderFilter();
+  const tenders = useTenders();
   const [method, setMethod] = useState<TenderMethod>(DEFAULT_METHOD);
   const [exporting, setExporting] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -105,10 +109,17 @@ function DataPage() {
       setTenderFilter(urlDoc.tender_id ?? "none");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlDoc?.id, tenderFilter]);
+  }, [urlDoc?.id]);
+  useEffect(() => { if (tender && !doc) { setTenderFilter(tender); setDocId(null); } }, [tender]);
   const fromUrl = urlDoc && list.some((d) => d.id === urlDoc.id) ? urlDoc.id : null;
   const currentId =
     (docId && list.some((d) => d.id === docId) ? docId : null) ?? fromUrl ?? list[0]?.id ?? null;
+  const activeTenderId = allDocs.find(d => d.id === currentId)?.tender_id ??
+    (tenderFilter !== 'all' && tenderFilter !== 'none' ? tenderFilter : null);
+  const activeTender = (tenders.data ?? []).find(t => t.id === activeTenderId);
+  const sharedValues = useQuery({ queryKey: ['tender_data', 'export', activeTenderId], enabled: !!activeTenderId,
+    queryFn: () => activeTenderId ? loadTenderSharedValues(activeTenderId) : Promise.resolve({}) });
+  useEffect(() => { if (activeTender?.method && TENDER_METHODS.some(m => m.value === activeTender.method)) setMethod(activeTender.method as TenderMethod); }, [activeTender?.id, activeTender?.method]);
 
   const fields = useQuery({
     queryKey: ["document_fields", currentId],
@@ -131,6 +142,7 @@ function DataPage() {
         .from("templates")
         .select("id,name,description,source_docx_path,delimiter_style,method")
         .eq("method", method)
+        .eq('module', 'tender')
         .order("sort_order").order("created_at");
       if (error) throw error;
       return data;
@@ -151,12 +163,13 @@ function DataPage() {
       if (ids.length === 0) return [] as { key: string; label: string }[];
       const { data } = await supabase
         .from("template_mappings")
-        .select("placeholder,label,template_id")
+        .select("placeholder,label,template_id,source_field")
         .in("template_id", ids);
       const map = new Map<string, string>();
       for (const m of data ?? []) {
-        if (KHLCNT_FIELD_KEYS.has(m.placeholder)) continue;
-        if (!map.has(m.placeholder)) map.set(m.placeholder, m.label || m.placeholder);
+        const key = tenderSourceKey(m.source_field || m.placeholder);
+        if (KHLCNT_FIELD_KEYS.has(key)) continue;
+        if (!map.has(key)) map.set(key, m.label || key);
       }
       return [...map.entries()].map(([key, label]) => ({ key, label }));
     },
@@ -335,10 +348,11 @@ function DataPage() {
     if (!tpl.source_docx_path) {
       throw new Error("Mẫu này chưa có tệp Word gốc. Hãy tải lên tệp .docx trong trang Mẫu văn bản.");
     }
-    const { data: mappings } = await supabase
+    const { data: mappings, error: mappingError } = await supabase
       .from("template_mappings")
       .select("placeholder,label,source_field,value,date_format")
       .eq("template_id", tpl.id);
+    if (mappingError) throw mappingError;
 
     /** Đợi mọi ô vừa sửa lưu xong, rồi đọc thẳng từ CSDL để không dùng dữ liệu cũ trong bộ nhớ đệm. */
     await flushPendingFieldSaves();
@@ -351,12 +365,12 @@ function DataPage() {
       if (fresh.error) throw fresh.error;
       current = fresh.data ?? [];
     }
-    const byKey: Record<string, string> = {};
-    for (const f of current) if (f.value?.trim()) byKey[f.field_key] = f.value;
+    const shared = activeTenderId ? await loadTenderSharedValues(activeTenderId) : {};
+    const byKey = tenderExportData(shared, current);
 
     /** Dữ liệu hồ sơ ưu tiên; vùng chưa có nguồn tự khớp tên (không phân biệt hoa/thường) hoặc kế thừa nguồn từ mẫu khác. */
     const inherited = await loadInheritedSources("tender");
-    const values: Record<string, string> = fillMappings(mappings ?? [], byKey, inherited);
+    const values: Record<string, string> = fillMappings(tenderMappings(mappings ?? []), byKey, inherited);
     for (const [key, value] of Object.entries(byKey)) values[key] ??= value;
 
     const { data, error } = await supabase.storage.from("templates").download(tpl.source_docx_path);
@@ -376,6 +390,7 @@ function DataPage() {
       module: "tender",
       data: ready.data,
       documentId: currentId,
+      tenderId: activeTenderId,
       templateId: tpl.id,
       templateName: tpl.name,
       userId: user?.id ?? null,
@@ -486,7 +501,14 @@ function DataPage() {
       />
       <DocsTabs />
 
-      {list.length === 0 ? (
+      {activeTender ? <section className="mb-4 border-y border-border py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div><h2 className="text-sm font-semibold">{activeTender.name}</h2><p className="text-xs text-muted-foreground">{list.length} hồ sơ · {Object.values(sharedValues.data ?? {}).filter(Boolean).length} trường chung có dữ liệu</p></div>
+          <Link to="/goi-thau/$tenderId" params={{ tenderId: activeTender.id }} className="text-sm text-primary underline">Dữ liệu chung của gói thầu</Link>
+        </div>
+      </section> : null}
+
+      {list.length === 0 && !activeTenderId ? (
         <EmptyState
           icon={FileText}
           title="Chưa có hồ sơ nào"

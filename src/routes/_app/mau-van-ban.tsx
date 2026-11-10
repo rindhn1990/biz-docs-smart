@@ -50,6 +50,7 @@ import { formatDateTime } from "@/lib/format";
 import { recallTemplateBuffer } from "@/lib/template-cache";
 import { saveTemplateFile, undoTemplateFile } from "@/lib/template-file-save";
 import { previousDocxPath, validateDocx } from "@/lib/docx-safety";
+import { reorderedRows, tenderSourceKey } from '@/lib/tender-template-data';
 
 export const Route = createFileRoute("/_app/mau-van-ban")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -103,6 +104,7 @@ function TemplatesPage() {
   const [method, setMethod] = useState<TenderMethod>(DEFAULT_METHOD);
   const [busy, setBusy] = useState<"upload" | "export" | "replace" | "delete" | null>(null);
   const [adding, setAdding] = useState(false);
+  const [movingMapping, setMovingMapping] = useState(false);
   const [newPlaceholder, setNewPlaceholder] = useState("");
   const [newLabel, setNewLabel] = useState("");
   const [newSource, setNewSource] = useState("");
@@ -171,6 +173,11 @@ function TemplatesPage() {
       : module === "payment"
         ? PAYMENT_TEMPLATE_FIELDS
         : module === "notice" ? NOTICE_TEMPLATE_FIELDS : KHLCNT_FIELDS;
+  const sourceOptions = [...sourceFields];
+  for (const row of rows) {
+    const key = row.source_field || (module === 'tender' ? tenderSourceKey(row.placeholder) : row.placeholder);
+    if (!sourceOptions.some(f => f.key === key)) sourceOptions.push({ key, label: row.label } as typeof sourceOptions[number]);
+  }
   const wrap: [string, string] =
     current?.delimiter_style === "square" ? ["[[", "]]"] : ["{{", "}}"];
 
@@ -310,6 +317,30 @@ function TemplatesPage() {
       return;
     }
     await queryClient.invalidateQueries({ queryKey: ["template_mappings"] });
+  }
+
+  async function saveSource(id: string, next: string) {
+    if (!isAdmin) return;
+    const { error } = await supabase.from('template_mappings').update({ source_field: next || null, updated_by: user?.id ?? null }).eq('id', id);
+    if (error) { toast.error('Không lưu được nguồn dữ liệu', { description: error.message }); return; }
+    await queryClient.invalidateQueries({ queryKey: ['template_mappings'] });
+    await queryClient.invalidateQueries({ queryKey: ['template_custom_fields'] });
+  }
+
+  async function moveMapping(from: number, to: number) {
+    if (!isAdmin || movingMapping || to < 0 || to >= rows.length) return;
+    setMovingMapping(true);
+    try {
+      const next = reorderedRows(rows, from, to);
+      for (const row of next) {
+        const { error } = await supabase.from('template_mappings').update({ sort_order: row.sort_order }).eq('id', row.id).eq('template_id', currentId ?? '');
+        if (error) throw error;
+      }
+    } catch (error) { toast.error('Không lưu được thứ tự vùng', { description: (error as Error).message }); }
+    finally {
+      await queryClient.invalidateQueries({ queryKey: ['template_mappings', currentId] });
+      setMovingMapping(false);
+    }
   }
 
   async function handleExport() {
@@ -975,7 +1006,7 @@ function TemplatesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {rows.map((m) => (
+                {rows.map((m, index) => (
                   <tr key={m.id}>
                     <td className="px-4 py-2.5">
                       <span className="num rounded bg-muted px-1.5 py-0.5 text-xs">
@@ -984,7 +1015,12 @@ function TemplatesPage() {
                       <span className="mt-1 block text-xs text-muted-foreground">{m.label}</span>
                     </td>
                     <td className="num px-4 py-2.5 text-xs text-muted-foreground">
-                      {m.source_field ?? "Chưa chọn nguồn"}
+                      <select aria-label={`Nguồn dữ liệu ${m.placeholder}`} value={m.source_field ?? ''} disabled={!isAdmin}
+                        onChange={e => void saveSource(m.id, e.target.value)}
+                        className="max-w-64 rounded-md border border-input bg-background px-2 py-1.5 text-xs">
+                        <option value="">Tự nhận theo tên vùng</option>
+                        {sourceOptions.map(f => <option key={f.key} value={f.key}>{f.label} ({f.key})</option>)}
+                      </select>
                     </td>
                     <td className="px-4 py-2.5">
                       {isDateSource(m.source_field || inheritedSources.data?.get(normKey(m.placeholder)) || m.placeholder, m.label) || detectDateVariant(m.label) !== null ?
@@ -1026,6 +1062,9 @@ function TemplatesPage() {
                     </td>
                     {isAdmin ? (
                       <td className="px-2 py-2.5">
+                        <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="size-7" title="Đưa vùng lên" aria-label={`Đưa ${m.placeholder} lên`} disabled={movingMapping || index === 0} onClick={() => void moveMapping(index, index - 1)}><ChevronUp className="size-4" /></Button>
+                        <Button variant="ghost" size="icon" className="size-7" title="Đưa vùng xuống" aria-label={`Đưa ${m.placeholder} xuống`} disabled={movingMapping || index === rows.length - 1} onClick={() => void moveMapping(index, index + 1)}><ChevronDown className="size-4" /></Button>
                         <button
                           type="button"
                           aria-label={`Xoá chỗ trống ${m.placeholder}`}
@@ -1034,6 +1073,7 @@ function TemplatesPage() {
                         >
                           <Trash2 className="size-4" />
                         </button>
+                        </div>
                       </td>
                     ) : null}
                   </tr>
