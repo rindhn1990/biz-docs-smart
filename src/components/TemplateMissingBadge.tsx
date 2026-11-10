@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { loadInheritedSources, moduleSourceFields, resolveSource } from "@/lib/template-resolve";
+import { tenderMappings } from '@/lib/tender-template-data';
 
 /**
  * Đếm vùng sẽ thực sự ra trống khi xuất: chưa có nguồn
@@ -18,7 +19,7 @@ export function TemplateMissingBadge({ templateId, module }: { templateId: strin
       ]);
       if (error) throw error;
       const keys = moduleSourceFields(module).map((f) => f.key);
-      return (data ?? []).filter(
+      return (module === 'tender' ? tenderMappings(data ?? []) : data ?? []).filter(
         (m) => !m.source_field && !resolveSource(m, keys, inherited),
       ).length;
     },

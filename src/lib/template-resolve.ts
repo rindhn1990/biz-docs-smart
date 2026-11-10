@@ -4,6 +4,7 @@ import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
 import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
 import { NOTICE_TEMPLATE_FIELDS } from "@/lib/notice";
 import { normKey, type MappingLike } from "./template-values";
+import { tenderSourceKey } from './tender-template-data';
 export { normKey, fillMappings, applyMappingDateFormats } from "./template-values";
 
 export type TemplateModule = "tender" | "hr" | "payment" | "notice";
@@ -19,12 +20,13 @@ export function moduleSourceFields(module: TemplateModule): readonly { key: stri
  * Nhiều nguồn cho cùng tên: chọn nguồn dùng nhiều nhất, hoà thì nguồn gán gần nhất.
  */
 export async function loadInheritedSources(module: TemplateModule) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("template_mappings")
     .select("placeholder,source_field,updated_at,templates!inner(module)")
     .eq("templates.module", module)
     .not("source_field", "is", null)
     .limit(5000);
+  if (error) throw error;
   const stats = new Map<string, Map<string, { n: number; last: string }>>();
   for (const r of (data ?? []) as { placeholder: string; source_field: string | null; updated_at: string }[]) {
     if (!r.source_field) continue;
@@ -95,7 +97,7 @@ export async function suggestForNewPlaceholders(module: TemplateModule, placehol
     if (r.label && !labels.has(k) && r.source_field === inherited.get(k)) labels.set(k, r.label);
   }
   for (const p of placeholders) {
-    const r = resolveSource({ placeholder: p, source_field: null, value: null }, keys, inherited);
+    const r = resolveSource({ placeholder: module === 'tender' ? tenderSourceKey(p) : p, source_field: null, value: null }, keys, inherited);
     const k = normKey(p);
     const label = labels.get(k) ?? (r ? fields.find((f) => f.key === r.key)?.label ?? null : null);
     out.set(p, { source_field: r?.key ?? null, label });

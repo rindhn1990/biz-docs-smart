@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import { groupHeading, groupOrder } from "@/lib/khlcnt";
 import { toast } from "sonner";
 import { TENDER_SHARED_KEYS, invalidateTenderSharedQueries } from "@/lib/tender-shared";
@@ -13,6 +13,7 @@ import { fieldExamplePlaceholder } from "@/lib/field-examples";
 import type { TemplateModule } from "@/lib/template-resolve";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { reorderedRows } from '@/lib/tender-template-data';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
   formatThousands,
@@ -58,6 +59,8 @@ export function confidenceStyle(c: number) {
 /** Gom các trường theo field_group, xếp đúng thứ tự nghiệp vụ (Căn cứ → Khác). */
 /** Các lần lưu trường đang chạy — xuất file phải đợi hết trước khi đọc dữ liệu. */
 const pendingSaves = new Set<Promise<void>>();
+const pendingDebounces = new Map<string, () => Promise<void>>();
+let lastSaveError: Error | null = null;
 function trackFieldSave(p: Promise<void>) {
   pendingSaves.add(p);
   void p.finally(() => pendingSaves.delete(p));
@@ -66,7 +69,11 @@ function trackFieldSave(p: Promise<void>) {
 export async function flushPendingFieldSaves() {
   // Cho sự kiện rời ô (blur) kịp phát lệnh lưu trước khi đợi.
   await new Promise((r) => setTimeout(r, 0));
+  const queued = [...pendingDebounces.values()];
+  pendingDebounces.clear();
+  await Promise.all(queued.map(flush => flush()));
   while (pendingSaves.size) await Promise.allSettled([...pendingSaves]);
+  if (lastSaveError) { const error = lastSaveError; lastSaveError = null; throw error; }
 }
 
 export function useGroupedFields(rows: FieldRow[]) {
@@ -108,6 +115,23 @@ export function FieldGroupEditor({
   const grouped = useGroupedFields(rows);
   const examples = useFieldExamples(exampleModule);
   const { isAdmin } = useAuth();
+  const queryClient = useQueryClient();
+  const [moving, setMoving] = useState(false);
+  async function moveField(groupRows: FieldRow[], from: number, to: number) {
+    if (readOnly || moving || to < 0 || to >= groupRows.length) return;
+    setMoving(true);
+    try {
+      const slots = groupRows.map(row => row.sort_order).sort((a,b) => a-b);
+      const next = reorderedRows(groupRows, from, to);
+      for (let i = 0; i < next.length; i++) {
+        const row = next[i];
+        if (!row) continue;
+        const { error } = await supabase.from('document_fields').update({ sort_order: slots[i] ?? i + 1 }).eq('id', row.id).eq('document_id', row.document_id);
+        if (error) throw error;
+      }
+    } catch(error) { toast.error('Không lưu được thứ tự trường', { description: (error as Error).message }); }
+    finally { await queryClient.invalidateQueries({ queryKey: ['document_fields', groupRows[0]?.document_id] }); setMoving(false); }
+  }
   /** Số tiền bằng chữ hiển thị ngay khi người dùng đang gõ ở ô số tiền. */
   const [liveWords, setLiveWords] = useState<Record<string, string>>({});
   const byKey = useMemo(() => {
@@ -143,7 +167,7 @@ export function FieldGroupEditor({
               onDeleteGroup={onDeleteGroup}
             />
           ) : null}
-          {groupRows.map((field) => (
+          {groupRows.map((field, index) => (
             <FieldRowEditor
               key={field.id}
               field={field}
@@ -162,6 +186,10 @@ export function FieldGroupEditor({
               exampleModule={exampleModule}
               example={examples.data?.examples[field.field_key]}
               hasExampleMapping={examples.data?.mappedKeys.has(field.field_key) ?? false}
+              ordering={!readOnly ? <>
+                <Button variant="ghost" size="icon" className="size-6" title="Đưa trường lên" aria-label={`Đưa trường ${field.field_key} lên`} disabled={moving || index === 0} onClick={() => void moveField(groupRows, index, index - 1)}><ChevronUp className="size-3.5" /></Button>
+                <Button variant="ghost" size="icon" className="size-6" title="Đưa trường xuống" aria-label={`Đưa trường ${field.field_key} xuống`} disabled={moving || index === groupRows.length - 1} onClick={() => void moveField(groupRows, index, index + 1)}><ChevronDown className="size-3.5" /></Button>
+              </> : undefined}
             />
           ))}
         </div>
@@ -268,11 +296,13 @@ export function FieldRowEditor({
   exampleModule,
   example,
   hasExampleMapping,
+  ordering,
 }: {
   field: FieldRow;
   exampleModule?: TemplateModule | undefined;
   example?: string | undefined;
   hasExampleMapping?: boolean;
+  ordering?: React.ReactNode;
   active: boolean;
   readOnly: boolean;
   onFocusField: () => void;
@@ -311,6 +341,7 @@ export function FieldRowEditor({
    * không phụ thuộc vào lần tải lại có thể còn cũ.
    */
   const save = (next: string) => {
+    pendingDebounces.delete(field.id);
     if ((field.value ?? "") === next) return Promise.resolve();
     return trackFieldSave(doSave(next));
   };
@@ -335,6 +366,7 @@ export function FieldRowEditor({
 
     setSaving(false);
     if (error) {
+      lastSaveError = new Error('Không xuất file vì có dữ liệu chưa lưu được: ' + error.message);
       toast.error("Không lưu được thay đổi", { description: error.message });
       return;
     }
@@ -357,6 +389,7 @@ export function FieldRowEditor({
     if (isMoney && textField && onWords) onWords(textField.id, readVietnameseMoney(next));
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => void save(next), 800);
+    pendingDebounces.set(field.id, () => { if (timer.current) clearTimeout(timer.current); return save(next); });
   };
 
   const renameField = async () => {
@@ -449,6 +482,7 @@ export function FieldRowEditor({
           </label>
         )}
         <span className="flex items-center gap-1.5">
+          {ordering}
           {saving ? <Loader2 className="size-3 animate-spin text-muted-foreground" /> : null}
           <span
             className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium ${conf.cls}`}
