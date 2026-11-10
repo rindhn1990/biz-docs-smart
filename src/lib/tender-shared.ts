@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { methodLabel, TENDER_METHODS } from "@/lib/methods";
 import { formatThousands, readVietnameseMoney } from "@/lib/money";
+import { tenderSourceKey } from './tender-template-data';
 
 /**
  * Bảng ánh xạ trường dùng chung giữa gói thầu và hồ sơ đấu thầu.
@@ -36,9 +37,19 @@ export async function loadTenderSharedValues(tenderId: string): Promise<Record<s
       .maybeSingle(),
     supabase.from("tender_data").select("data").eq("tender_id", tenderId).maybeSingle(),
   ]);
+  if (t.error) throw t.error;
+  if (d.error) throw d.error;
   const data = (d.data?.data ?? {}) as Record<string, unknown>;
   const str = (v: unknown) => (typeof v === "string" ? v.trim() : v == null ? "" : String(v));
   const out: Record<string, string> = {};
+  const commonSources: Record<string, string> = {
+    so_van_ban_chu_truong: 'Numb_CVCT', ngay_van_ban_chu_truong: 'Date_CVCT',
+    thoi_gian_thuc_hien: 'Duration_Contract', loai_hop_dong: 'Loai_HD',
+  };
+  for (const [key, value] of Object.entries(data)) {
+    const text = str(value);
+    if (text) out[commonSources[key] ?? tenderSourceKey(key)] = text;
+  }
   const name = str(data["ten_goi_thau"]) || str(t.data?.name);
   if (name) out["Ten_goi_thau"] = name;
   const money = formatThousands(str(data["gia_goi_thau"]) || str(t.data?.package_value));

@@ -36,7 +36,7 @@ import { tenderExportData, tenderMappings, tenderSourceKey } from '@/lib/tender-
 import { useTenders } from '@/hooks/useData';
 
 export const Route = createFileRoute("/_app/ho-so-dau-thau/du-lieu")({
-  validateSearch: (search: Record<string, unknown>): { doc?: string; tender?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { doc?: string | undefined; tender?: string | undefined } => ({
     doc: typeof search["doc"] === "string" ? (search["doc"] as string) : undefined,
     tender: typeof search['tender'] === 'string' ? search['tender'] : undefined,
   }),
@@ -503,7 +503,7 @@ function DataPage() {
 
       {activeTender ? <section className="mb-4 border-y border-border py-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div><h2 className="text-sm font-semibold">{activeTender.name}</h2><p className="text-xs text-muted-foreground">{list.length} hồ sơ · {Object.values(sharedValues.data ?? {}).filter(Boolean).length} trường chung có dữ liệu</p></div>
+          <div><h2 className="text-sm font-semibold">{activeTender.name}</h2><p className="text-xs text-muted-foreground">{allDocs.filter(d => d.tender_id === activeTenderId).length} hồ sơ · {Object.values(sharedValues.data ?? {}).filter(Boolean).length} trường chung có dữ liệu</p></div>
           <Link to="/goi-thau/$tenderId" params={{ tenderId: activeTender.id }} className="text-sm text-primary underline">Dữ liệu chung của gói thầu</Link>
         </div>
       </section> : null}

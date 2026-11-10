@@ -650,7 +650,7 @@ function TemplatesPage() {
         ))}
       </ScrollTabs> : null}
 
-      <div className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="grid gap-4 2xl:grid-cols-[260px_minmax(0,1fr)]">
         <section className="panel h-fit">
           <header className="border-b border-border px-4 py-3">
             <h2 className="text-sm font-semibold">Danh sách mẫu</h2>
