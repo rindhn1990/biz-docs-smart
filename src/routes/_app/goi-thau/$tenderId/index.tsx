@@ -122,6 +122,9 @@ function TenderCaseDetail() {
               <FolderOpen className="size-4" />
               Xem hồ sơ
             </Link>
+            <Link to="/ho-so-dau-thau/du-lieu" search={{ tender: tenderId }} className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent">
+              Dữ liệu và xuất Word
+            </Link>
           </div>
         }
       />

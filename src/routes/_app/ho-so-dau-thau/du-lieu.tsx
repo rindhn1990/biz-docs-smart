@@ -36,7 +36,7 @@ import { tenderExportData, tenderMappings, tenderSourceKey } from '@/lib/tender-
 import { useTenders } from '@/hooks/useData';
 
 export const Route = createFileRoute("/_app/ho-so-dau-thau/du-lieu")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { doc?: string; tender?: string } => ({
     doc: typeof search["doc"] === "string" ? (search["doc"] as string) : undefined,
     tender: typeof search['tender'] === 'string' ? search['tender'] : undefined,
   }),

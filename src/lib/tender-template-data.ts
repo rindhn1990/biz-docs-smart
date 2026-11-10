@@ -19,7 +19,7 @@ export function tenderExportData(shared: Record<string, string>, fields: { field
   }
   // Exact user-entered alias fields remain available as distinct values.
   for (const field of fields) out[field.field_key] = field.value?.trim() ?? '';
-  out['tenders.name'] = out.Ten_goi_thau ?? '';
+  out['tenders.name'] = out['Ten_goi_thau'] ?? '';
   return out;
 }
 
