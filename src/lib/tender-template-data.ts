@@ -12,10 +12,14 @@ export function tenderMappings(mappings: MappingLike[]) {
 
 /** Current document (including deliberate empty values) wins; fallback never reads other tenders. */
 export function tenderExportData(shared: Record<string, string>, fields: { field_key: string; value: string | null }[]) {
-  const out = { ...shared, 'tenders.name': shared.Ten_goi_thau ?? '' };
-  for (const field of fields) out[tenderSourceKey(field.field_key)] = field.value?.trim() ?? '';
+  const out: Record<string, string> = { ...shared };
+  for (const field of fields) {
+    const key = tenderSourceKey(field.field_key);
+    if (key === field.field_key || field.value?.trim()) out[key] = field.value?.trim() ?? '';
+  }
   // Exact user-entered alias fields remain available as distinct values.
   for (const field of fields) out[field.field_key] = field.value?.trim() ?? '';
+  out['tenders.name'] = out.Ten_goi_thau ?? '';
   return out;
 }
 

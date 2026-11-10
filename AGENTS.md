@@ -11,6 +11,9 @@
 
 ## Architecture decisions
 
+- Tender export resolves verified Word aliases in a browser-safe helper, reads only the selected tender's shared data plus its selected document, and records tender linkage; explicit empty document values and template examples must not become fallback data.
+- Region and document-field ordering persists existing sort_order values without changing Word content or field values.
+
 - Contractor notices use browser-safe value/export helpers and module-scoped template mappings; per-link received dates persist while per-export overrides stay isolated, and opt-in contractor saves conditionally fill only empty columns to avoid overwriting concurrent updates.
 - Business registration extraction uses scoped accent-insensitive labels before generic rules so foreign names, signatures, bank fields and payment extraction cannot contaminate registry results.
 
