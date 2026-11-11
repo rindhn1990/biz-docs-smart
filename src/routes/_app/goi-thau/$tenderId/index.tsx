@@ -483,7 +483,7 @@ function DataCenter({
   const [saving, setSaving] = useState(false);
 
   const row = useQuery({
-    queryKey: ["tender_data", tenderId],
+    queryKey: ["tender_data", "center", tenderId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tender_data")
@@ -540,7 +540,7 @@ function DataCenter({
       return false;
     }
     toast.success("Đã lưu dữ liệu chung");
-    void queryClient.invalidateQueries({ queryKey: ["tender_data", tenderId] });
+    void queryClient.invalidateQueries({ queryKey: ["tender_data"] });
     // Trường dùng chung đã được CSDL đồng bộ sang gói thầu và các hồ sơ.
     for (const key of ["tender_case", "tender_cases", "tenders", "documents", "document_fields"])
       void queryClient.invalidateQueries({ queryKey: [key] });
@@ -592,9 +592,9 @@ function DataCenter({
         <ConfirmDelete title="Đặt lại dữ liệu gói thầu?" description="Chỉ xoá giá trị nhập trong Dữ liệu chung của gói này; giữ trường Word, hồ sơ, nhà thầu và lịch sử xuất. Các gói khác không thay đổi." confirmLabel="Đặt lại về trống" onConfirm={async () => {
           const next = resetCenterValues(values, Object.keys(values).map(key => ({key})));
           const result = await supabase.from('tender_data').upsert({ tender_id: tenderId, data: next, updated_by: user?.id ?? null }, { onConflict: 'tender_id' });
-          if (result.error) throw result.error;
+          if (result.error) { toast.error('Không đặt lại được dữ liệu', {description:result.error.message}); return; }
           setValues(next);
-          void queryClient.invalidateQueries({queryKey:['tender_data',tenderId]});
+          void queryClient.invalidateQueries({queryKey:['tender_data']});
         }}><Button variant="outline" disabled={saving || row.isLoading || !!row.error}><RotateCcw className="size-4" />Đặt lại về trống</Button></ConfirmDelete>
       </div> : null}
       {DATA_CENTER_GROUPS.map((group) => (

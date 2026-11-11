@@ -48,17 +48,13 @@ export async function loadTenderSharedValues(tenderId: string): Promise<Record<s
   };
   for (const [key, value] of Object.entries(data)) {
     const text = str(value);
-    if (text) out[commonSources[key] ?? tenderSourceKey(key)] = text;
+    out[commonSources[key] ?? tenderSourceKey(key)] = text;
   }
-  const name = str(data["ten_goi_thau"]) || str(t.data?.name);
-  if (name) out["Ten_goi_thau"] = name;
-  const money = formatThousands(str(data["gia_goi_thau"]) || str(t.data?.package_value));
-  if (money) {
-    out["Gia_goi_thau_numb"] = money;
-    out["Gia_goi_thau_text"] = readVietnameseMoney(money);
-  }
-  const fund = str(data["nguon_von"]) || str(t.data?.funding_source);
-  if (fund) out["Nguon_von"] = fund;
+  out["Ten_goi_thau"] = Object.hasOwn(data, 'ten_goi_thau') ? str(data['ten_goi_thau']) : str(t.data?.name);
+  const money = formatThousands(Object.hasOwn(data, 'gia_goi_thau') ? str(data['gia_goi_thau']) : str(t.data?.package_value));
+  out["Gia_goi_thau_numb"] = money;
+  out["Gia_goi_thau_text"] = Object.hasOwn(data, 'gia_bang_chu') ? str(data['gia_bang_chu']) : money ? readVietnameseMoney(money) : '';
+  out["Nguon_von"] = Object.hasOwn(data, 'nguon_von') ? str(data['nguon_von']) : str(t.data?.funding_source);
   if (t.data?.method && TENDER_METHODS.some((m) => m.value === t.data?.method)) {
     out["Hinh_thuc_LCNT"] = methodLabel(t.data.method);
   }

@@ -28,7 +28,7 @@ export function centerExportValues(values: Record<string, string>) {
     if (Object.hasOwn(values, key)) out[source] = values[key] ?? '';
   }
   for (const [key, value] of Object.entries(values)) out[tenderSourceKey(key)] ??= value;
-  out['tenders.name'] = out.Ten_goi_thau ?? '';
+  out['tenders.name'] = out['Ten_goi_thau'] ?? '';
   return out;
 }
 export function resetCenterValues(values: Record<string, string>, fields: readonly { key: string }[]) {
