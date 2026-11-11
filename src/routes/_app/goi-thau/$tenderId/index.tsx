@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle2, Circle, FileUp, FolderOpen, Loader2, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, FileUp, FolderOpen, Loader2, Save, Trash2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,6 +24,10 @@ import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { DateField, isDateField } from "@/components/DateField";
 import { formatThousands, readVietnameseMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { Button } from '@/components/ui/button';
+import { TenderCenterWord } from '@/components/TenderCenterWord';
+import { centerKey, resetCenterValues } from '@/lib/tender-center';
+import { loadTenderSharedValues } from '@/lib/tender-shared';
 
 export const Route = createFileRoute("/_app/goi-thau/$tenderId/")({
   head: () => ({
@@ -154,7 +158,7 @@ function TenderCaseDetail() {
       ) : tab === "sources" ? (
         <Sources tenderId={tenderId} canWrite={canWrite} isAdmin={isAdmin} />
       ) : tab === "data" ? (
-        <DataCenter tenderId={tenderId} canWrite={canWrite} isAdmin={isAdmin} />
+        <DataCenter key={tenderId} tenderId={tenderId} canWrite={canWrite} isAdmin={isAdmin} />
       ) : (
         <Info tender={t} />
       )}
@@ -487,7 +491,9 @@ function DataCenter({
         .eq("tender_id", tenderId)
         .maybeSingle();
       if (error) throw error;
-      return data;
+      const shared = await loadTenderSharedValues(tenderId);
+      const defaults = Object.fromEntries(Object.entries(shared).map(([key, value]) => [centerKey(key), value]));
+      return { data: { ...defaults, ...((data?.data ?? {}) as Record<string, string>) } };
     },
   });
 
@@ -518,6 +524,7 @@ function DataCenter({
   }, [row.data]);
 
   async function save() {
+    if (!canWrite) return false;
     setSaving(true);
     const { error } = await supabase.from("tender_data").upsert(
       {
@@ -530,13 +537,14 @@ function DataCenter({
     setSaving(false);
     if (error) {
       toast.error("Không lưu được dữ liệu", { description: error.message });
-      return;
+      return false;
     }
     toast.success("Đã lưu dữ liệu chung");
     void queryClient.invalidateQueries({ queryKey: ["tender_data", tenderId] });
     // Trường dùng chung đã được CSDL đồng bộ sang gói thầu và các hồ sơ.
     for (const key of ["tender_case", "tender_cases", "tenders", "documents", "document_fields"])
       void queryClient.invalidateQueries({ queryKey: [key] });
+    return true;
   }
 
   async function addContractor(role: string, contractorId: string) {
@@ -579,6 +587,16 @@ function DataCenter({
 
   return (
     <div className="space-y-4">
+      {canWrite ? <div className="flex flex-wrap gap-2">
+        <Button disabled={saving || row.isLoading || !!row.error} onClick={() => void save()}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}Lưu dữ liệu chung</Button>
+        <ConfirmDelete title="Đặt lại dữ liệu gói thầu?" description="Chỉ xoá giá trị nhập trong Dữ liệu chung của gói này; giữ trường Word, hồ sơ, nhà thầu và lịch sử xuất. Các gói khác không thay đổi." confirmLabel="Đặt lại về trống" onConfirm={async () => {
+          const next = resetCenterValues(values, Object.keys(values).map(key => ({key})));
+          const result = await supabase.from('tender_data').upsert({ tender_id: tenderId, data: next, updated_by: user?.id ?? null }, { onConflict: 'tender_id' });
+          if (result.error) throw result.error;
+          setValues(next);
+          void queryClient.invalidateQueries({queryKey:['tender_data',tenderId]});
+        }}><Button variant="outline" disabled={saving || row.isLoading || !!row.error}><RotateCcw className="size-4" />Đặt lại về trống</Button></ConfirmDelete>
+      </div> : null}
       {DATA_CENTER_GROUPS.map((group) => (
         <section key={group.title} className="panel">
           <header className="border-b border-border px-4 py-3">
@@ -627,6 +645,8 @@ function DataCenter({
           </div>
         </section>
       ))}
+
+      <TenderCenterWord tenderId={tenderId} values={values} onChange={(key,value) => setValues(prev => ({...prev,[key]:value}))} onSave={save} canWrite={canWrite && !row.isLoading && !row.error} excludedKeys={DATA_CENTER_GROUPS.flatMap(g => g.fields.map(f => f.key))} />
 
       {CONTRACTOR_ROLES.map((role) => {
         const rows = (links.data ?? []).filter((l) => l.role === role.value);
