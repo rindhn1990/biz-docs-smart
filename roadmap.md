@@ -5,6 +5,9 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
+- [ ] Yêu cầu 11/11: xuất dữ liệu đã nhập không hỏi lại; đặt lại chủ động và giữ placeholder trống.
+- [ ] Yêu cầu 11/11: bổ sung trường Word, lưu và xuất ngay trong Dữ liệu chung theo từng gói; kiểm thử cách ly gói.
+
 - [x] Yêu cầu 10/11: sửa nguồn vùng Word đã xác nhận; nút lên/xuống cho vùng mẫu và trường hồ sơ; lưu nguồn trực tiếp. Xuất Word mẫu thật có số/ngày chủ trương đúng; ví dụ vẫn không xuất.
 - [x] Yêu cầu 10/11: chọn gói cả khi chưa có hồ sơ, nhận dữ liệu chung đúng gói; liên kết từ chi tiết gói, ghi tender_id khi xuất. Thử hai gói không lẫn dữ liệu; 164 kiểm thử đạt.
 - [ ] Yêu cầu 10/11: thử lưu nguồn/đổi thứ tự và ghi lịch sử qua giao diện; chờ phiên writer/admin (phiên hiện tại viewer). Tải Word thật đã đạt, không thay dữ liệu thật.
