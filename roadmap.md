@@ -5,8 +5,9 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
-- [ ] Yêu cầu 11/11: xuất dữ liệu đã nhập không hỏi lại; đặt lại chủ động và giữ placeholder trống.
-- [ ] Yêu cầu 11/11: bổ sung trường Word, lưu và xuất ngay trong Dữ liệu chung theo từng gói; kiểm thử cách ly gói.
+- [x] Yêu cầu 11/11: bỏ hỏi reset sau xuất; giữ nút đặt lại chủ động; giá trị trống giữ placeholder Word, không dùng ví dụ.
+- [x] Yêu cầu 11/11: bổ sung nguồn từ mẫu Word vào Dữ liệu chung, tự lưu trước xuất và ghi lịch sử theo tender_id; 167/167 tests, kiểm tra tự động sạch. UI viewer thấy 27 trường bổ sung và preview mẫu thật đúng tên/số/ngày, giữ placeholder thiếu.
+- [ ] Yêu cầu 11/11: thử lưu/đặt lại/xuất và đọc lại lịch sử qua UI; chờ phiên writer/admin (phiên hiện tại viewer). Không thay đổi dữ liệu thật.
 
 - [x] Yêu cầu 10/11: sửa nguồn vùng Word đã xác nhận; nút lên/xuống cho vùng mẫu và trường hồ sơ; lưu nguồn trực tiếp. Xuất Word mẫu thật có số/ngày chủ trương đúng; ví dụ vẫn không xuất.
 - [x] Yêu cầu 10/11: chọn gói cả khi chưa có hồ sơ, nhận dữ liệu chung đúng gói; liên kết từ chi tiết gói, ghi tender_id khi xuất. Thử hai gói không lẫn dữ liệu; 164 kiểm thử đạt.
