@@ -16,16 +16,6 @@ import { FieldGroupEditor, flushPendingFieldSaves, type FieldRow } from "@/compo
 import { ScanFileDialog } from "@/components/ScanFileDialog";
 import { DocxPreviewDialog } from "@/components/DocxPreviewDialog";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { KHLCNT_FIELDS, KHLCNT_FIELD_KEYS, KHLCNT_GROUPS } from "@/lib/khlcnt";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
 import { renderAndDownloadDocx, type DelimiterStyle } from "@/lib/docx";
@@ -74,7 +64,6 @@ function DataPage() {
   const [newLabel, setNewLabel] = useState("");
   const [newGroup, setNewGroup] = useState<string>(KHLCNT_GROUPS[0]);
   const [scanning, setScanning] = useState(false);
-  const [resetAsk, setResetAsk] = useState<string | null>(null);
   const [addingGroup, setAddingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   /** Nhóm lớn do quản trị viên tự tạo, giữ lại đến khi có trường đầu tiên. */
@@ -397,7 +386,6 @@ function DataPage() {
       userEmail: profile?.email ?? user?.email ?? null,
     });
     void queryClient.invalidateQueries({ queryKey: ["export_history"] });
-    if (canWrite && rows.some((r) => r.value)) setResetAsk(ready.fileName);
   }
 
   async function exportTemplate(tpl: Template) {
@@ -782,29 +770,6 @@ function DataPage() {
         />
       ) : null}
 
-      <AlertDialog open={resetAsk !== null} onOpenChange={(o) => !o && setResetAsk(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Đã xuất xong — làm mới biểu mẫu?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Toàn bộ ô dữ liệu của hồ sơ sẽ về trống để bạn nhập hồ sơ mới. Bản vừa xuất
-              {resetAsk ? ` (${resetAsk})` : ""} đã được lưu trong Lịch sử xuất file nên không mất
-              dữ liệu.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Giữ nguyên dữ liệu</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                setResetAsk(null);
-                void resetForm();
-              }}
-            >
-              Làm mới biểu mẫu
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
