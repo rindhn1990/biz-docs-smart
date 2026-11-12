@@ -13,7 +13,7 @@
 
 - Tender export resolves verified Word aliases in a browser-safe helper, reads only the selected tender's shared data plus its selected document, and records tender linkage; explicit empty document values and template examples must not become fallback data.
 - Region and document-field ordering persists existing sort_order values without changing Word content or field values.
-- Tender Data Center reuses tender-only template mappings directly, optionally filtered by template, and saves before direct export; invalidate the whole template_mappings query family after definition changes so shared fields refresh; explicit blank JSON values suppress metadata fallback, and keyed forms isolate package state.
+- Tender Data Center reuses tender-only template mappings filtered by the tender's procurement method and optionally by template, and saves before direct export; invalidate the whole template_mappings query family after definition changes so shared fields refresh; explicit blank JSON values suppress metadata fallback, and keyed forms isolate package state without clearing data when methods change.
 
 - Contractor notices use browser-safe value/export helpers and module-scoped template mappings; per-link received dates persist while per-export overrides stay isolated, and opt-in contractor saves conditionally fill only empty columns to avoid overwriting concurrent updates.
 - Business registration extraction uses scoped accent-insensitive labels before generic rules so foreign names, signatures, bank fields and payment extraction cannot contaminate registry results.

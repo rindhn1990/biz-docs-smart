@@ -7,6 +7,10 @@ const CENTER_SOURCES: Record<string, string> = {
   Numb_CVCT: 'so_van_ban_chu_truong', Date_CVCT: 'ngay_van_ban_chu_truong',
   Duration_Contract: 'thoi_gian_thuc_hien', Loai_HD: 'loai_hop_dong',
 };
+/** Only the selected tender's procurement method supplies templates and editable regions. */
+export function centerTemplatesForMethod<T extends { method: string | null }>(templates: readonly T[], method: string | null) {
+  return method ? templates.filter(template => template.method === method) : [];
+}
 export function centerKey(source: string) {
   const canonical = tenderSourceKey(source);
   return Object.entries(CENTER_SOURCES).find(([key]) => normKey(key) === normKey(canonical))?.[1] ?? canonical;

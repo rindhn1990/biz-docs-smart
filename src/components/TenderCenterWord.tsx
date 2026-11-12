@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { DateField, isDateField } from '@/components/DateField';
 import { DocxPreviewDialog } from '@/components/DocxPreviewDialog';
 import { KHLCNT_FIELDS } from '@/lib/khlcnt';
-import { centerFields, centerExportValues } from '@/lib/tender-center';
+import { centerFields, centerExportValues, centerTemplatesForMethod } from '@/lib/tender-center';
+import { methodLabel } from '@/lib/methods';
 import { tenderMappings } from '@/lib/tender-template-data';
 import { fillMappings, loadInheritedSources } from '@/lib/template-resolve';
 import { renderAndDownloadDocx, type DelimiterStyle } from '@/lib/docx';
@@ -25,8 +26,8 @@ export function useTenderCenterMappings() {
   }});
 }
 
-export function TenderCenterWord({ tenderId, values, onChange, onSave, canWrite, excludedKeys }: {
-  tenderId: string; values: Record<string, string>; onChange: (key: string, value: string) => void;
+export function TenderCenterWord({ tenderId, method, values, onChange, onSave, canWrite, excludedKeys }: {
+  tenderId: string; method: string | null; values: Record<string, string>; onChange: (key: string, value: string) => void;
   onSave: () => Promise<boolean>; canWrite: boolean; excludedKeys: string[];
 }) {
   const mappings = useTenderCenterMappings();
@@ -36,12 +37,14 @@ export function TenderCenterWord({ tenderId, values, onChange, onSave, canWrite,
   const [selectedTemplateId, setSelectedTemplateId] = useState('all');
   const [preview, setPreview] = useState<{ templateId: string; title: string; fileName: string; source: ArrayBuffer; style: DelimiterStyle; data: Record<string, string> } | null>(null);
   const templates = useQuery({ queryKey: ['templates', 'tender-center'], queryFn: async () => {
-    const result = await supabase.from('templates').select('id,name,source_docx_path,delimiter_style').eq('module','tender').order('sort_order');
+    const result = await supabase.from('templates').select('id,name,source_docx_path,delimiter_style,method').eq('module','tender').order('sort_order');
     if (result.error) throw result.error;
     return result.data ?? [];
   }});
-  const selectedTemplates = (templates.data ?? []).filter(t => selectedTemplateId === 'all' || t.id === selectedTemplateId);
-  const selectedMappings = (mappings.data?.rows ?? []).filter(m => selectedTemplateId === 'all' || m.template_id === selectedTemplateId);
+  const methodTemplates = centerTemplatesForMethod(templates.data ?? [], method);
+  const selectedTemplates = methodTemplates.filter(t => selectedTemplateId === 'all' || t.id === selectedTemplateId);
+  const selectedIds = new Set(selectedTemplates.map(t => t.id));
+  const selectedMappings = (mappings.data?.rows ?? []).filter(m => selectedIds.has(m.template_id));
   const fields = centerFields(selectedMappings, mappings.data?.inherited ?? new Map(), KHLCNT_FIELDS).filter(f => !excludedKeys.includes(f.key));
   async function record(ready: NonNullable<typeof preview>) {
     await recordExport({ module: 'tender', tenderId, templateId: ready.templateId, templateName: ready.title,
@@ -49,7 +52,7 @@ export function TenderCenterWord({ tenderId, values, onChange, onSave, canWrite,
     void queryClient.invalidateQueries({ queryKey: ['export_history'] });
   }
   async function open(template: NonNullable<typeof templates.data>[number], download: boolean) {
-    if (busy) return;
+    if (busy || template.method !== method) return;
     setBusy(template.id);
     try {
       if (!template.source_docx_path) throw new Error('Mẫu chưa có file Word gốc');
@@ -70,14 +73,15 @@ export function TenderCenterWord({ tenderId, values, onChange, onSave, canWrite,
   }
   return <>
     <section className="panel">
-      <header className="border-b border-border px-4 py-3"><h2 className="text-sm font-semibold">Trường dữ liệu từ mẫu Word</h2></header>
+      <header className="border-b border-border px-4 py-3"><h2 className="text-sm font-semibold">Trường dữ liệu từ mẫu Word</h2><p className="mt-1 text-xs text-muted-foreground">{methodLabel(method)}</p></header>
       <div className="px-4 pt-4">
         <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="tender-word-template">Mẫu Word</label>
         <select id="tender-word-template" className="input w-full" value={selectedTemplateId} onChange={e => setSelectedTemplateId(e.target.value)}>
-          <option value="all">Tất cả mẫu Word</option>
-          {(templates.data ?? []).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+          <option value="all">Tất cả mẫu theo hình thức</option>
+          {methodTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
       </div>
+      {!templates.isLoading && !templates.error && methodTemplates.length === 0 ? <p className="px-4 pt-3 text-sm text-muted-foreground">{method ? 'Chưa có mẫu Word cho hình thức này.' : 'Gói thầu chưa chọn hình thức lựa chọn nhà thầu.'}</p> : null}
       {mappings.error ? <p className="p-4 text-sm text-destructive">Không tải được trường dữ liệu từ mẫu.</p> : mappings.isLoading ? <Loader2 className="m-4 size-4 animate-spin" /> :
         <div className="grid gap-3 p-4 md:grid-cols-2">{fields.map(f => <label key={f.key}>
           <span className="mb-1 block text-xs font-medium text-muted-foreground">{f.label}</span>

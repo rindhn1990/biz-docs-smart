@@ -158,7 +158,7 @@ function TenderCaseDetail() {
       ) : tab === "sources" ? (
         <Sources tenderId={tenderId} canWrite={canWrite} isAdmin={isAdmin} />
       ) : tab === "data" ? (
-        <DataCenter key={tenderId} tenderId={tenderId} canWrite={canWrite} isAdmin={isAdmin} />
+        <DataCenter key={tenderId} tenderId={tenderId} method={t.method} canWrite={canWrite} isAdmin={isAdmin} />
       ) : (
         <Info tender={t} />
       )}
@@ -470,10 +470,12 @@ function Sources({
 
 function DataCenter({
   tenderId,
+  method,
   canWrite,
   isAdmin,
 }: {
   tenderId: string;
+  method: string | null;
   canWrite: boolean;
   isAdmin: boolean;
 }) {
@@ -646,7 +648,7 @@ function DataCenter({
         </section>
       ))}
 
-      <TenderCenterWord tenderId={tenderId} values={values} onChange={(key,value) => setValues(prev => ({...prev,[key]:value}))} onSave={save} canWrite={canWrite && !row.isLoading && !row.error} excludedKeys={DATA_CENTER_GROUPS.flatMap(g => g.fields.map(f => f.key))} />
+      <TenderCenterWord key={method ?? 'unclassified'} tenderId={tenderId} method={method} values={values} onChange={(key,value) => setValues(prev => ({...prev,[key]:value}))} onSave={save} canWrite={canWrite && !row.isLoading && !row.error} excludedKeys={DATA_CENTER_GROUPS.flatMap(g => g.fields.map(f => f.key))} />
 
       {CONTRACTOR_ROLES.map((role) => {
         const rows = (links.data ?? []).filter((l) => l.role === role.value);

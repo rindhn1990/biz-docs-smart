@@ -1,10 +1,21 @@
 import { it } from 'node:test';
 import assert from 'node:assert/strict';
 import PizZip from 'pizzip';
-import { centerFields, centerExportValues, resetCenterValues } from './tender-center.ts';
+import { centerFields, centerExportValues, resetCenterValues, centerTemplatesForMethod } from './tender-center.ts';
 import { tenderMappings } from './tender-template-data.ts';
 import { fillMappings } from './template-values.ts';
 import { renderDocxBuffer } from './docx.ts';
+
+it('procurement method automatically supplies only corresponding templates and input fields', () => {
+ const templates=[{id:'a',method:'chi_dinh_thau_rut_gon'},{id:'b',method:'dam_phan_truc_tiep'},{id:'c',method:null}];
+ const definitions=[{template_id:'a',placeholder:'So_chi_dinh',source_field:null,value:null},{template_id:'b',placeholder:'So_dam_phan',source_field:null,value:null}];
+ const selected=centerTemplatesForMethod(templates,'chi_dinh_thau_rut_gon');
+ assert.deepEqual(selected.map(t=>t.id),['a']);
+ assert.deepEqual(centerFields(definitions.filter(m=>selected.some(t=>t.id===m.template_id)),new Map(),[]).map(f=>f.key),['So_chi_dinh']);
+ assert.deepEqual(centerTemplatesForMethod(templates,'dam_phan_truc_tiep').map(t=>t.id),['b']);
+ assert.deepEqual(centerTemplatesForMethod(templates,null),[]);
+ assert.deepEqual(centerTemplatesForMethod(templates,'dau_thau_rong_rai_2_tui'),[]);
+});
 
 it('Word-defined sources become editable package fields, deduplicated without examples', () => {
  const fields = centerFields([
