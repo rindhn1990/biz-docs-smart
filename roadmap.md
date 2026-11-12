@@ -5,6 +5,8 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
+- [ ] Yêu cầu 12/11 (hình thức): tự lọc mẫu và trường nhập theo hình thức gói thầu; giữ dữ liệu riêng từng gói và kiểm chứng.
+
 - [x] Yêu cầu 12/11: dùng trực tiếp vùng từ Mẫu văn bản trong gói thầu, lọc trường/file theo mẫu, làm mới vùng khi định nghĩa thay đổi. 169/169 tests; UI thật nhập giá trị tạm, tự lưu/xem trước điền đúng, trả trường về trống ban đầu; không lỗi trang. Chưa thử định nghĩa mới qua UI hoặc tải Word trong lượt này.
 
 - [x] Yêu cầu 11/11: bỏ hỏi reset sau xuất; giữ nút đặt lại chủ động; giá trị trống giữ placeholder Word, không dùng ví dụ.
