@@ -293,7 +293,7 @@ function TemplatesPage() {
     setNewLabel("");
     setNewSource("");
     setAdding(false);
-    await queryClient.invalidateQueries({ queryKey: ["template_mappings", currentId] });
+    await queryClient.invalidateQueries({ queryKey: ["template_mappings"] });
     await queryClient.invalidateQueries({ queryKey: ["template_custom_fields"] });
     toast.success("Đã thêm chỗ trống", {
       description: `Nhớ chèn ${wrap[0]}${placeholder}${wrap[1]} vào file Word rồi tải lại.`,
@@ -306,7 +306,7 @@ function TemplatesPage() {
       toast.error("Không xoá được dòng", { description: error.message });
       return;
     }
-    await queryClient.invalidateQueries({ queryKey: ["template_mappings", currentId] });
+    await queryClient.invalidateQueries({ queryKey: ["template_mappings"] });
     await queryClient.invalidateQueries({ queryKey: ["template_custom_fields"] });
   }
 
@@ -338,7 +338,7 @@ function TemplatesPage() {
       }
     } catch (error) { toast.error('Không lưu được thứ tự vùng', { description: (error as Error).message }); }
     finally {
-      await queryClient.invalidateQueries({ queryKey: ['template_mappings', currentId] });
+      await queryClient.invalidateQueries({ queryKey: ['template_mappings'] });
       setMovingMapping(false);
     }
   }
@@ -1139,7 +1139,7 @@ function TemplatesPage() {
           module={module}
           onClose={() => setPicking(false)}
           onSaved={() => {
-            void queryClient.invalidateQueries({ queryKey: ["template_mappings", current.id] });
+            void queryClient.invalidateQueries({ queryKey: ["template_mappings"] });
           }}
         />
       ) : null}
@@ -1148,7 +1148,7 @@ function TemplatesPage() {
           storagePath={current.source_docx_path}
           mappings={rows}
           onClose={() => setDetecting(false)}
-          onSaved={() => void queryClient.invalidateQueries({ queryKey: ["template_mappings", current.id] })}
+          onSaved={() => void queryClient.invalidateQueries({ queryKey: ["template_mappings"] })}
         />
       ) : null}
     </div>

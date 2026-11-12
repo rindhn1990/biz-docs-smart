@@ -20,6 +20,22 @@ it('manual package values export automatically and never borrow from another pac
  assert.equal(fillMappings(mappings,centerExportValues({so_van_ban_chu_truong:'198/KTCN'}),new Map()).Cv_chutruong,'198/KTCN');
  assert.equal(fillMappings(mappings,centerExportValues({ten_goi_thau:'Gói B'}),new Map()).Cv_chutruong,'');
 });
+it('one saved Word definition is reused by two packages without copying definitions or values', () => {
+ const definitions = [{placeholder:'Ma_thong_bao',label:'Số thông báo',source_field:'notice_number',value:'EXAMPLE'}];
+ const fields = centerFields(definitions,new Map(),[]);
+ assert.deepEqual(fields,[{key:'notice_number',label:'Số thông báo'}]);
+ const mappings=tenderMappings(definitions);
+ assert.equal(fillMappings(mappings,centerExportValues({notice_number:'01/GÓI-A'}),new Map()).Ma_thong_bao,'01/GÓI-A');
+ assert.equal(fillMappings(mappings,centerExportValues({notice_number:'02/GÓI-B'}),new Map()).Ma_thong_bao,'02/GÓI-B');
+ assert.equal(fillMappings(mappings,centerExportValues({}),new Map()).Ma_thong_bao,'');
+ assert.equal(definitions[0].value,'EXAMPLE');
+});
+it('newly defined regions and inherited sources become package inputs without redefining', () => {
+ const inherited=new Map([['sothongbao','notice_number']]);
+ const definitions=[{placeholder:'So_thong_bao',source_field:null,value:null},{placeholder:'Ngay_moi',source_field:'notice_date',value:null}];
+ assert.deepEqual(centerFields(definitions,inherited,[]).map(f=>f.key),['notice_number','notice_date']);
+ assert.deepEqual(fillMappings(tenderMappings(definitions),centerExportValues({notice_number:'15/TB',notice_date:'12/11/2026'}),inherited),{So_thong_bao:'15/TB',Ngay_moi:'12/11/2026'});
+});
 it('reset blanks package data without changing original or field definitions and Word keeps tokens', () => {
  const original={ten_goi_thau:'Gói A',so_van_ban_chu_truong:'198/KTCN'};
  const reset=resetCenterValues(original,Object.keys(original).map(key=>({key})));
