@@ -5,6 +5,8 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
+- [ ] Yêu cầu 12/11: vùng Word định nghĩa một lần ở Mẫu văn bản được dùng chung ngay trong nhập/xuất của gói thầu; lọc trường theo mẫu và kiểm thử.
+
 - [x] Yêu cầu 11/11: bỏ hỏi reset sau xuất; giữ nút đặt lại chủ động; giá trị trống giữ placeholder Word, không dùng ví dụ.
 - [x] Yêu cầu 11/11: bổ sung nguồn từ mẫu Word vào Dữ liệu chung, tự lưu trước xuất và ghi lịch sử theo tender_id; 167/167 tests, kiểm tra tự động sạch. UI viewer thấy 27 trường bổ sung và preview mẫu thật đúng tên/số/ngày, giữ placeholder thiếu.
 - [ ] Yêu cầu 11/11: thử lưu/đặt lại/xuất và đọc lại lịch sử qua UI; chờ phiên writer/admin (phiên hiện tại viewer). Không thay đổi dữ liệu thật.

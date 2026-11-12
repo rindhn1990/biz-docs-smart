@@ -33,13 +33,16 @@ export function TenderCenterWord({ tenderId, values, onChange, onSave, canWrite,
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState('all');
   const [preview, setPreview] = useState<{ templateId: string; title: string; fileName: string; source: ArrayBuffer; style: DelimiterStyle; data: Record<string, string> } | null>(null);
   const templates = useQuery({ queryKey: ['templates', 'tender-center'], queryFn: async () => {
     const result = await supabase.from('templates').select('id,name,source_docx_path,delimiter_style').eq('module','tender').order('sort_order');
     if (result.error) throw result.error;
     return result.data ?? [];
   }});
-  const fields = centerFields(mappings.data?.rows ?? [], mappings.data?.inherited ?? new Map(), KHLCNT_FIELDS).filter(f => !excludedKeys.includes(f.key));
+  const selectedTemplates = (templates.data ?? []).filter(t => selectedTemplateId === 'all' || t.id === selectedTemplateId);
+  const selectedMappings = (mappings.data?.rows ?? []).filter(m => selectedTemplateId === 'all' || m.template_id === selectedTemplateId);
+  const fields = centerFields(selectedMappings, mappings.data?.inherited ?? new Map(), KHLCNT_FIELDS).filter(f => !excludedKeys.includes(f.key));
   async function record(ready: NonNullable<typeof preview>) {
     await recordExport({ module: 'tender', tenderId, templateId: ready.templateId, templateName: ready.title,
       fileName: ready.fileName, data: ready.data, userId: user?.id ?? null, userEmail: profile?.email ?? user?.email ?? null });
@@ -67,7 +70,14 @@ export function TenderCenterWord({ tenderId, values, onChange, onSave, canWrite,
   }
   return <>
     <section className="panel">
-      <header className="border-b border-border px-4 py-3"><h2 className="text-sm font-semibold">Trường dữ liệu từ mẫu Word</h2><p className="mt-0.5 text-xs text-muted-foreground">Nhập tại đây; dữ liệu lưu riêng cho gói này và tự lưu, tự điền khi bấm Xem trước hoặc Xuất Word.</p></header>
+      <header className="border-b border-border px-4 py-3"><h2 className="text-sm font-semibold">Trường dữ liệu từ mẫu Word</h2></header>
+      <div className="px-4 pt-4">
+        <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="tender-word-template">Mẫu Word</label>
+        <select id="tender-word-template" className="input w-full" value={selectedTemplateId} onChange={e => setSelectedTemplateId(e.target.value)}>
+          <option value="all">Tất cả mẫu Word</option>
+          {(templates.data ?? []).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+      </div>
       {mappings.error ? <p className="p-4 text-sm text-destructive">Không tải được trường dữ liệu từ mẫu.</p> : mappings.isLoading ? <Loader2 className="m-4 size-4 animate-spin" /> :
         <div className="grid gap-3 p-4 md:grid-cols-2">{fields.map(f => <label key={f.key}>
           <span className="mb-1 block text-xs font-medium text-muted-foreground">{f.label}</span>
@@ -77,7 +87,7 @@ export function TenderCenterWord({ tenderId, values, onChange, onSave, canWrite,
     </section>
     <section className="panel">
       <header className="border-b border-border px-4 py-3"><h2 className="text-sm font-semibold">Xuất Word theo gói thầu</h2></header>
-      {templates.error ? <p className="p-4 text-destructive">Không tải được mẫu Word.</p> : <ul className="divide-y divide-border px-4">{(templates.data ?? []).map(t => <li className="flex flex-wrap items-center gap-2 py-3" key={t.id}>
+      {templates.error ? <p className="p-4 text-destructive">Không tải được mẫu Word.</p> : <ul className="divide-y divide-border px-4">{selectedTemplates.map(t => <li className="flex flex-wrap items-center gap-2 py-3" key={t.id}>
         <span className="min-w-0 flex-1 text-sm font-medium">{t.name}</span>
         <Button variant="outline" disabled={!!busy || mappings.isLoading || !!mappings.error} onClick={() => void open(t,false)}><Eye className="size-4" />Xem trước</Button>
         {canWrite ? <Button disabled={!!busy || mappings.isLoading || !!mappings.error} onClick={() => void open(t,true)}>{busy === t.id ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}Xuất Word</Button> : null}
