@@ -898,7 +898,7 @@ function TemplatesPage() {
               <div>
                 <h2 className="text-sm font-semibold">Nguồn dữ liệu</h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Ví dụ hiện làm hướng dẫn nhập ở tab Dữ liệu, không lưu vào hồ sơ và không điền vào file; vùng chưa có
+                  Muốn file tự điền: vào Gói thầu → mở gói → mục “Trường dữ liệu từ mẫu Word”, nhập rồi bấm Xem trước/Xuất Word (dữ liệu lưu riêng từng gói). Cột “Gợi ý nhập” chỉ là chữ mờ hướng dẫn, không điền vào file; vùng chưa có
                   dữ liệu khi xuất sẽ giữ nguyên {`${wrap[0]}TÊN${wrap[1]}`} trong file.
                 </p>
               </div>
@@ -956,7 +956,7 @@ function TemplatesPage() {
                   aria-label="Trường nguồn"
                   className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
                 >
-                  <option value="">Chưa chọn nguồn (chỉ ghi ví dụ, không điền khi xuất)</option>
+                  <option value="">Chưa chọn nguồn (chưa điền khi xuất)</option>
                   {sourceFields.map((f) => (
                     <option key={f.key} value={f.key}>
                       {f.label} ({f.key})
@@ -1001,7 +1001,7 @@ function TemplatesPage() {
                   <th className="px-4 py-2.5 font-medium">Chỗ trống</th>
                   <th className="px-4 py-2.5 font-medium">Trường nguồn</th>
                   <th className="px-4 py-2.5 font-medium">Kiểu ngày</th>
-                  <th className="px-4 py-2.5 font-medium">Ví dụ (không điền khi xuất)</th>
+                  <th className="px-4 py-2.5 font-medium">Gợi ý nhập (chỉ hướng dẫn, không điền vào file)</th>
                   {isAdmin ? <th className="px-2 py-2.5" /> : null}
                 </tr>
               </thead>
