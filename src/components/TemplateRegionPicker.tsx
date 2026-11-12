@@ -407,7 +407,7 @@ export function TemplateRegionPicker({
                 onChange={(e) => void chooseSource(e.target.value)}
                 className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
               >
-                <option value="">Chưa chọn nguồn (chỉ ghi ví dụ, không điền khi xuất)</option>
+                <option value="">Chưa chọn nguồn (chưa điền khi xuất)</option>
                 {sourceFields.map((f) => (
                   <option key={f.key} value={f.key}>
                     {f.label} ({f.key})

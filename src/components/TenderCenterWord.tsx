@@ -67,7 +67,7 @@ export function TenderCenterWord({ tenderId, values, onChange, onSave, canWrite,
   }
   return <>
     <section className="panel">
-      <header className="border-b border-border px-4 py-3"><h2 className="text-sm font-semibold">Trường dữ liệu từ mẫu Word</h2></header>
+      <header className="border-b border-border px-4 py-3"><h2 className="text-sm font-semibold">Trường dữ liệu từ mẫu Word</h2><p className="mt-0.5 text-xs text-muted-foreground">Nhập tại đây; dữ liệu lưu riêng cho gói này và tự lưu, tự điền khi bấm Xem trước hoặc Xuất Word.</p></header>
       {mappings.error ? <p className="p-4 text-sm text-destructive">Không tải được trường dữ liệu từ mẫu.</p> : mappings.isLoading ? <Loader2 className="m-4 size-4 animate-spin" /> :
         <div className="grid gap-3 p-4 md:grid-cols-2">{fields.map(f => <label key={f.key}>
           <span className="mb-1 block text-xs font-medium text-muted-foreground">{f.label}</span>
