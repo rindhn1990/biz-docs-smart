@@ -51,6 +51,7 @@ import { recallTemplateBuffer } from "@/lib/template-cache";
 import { saveTemplateFile, undoTemplateFile } from "@/lib/template-file-save";
 import { previousDocxPath, validateDocx } from "@/lib/docx-safety";
 import { reorderedRows, tenderSourceKey } from '@/lib/tender-template-data';
+import { SIGNER_FIELDS } from '@/lib/tender-controls';
 
 export const Route = createFileRoute("/_app/mau-van-ban")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -172,7 +173,7 @@ function TemplatesPage() {
       ? HR_TEMPLATE_FIELDS
       : module === "payment"
         ? PAYMENT_TEMPLATE_FIELDS
-        : module === "notice" ? NOTICE_TEMPLATE_FIELDS : KHLCNT_FIELDS;
+        : module === "notice" ? NOTICE_TEMPLATE_FIELDS : [...KHLCNT_FIELDS, ...SIGNER_FIELDS.map(f => ({...f, group:'Khác' as const, value:'', conf:0.3}))];
   const sourceOptions = [...sourceFields];
   for (const row of rows) {
     const key = row.source_field || (module === 'tender' ? tenderSourceKey(row.placeholder) : row.placeholder);

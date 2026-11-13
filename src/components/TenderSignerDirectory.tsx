@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { DateField } from '@/components/DateField';
 import { ConfirmDelete } from '@/components/ConfirmDelete';
-import { SIGNER_FIELDS, signerValues, type TenderSigner } from '@/lib/tender-controls';
+import { signerValues, type TenderSigner } from '@/lib/tender-controls';
 
 function SignerRow({ row, onSaved }: { row: TenderSigner; onSaved: () => void }) {
   const [draft, setDraft] = useState(row);
