@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, Eye, Loader2 } from 'lucide-react';
+import { ArrowUp, ArrowDown, Download, Eye, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,6 +14,7 @@ import { tenderMappings } from '@/lib/tender-template-data';
 import { fillMappings, loadInheritedSources } from '@/lib/template-resolve';
 import { renderAndDownloadDocx, type DelimiterStyle } from '@/lib/docx';
 import { recordExport } from '@/lib/export-history';
+import { orderedTenderTemplates } from '@/lib/tender-controls';
 
 export function useTenderCenterMappings() {
   return useQuery({ queryKey: ['template_mappings', 'tender-center'], queryFn: async () => {
@@ -34,6 +35,7 @@ export function TenderCenterWord({ tenderId, method, values, onChange, onSave, c
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
+  const [ordering, setOrdering] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState('all');
   const [preview, setPreview] = useState<{ templateId: string; title: string; fileName: string; source: ArrayBuffer; style: DelimiterStyle; data: Record<string, string> } | null>(null);
   const templates = useQuery({ queryKey: ['templates', 'tender-center'], queryFn: async () => {
@@ -41,7 +43,27 @@ export function TenderCenterWord({ tenderId, method, values, onChange, onSave, c
     if (result.error) throw result.error;
     return result.data ?? [];
   }});
-  const methodTemplates = centerTemplatesForMethod(templates.data ?? [], method);
+  const order = useQuery({ queryKey: ['tender_template_order', tenderId], queryFn: async () => {
+    const {data,error} = await supabase.from('tender_template_order').select('template_id,sort_order').eq('tender_id',tenderId);
+    if(error) throw error;
+    return data;
+  }});
+  const methodTemplates = orderedTenderTemplates(centerTemplatesForMethod(templates.data ?? [], method), order.data ?? []);
+  async function move(templateId: string, direction: number) {
+    if (!canWrite || ordering || busy || order.isLoading || order.error) return;
+    const index = methodTemplates.findIndex(t => t.id === templateId);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= methodTemplates.length) return;
+    const next = [...methodTemplates];
+    const current = next[index]; const other = next[target];
+    if (!current || !other) return;
+    next[index] = other; next[target] = current;
+    setOrdering(true);
+    const {error} = await supabase.from('tender_template_order').upsert(next.map((t,i) => ({tender_id:tenderId,template_id:t.id,sort_order:i+1})),{onConflict:'tender_id,template_id'});
+    if(error) toast.error('Không lưu được thứ tự', {description:error.message});
+    else await queryClient.invalidateQueries({queryKey:['tender_template_order',tenderId]});
+    setOrdering(false);
+  }
   const selectedTemplates = methodTemplates.filter(t => selectedTemplateId === 'all' || t.id === selectedTemplateId);
   const selectedIds = new Set(selectedTemplates.map(t => t.id));
   const selectedMappings = (mappings.data?.rows ?? []).filter(m => selectedIds.has(m.template_id));
@@ -91,8 +113,14 @@ export function TenderCenterWord({ tenderId, method, values, onChange, onSave, c
     </section>
     <section className="panel">
       <header className="border-b border-border px-4 py-3"><h2 className="text-sm font-semibold">Xuất Word theo gói thầu</h2></header>
+      {order.error ? <p className="p-4 text-destructive">Không tải được thứ tự mẫu theo gói.</p> : null}
       {templates.error ? <p className="p-4 text-destructive">Không tải được mẫu Word.</p> : <ul className="divide-y divide-border px-4">{selectedTemplates.map(t => <li className="flex flex-wrap items-center gap-2 py-3" key={t.id}>
+        <span className="w-6 text-sm text-muted-foreground">{methodTemplates.findIndex(item => item.id === t.id)+1}.</span>
         <span className="min-w-0 flex-1 text-sm font-medium">{t.name}</span>
+        {canWrite ? <div className="flex gap-1">
+          <Button size="icon" variant="ghost" title="Đưa mẫu lên" aria-label={`Đưa mẫu lên: ${t.name}`} disabled={ordering || !!busy || order.isLoading || !!order.error || methodTemplates[0]?.id === t.id} onClick={() => void move(t.id,-1)}><ArrowUp className="size-4" /></Button>
+          <Button size="icon" variant="ghost" title="Đưa mẫu xuống" aria-label={`Đưa mẫu xuống: ${t.name}`} disabled={ordering || !!busy || order.isLoading || !!order.error || methodTemplates.at(-1)?.id === t.id} onClick={() => void move(t.id,1)}><ArrowDown className="size-4" /></Button>
+        </div> : null}
         <Button variant="outline" disabled={!!busy || mappings.isLoading || !!mappings.error} onClick={() => void open(t,false)}><Eye className="size-4" />Xem trước</Button>
         {canWrite ? <Button disabled={!!busy || mappings.isLoading || !!mappings.error} onClick={() => void open(t,true)}>{busy === t.id ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}Xuất Word</Button> : null}
       </li>)}</ul>}

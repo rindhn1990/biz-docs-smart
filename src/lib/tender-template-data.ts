@@ -4,6 +4,7 @@ import { normKey, type MappingLike } from './template-values';
 const SOURCES: Record<string, string> = {
   tengoithau: 'Ten_goi_thau', cvchutruong: 'Numb_CVCT',
   datechutruong: 'Date_CVCT', numpvcv: 'Numb_SOW', datepvcv: 'Date_SOW',
+  signphotong: 'Sign_Photong', uqphotong: 'UQ_photong', dateuqphotong: 'Date_UQ_Photong',
 };
 export function tenderSourceKey(key: string) { return SOURCES[normKey(key)] ?? key; }
 export function tenderMappings(mappings: MappingLike[]) {
