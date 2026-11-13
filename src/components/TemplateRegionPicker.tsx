@@ -9,6 +9,7 @@ import { KHLCNT_FIELDS } from "@/lib/khlcnt";
 import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
 import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
 import { NOTICE_TEMPLATE_FIELDS } from "@/lib/notice";
+import { SIGNER_FIELDS, suggestionsForModule } from '@/lib/tender-controls';
 import { DateFormatSelect } from "@/components/DateFormatSelect";
 import { detectDateVariant, isDateSource } from "@/lib/format";
 import { prettifyPlaceholder } from "@/lib/docx";
@@ -102,7 +103,7 @@ export function TemplateRegionPicker({
       ? HR_TEMPLATE_FIELDS
       : module === "payment"
         ? PAYMENT_TEMPLATE_FIELDS
-        : module === "notice" ? NOTICE_TEMPLATE_FIELDS : KHLCNT_FIELDS;
+        : module === "notice" ? NOTICE_TEMPLATE_FIELDS : [...KHLCNT_FIELDS, ...SIGNER_FIELDS];
   const wrap: [string, string] = style === "square" ? ["[[", "]]"] : ["{{", "}}"];
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -125,7 +126,8 @@ export function TemplateRegionPicker({
     void (async () => {
       const { data } = await supabase
         .from("template_mappings")
-        .select("placeholder,label,source_field,created_at,templates(module)")
+        .select("placeholder,label,source_field,created_at,templates!inner(module)")
+        .eq('templates.module', module)
         .order("created_at", { ascending: false })
         .limit(2000);
       if (!alive || !data) return;
@@ -144,12 +146,12 @@ export function TemplateRegionPicker({
           module: r.templates?.module ?? "tender",
         });
       }
-      setSuggestions([...seen.values()]);
+      setSuggestions(suggestionsForModule([...seen.values()], module));
     })();
     return () => {
       alive = false;
     };
-  }, []);
+  }, [module]);
 
   async function chooseSource(next: string) {
     setSource(next);
@@ -157,7 +159,8 @@ export function TemplateRegionPicker({
     if (!next) return;
     const { data } = await supabase
       .from("template_mappings")
-      .select("placeholder,label")
+      .select("placeholder,label,templates!inner(module)")
+      .eq('templates.module', module)
       .eq("source_field", next)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -182,7 +185,7 @@ export function TemplateRegionPicker({
     payment: "Thanh toán",
     notice: "Thông báo nhà thầu",
   };
-  const suggestionGroups = [module, ...["tender", "hr", "payment", "notice"].filter((m) => m !== module)]
+  const suggestionGroups = [module]
     .map((m) => ({ m, items: suggestions.filter((s) => s.module === m) }))
     .filter((g) => g.items.length > 0);
   const suggestedSource = useMemo(
