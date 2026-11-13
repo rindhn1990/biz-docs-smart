@@ -5,7 +5,8 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
-- [ ] Yêu cầu 13/11: bảng danh sách vùng theo phân hệ/mẫu, tìm kiếm, sửa tên/ký hiệu đồng bộ Word an toàn, thêm từ vùng đã có và xoá có xác nhận; kiểm thử và giao diện.
+- [x] Yêu cầu 13/11: bảng danh sách vùng theo phân hệ/mẫu, tìm kiếm, sửa tên/ký hiệu đồng bộ Word an toàn, thêm từ vùng đã có và xoá có xác nhận; 177 tests đạt, build OK; UI tìm/lọc 135 vùng đấu thầu và 7 vùng nhân sự, không lỗi, không đổi dữ liệu thật.
+- [ ] Danh sách vùng: thử thêm/sửa/xoá và lưu Word qua giao diện; chờ quyền admin (phiên người yêu cầu chỉ viewer).
 - [x] Yêu cầu 13/11: sắp xếp mẫu xuất riêng theo gói; gợi ý vùng đúng phân hệ; danh bạ người ký do admin quản lý, chọn người ký tự điền số/ngày uỷ quyền vào dữ liệu gói. 174/174 tests, build OK; UI viewer hiển thị người ký/uỷ quyền, không lỗi trang; không thay đổi dữ liệu thật.
 - [ ] Yêu cầu 13/11: thử lưu thứ tự, tạo/sửa danh bạ và chọn/lưu người ký qua UI; chờ phiên writer/admin (tài khoản người yêu cầu hiện chỉ viewer).
 

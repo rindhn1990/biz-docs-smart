@@ -59,6 +59,7 @@ export function TemplateRegionDirectory({ module, templates }: { module: Templat
     let original: ArrayBuffer | undefined;
     let changed: ArrayBuffer | undefined;
     let committed = false;
+    let uploaded = false;
     try {
       const existing = (regions.data ?? []).filter(r => r.template_id === draft.templateId);
       const old = existing.find(r => r.id === draft.id);
@@ -81,6 +82,7 @@ export function TemplateRegionDirectory({ module, templates }: { module: Templat
         count = renamed.count;
         if (!count) throw new Error('Không tìm thấy ký hiệu cũ trong file Word; bản hiện tại được giữ nguyên');
         await saveTemplateFile(template.source_docx_path, changed, true, original);
+        uploaded = true;
       }
       if (!old && !tokens.includes(key)) throw new Error('Chọn một vùng đã có trong file Word');
       const result = old
@@ -92,7 +94,7 @@ export function TemplateRegionDirectory({ module, templates }: { module: Templat
       toast.success(old ? 'Đã sửa vùng dữ liệu' : 'Đã thêm vùng dữ liệu', { description: count ? `Đã đổi ký hiệu tại ${count} vị trí trong Word; giữ nguyên nguồn dữ liệu theo gói.` : undefined });
       await refresh();
     } catch (error) {
-      if (!committed && original && changed && template.source_docx_path) {
+      if (uploaded && !committed && original && changed && template.source_docx_path) {
         try { await saveTemplateFile(template.source_docx_path, original, true, changed); }
         catch { toast.error('Không khôi phục được file; hãy dùng Hoàn tác lần sửa gần nhất trước khi xuất'); }
       }
