@@ -1703,6 +1703,30 @@ export type Database = {
           },
         ]
       }
+      tender_signers: {
+        Row: {
+          authorization_date: string
+          authorization_number: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          authorization_date?: string
+          authorization_number?: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          authorization_date?: string
+          authorization_number?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       tender_sources: {
         Row: {
           category: string
@@ -1821,6 +1845,39 @@ export type Database = {
           },
           {
             foreignKeyName: "tender_steps_tender_id_fkey"
+            columns: ["tender_id"]
+            isOneToOne: false
+            referencedRelation: "tenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tender_template_order: {
+        Row: {
+          sort_order: number
+          template_id: string
+          tender_id: string
+        }
+        Insert: {
+          sort_order?: number
+          template_id: string
+          tender_id: string
+        }
+        Update: {
+          sort_order?: number
+          template_id?: string
+          tender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tender_template_order_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tender_template_order_tender_id_fkey"
             columns: ["tender_id"]
             isOneToOne: false
             referencedRelation: "tenders"
