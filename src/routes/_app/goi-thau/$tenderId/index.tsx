@@ -26,6 +26,8 @@ import { formatThousands, readVietnameseMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { Button } from '@/components/ui/button';
 import { TenderCenterWord } from '@/components/TenderCenterWord';
+import { TenderSignerDirectory } from '@/components/TenderSignerDirectory';
+import { SIGNER_FIELDS } from '@/lib/tender-controls';
 import { centerKey, resetCenterValues } from '@/lib/tender-center';
 import { loadTenderSharedValues } from '@/lib/tender-shared';
 
@@ -648,7 +650,8 @@ function DataCenter({
         </section>
       ))}
 
-      <TenderCenterWord key={method ?? 'unclassified'} tenderId={tenderId} method={method} values={values} onChange={(key,value) => setValues(prev => ({...prev,[key]:value}))} onSave={save} canWrite={canWrite && !row.isLoading && !row.error} excludedKeys={DATA_CENTER_GROUPS.flatMap(g => g.fields.map(f => f.key))} />
+      <TenderSignerDirectory values={values} onChange={setValues} canWrite={canWrite && !row.isLoading && !row.error} isAdmin={isAdmin} />
+      <TenderCenterWord key={method ?? 'unclassified'} tenderId={tenderId} method={method} values={values} onChange={(key,value) => setValues(prev => ({...prev,[key]:value}))} onSave={save} canWrite={canWrite && !row.isLoading && !row.error} excludedKeys={[...DATA_CENTER_GROUPS.flatMap(g => g.fields.map(f => f.key)), ...SIGNER_FIELDS.map(f => f.key)]} />
 
       {CONTRACTOR_ROLES.map((role) => {
         const rows = (links.data ?? []).filter((l) => l.role === role.value);

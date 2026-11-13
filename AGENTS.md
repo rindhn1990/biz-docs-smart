@@ -11,6 +11,8 @@
 
 ## Architecture decisions
 
+- Tender export order persists separately per tender; module-filtered suggestions never query other modules, and selecting a shared signer copies signer/authorization fields into the tender JSON snapshot so directory edits cannot silently change other tenders.
+
 - Tender export resolves verified Word aliases in a browser-safe helper, reads only the selected tender's shared data plus its selected document, and records tender linkage; explicit empty document values and template examples must not become fallback data.
 - Region and document-field ordering persists existing sort_order values without changing Word content or field values.
 - Tender Data Center reuses tender-only template mappings filtered by the tender's procurement method and optionally by template, and saves before direct export; invalidate the whole template_mappings query family after definition changes so shared fields refresh; explicit blank JSON values suppress metadata fallback, and keyed forms isolate package state without clearing data when methods change.
