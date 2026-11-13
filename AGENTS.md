@@ -11,6 +11,7 @@
 
 ## Architecture decisions
 
+- The region directory reuses module-scoped template mappings; symbol renames validate exact Word token edits and pin the prior data source to preserve per-tender values, while deletion removes only the selected mapping.
 - Tender export order persists separately per tender; module-filtered suggestions never query other modules, and selecting a shared signer copies signer/authorization fields into the tender JSON snapshot so directory edits cannot silently change other tenders.
 
 - Tender export resolves verified Word aliases in a browser-safe helper, reads only the selected tender's shared data plus its selected document, and records tender linkage; explicit empty document values and template examples must not become fallback data.
