@@ -5,7 +5,8 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
-- [ ] Yêu cầu 13/11: sắp xếp mẫu xuất riêng theo gói; gợi ý vùng đúng phân hệ; danh bạ người ký và tự điền số/ngày uỷ quyền theo gói; kiểm thử và xác minh giao diện.
+- [x] Yêu cầu 13/11: sắp xếp mẫu xuất riêng theo gói; gợi ý vùng đúng phân hệ; danh bạ người ký do admin quản lý, chọn người ký tự điền số/ngày uỷ quyền vào dữ liệu gói. 174/174 tests, build OK; UI viewer hiển thị người ký/uỷ quyền, không lỗi trang; không thay đổi dữ liệu thật.
+- [ ] Yêu cầu 13/11: thử lưu thứ tự, tạo/sửa danh bạ và chọn/lưu người ký qua UI; chờ phiên writer/admin (tài khoản người yêu cầu hiện chỉ viewer).
 
 - [x] Yêu cầu 12/11 (hình thức): tự lọc mẫu/trường theo hình thức gói, không xoá dữ liệu khi đổi hình thức. 170/170 tests, build OK; hai gói thật tự hiện 3 mẫu đúng hình thức, lọc một mẫu và xem trước đạt. Không sửa dữ liệu thật; đổi hình thức được thử bằng kiểm thử tự động, chưa thao tác đổi/lưu qua UI.
 
