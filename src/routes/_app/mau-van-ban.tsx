@@ -52,6 +52,7 @@ import { saveTemplateFile, undoTemplateFile } from "@/lib/template-file-save";
 import { previousDocxPath, validateDocx } from "@/lib/docx-safety";
 import { reorderedRows, tenderSourceKey } from '@/lib/tender-template-data';
 import { SIGNER_FIELDS } from '@/lib/tender-controls';
+import { TemplateRegionDirectory } from '@/components/TemplateRegionDirectory';
 
 export const Route = createFileRoute("/_app/mau-van-ban")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -650,6 +651,8 @@ function TemplatesPage() {
           </button>
         ))}
       </ScrollTabs> : null}
+
+      <TemplateRegionDirectory key={module} module={module} templates={templates.data ?? []} />
 
       <div className="grid gap-4 2xl:grid-cols-[260px_minmax(0,1fr)]">
         <section className="panel h-fit">
