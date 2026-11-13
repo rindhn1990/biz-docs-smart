@@ -41,8 +41,8 @@ export function TenderSignerDirectory({ values, onChange, canWrite, isAdmin }: {
     return data;
   }});
   const refresh = () => { void qc.invalidateQueries({queryKey:['tender_signers']}); };
-  const currentName = values.Sign_Photong ?? values.Sign_PhoTong ?? '';
-  const selected = rows.data?.find(r => r.name === currentName && r.authorization_number === (values.UQ_photong ?? values.UQ_Photong ?? '') && r.authorization_date === (values.Date_UQ_Photong ?? ''));
+  const currentName = values['Sign_Photong'] ?? values['Sign_PhoTong'] ?? '';
+  const selected = rows.data?.find(r => r.name === currentName && r.authorization_number === (values['UQ_photong'] ?? values['UQ_Photong'] ?? '') && r.authorization_date === (values['Date_UQ_Photong'] ?? ''));
   return <section className="panel">
     <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3"><h2 className="text-sm font-semibold">Người ký · Uỷ quyền</h2>
       {isAdmin ? <Button variant="outline" onClick={() => setManaging(!managing)}><Users className="size-4" />Danh bạ người ký</Button> : null}
@@ -53,8 +53,8 @@ export function TenderSignerDirectory({ values, onChange, canWrite, isAdmin }: {
         <option value="">Chưa chọn</option>{currentName && !selected ? <option value="saved">{currentName} (đã lưu theo gói)</option> : null}
         {rows.data?.map(r => <option value={r.id} key={r.id}>{r.name} · {r.authorization_number || 'Chưa có số uỷ quyền'}</option>)}
       </select></label>
-      <label className="text-xs font-medium">Số uỷ quyền<input aria-label="Số uỷ quyền theo gói" className="input mt-1" value={values.UQ_photong ?? values.UQ_Photong ?? ''} readOnly={!canWrite} onChange={e => onChange({...values,UQ_photong:e.target.value,UQ_Photong:e.target.value})} /></label>
-      <label className="text-xs font-medium">Ngày uỷ quyền<div className="mt-1"><DateField value={values.Date_UQ_Photong ?? ''} readOnly={!canWrite} onChange={v => onChange({...values,Date_UQ_Photong:v})} /></div></label>
+      <label className="text-xs font-medium">Số uỷ quyền<input aria-label="Số uỷ quyền theo gói" className="input mt-1" value={values['UQ_photong'] ?? values['UQ_Photong'] ?? ''} readOnly={!canWrite} onChange={e => onChange({...values,UQ_photong:e.target.value,UQ_Photong:e.target.value})} /></label>
+      <label className="text-xs font-medium">Ngày uỷ quyền<div className="mt-1"><DateField value={values['Date_UQ_Photong'] ?? ''} readOnly={!canWrite} onChange={v => onChange({...values,Date_UQ_Photong:v})} /></div></label>
     </div>
     {managing && isAdmin ? <div className="border-t border-border p-4">
       <div className="mb-3 flex gap-2"><input aria-label="Tên người ký mới" className="input" value={name} onChange={e => setName(e.target.value)} />
