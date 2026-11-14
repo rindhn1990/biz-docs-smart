@@ -42,3 +42,27 @@ it('rejects duplicate/invalid symbols and does not rewrite plain text', () => {
   const result = renameRegionToken(fixture(), 'Absent', 'New_key');
   assert.equal(result.count, 0);
 });
+it('successive symbol edits preserve values through the pinned source and keep unrelated regions', () => {
+  const first = renameRegionToken(fixture(), 'Old_key', 'Date_chutruong');
+  const second = renameRegionToken(first.buffer, 'Date_chutruong', 'Date_chutruong_new');
+  assert.equal(first.count, 5);
+  assert.equal(second.count, 5);
+  const output = new PizZip(renderDocxBuffer(second.buffer, 'curly', { Date_chutruong_new: '16/09/2026' }));
+  const xml = output.file('word/document.xml').asText();
+  assert.ok(xml.includes('16/09/2026'));
+  assert.ok(xml.includes('{{Old_key_extra}}'));
+  assert.ok(xml.includes('Nội dung cuối'));
+  assert.deepEqual(output.file('word/media/image1.png').asUint8Array(), new Uint8Array([1, 2, 3]));
+});
+it('an absent region does not change any DOCX package entry', () => {
+  const source = fixture();
+  const result = renameRegionToken(source, 'Not_in_template', 'New_key');
+  assert.equal(result.count, 0);
+  const before = new PizZip(source);
+  const after = new PizZip(result.buffer);
+  assert.deepEqual(Object.keys(after.files).sort(), Object.keys(before.files).sort());
+  for (const name of Object.keys(before.files)) {
+    if (before.files[name].dir) continue;
+    assert.deepEqual(after.file(name).asUint8Array(), before.file(name).asUint8Array());
+  }
+});
