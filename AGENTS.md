@@ -11,6 +11,8 @@
 
 ## Architecture decisions
 
+- Word input fields follow the tender's ordered template list then region sort_order, deduplicating shared sources; per-tender in-memory snapshot history handles typing undo/redo without writing until save and resets on discard/reset or a different loaded snapshot.
+
 - Tender shared data tracks a separate saved snapshot; TanStack navigation and tab changes use one save/discard guard, browser reload uses native beforeunload, and background refreshes cannot overwrite dirty input.
 
 - The region directory reuses module-scoped template mappings; symbol renames validate exact Word token edits and pin the prior data source to preserve per-tender values, while deletion removes only the selected mapping.

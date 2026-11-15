@@ -5,6 +5,8 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
+- [ ] Yêu cầu 15/11 (22:41): trường Word theo thứ tự danh sách mẫu; Ctrl+Z/Ctrl+Y hoàn tác/làm lại nhập dữ liệu theo gói, kiểm thử thứ tự và lịch sử nhập.
+
 - [x] Yêu cầu 15/11: cảnh báo lưu/không lưu khi quay lại/chuyển tab; tải lại dùng beforeunload; bảo vệ dữ liệu đang nhập khi làm mới ngầm. 182 tests đạt, build OK; UI thật thử Ở lại/Không lưu, quay lại và tải lại khôi phục bản đã lưu, không lỗi trang, không ghi dữ liệu thật. Chưa thử Lưu và tiếp tục; đề xuất gom vùng dùng chung, chưa triển khai đồng bộ hàng loạt.
 
 - [ ] Tiếp tục 14/11: kiểm chứng thêm/sửa/xoá và lưu vùng qua giao diện bằng phiên admin; phiên chính người yêu cầu vẫn viewer. Đã thử tìm Date_chutruong: 7 kết quả, nút thêm/sửa không hiển thị; bổ sung kiểm thử đổi ký hiệu liên tiếp và bảo toàn DOCX khi không tìm thấy vùng. Không thay dữ liệu thật.

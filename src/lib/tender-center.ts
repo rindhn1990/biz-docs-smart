@@ -15,6 +15,15 @@ export function centerKey(source: string) {
   const canonical = tenderSourceKey(source);
   return Object.entries(CENTER_SOURCES).find(([key]) => normKey(key) === normKey(canonical))?.[1] ?? canonical;
 }
+/** Template list order first, region order second; first shared source wins. */
+export function orderCenterMappings<T extends { template_id: string; sort_order?: number | null }>(mappings: readonly T[], templates: readonly { id: string }[]): T[] {
+  const positions = new Map(templates.map((template, index) => [template.id, index]));
+  return mappings.map((mapping, index) => ({ mapping, index }))
+    .filter(item => positions.has(item.mapping.template_id))
+    .sort((a, b) => (positions.get(a.mapping.template_id) ?? 0) - (positions.get(b.mapping.template_id) ?? 0)
+      || (a.mapping.sort_order ?? 0) - (b.mapping.sort_order ?? 0) || a.index - b.index)
+    .map(item => item.mapping);
+}
 export function centerFields(mappings: MappingLike[], inherited: Map<string, string>, known: readonly { key: string; label: string }[]) {
   const seen = new Set<string>();
   return tenderMappings(mappings).flatMap(m => {
