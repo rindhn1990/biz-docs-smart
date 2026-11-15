@@ -5,6 +5,8 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
+- [x] Yêu cầu 15/11: cảnh báo lưu/không lưu khi quay lại/chuyển tab; tải lại dùng beforeunload; bảo vệ dữ liệu đang nhập khi làm mới ngầm. 182 tests đạt, build OK; UI thật thử Ở lại/Không lưu, quay lại và tải lại khôi phục bản đã lưu, không lỗi trang, không ghi dữ liệu thật. Chưa thử Lưu và tiếp tục; đề xuất gom vùng dùng chung, chưa triển khai đồng bộ hàng loạt.
+
 - [ ] Tiếp tục 14/11: kiểm chứng thêm/sửa/xoá và lưu vùng qua giao diện bằng phiên admin; phiên chính người yêu cầu vẫn viewer. Đã thử tìm Date_chutruong: 7 kết quả, nút thêm/sửa không hiển thị; bổ sung kiểm thử đổi ký hiệu liên tiếp và bảo toàn DOCX khi không tìm thấy vùng. Không thay dữ liệu thật.
 - [x] Yêu cầu 13/11: bảng danh sách vùng theo phân hệ/mẫu, tìm kiếm, sửa tên/ký hiệu đồng bộ Word an toàn, thêm từ vùng đã có và xoá có xác nhận; 177 tests đạt, build OK; UI tìm/lọc 135 vùng đấu thầu và 7 vùng nhân sự, không lỗi, không đổi dữ liệu thật.
 - [ ] Danh sách vùng: thử thêm/sửa/xoá và lưu Word qua giao diện; chờ quyền admin (phiên người yêu cầu chỉ viewer).

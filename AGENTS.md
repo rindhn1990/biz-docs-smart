@@ -11,6 +11,8 @@
 
 ## Architecture decisions
 
+- Tender shared data tracks a separate saved snapshot; TanStack navigation and tab changes use one save/discard guard, browser reload uses native beforeunload, and background refreshes cannot overwrite dirty input.
+
 - The region directory reuses module-scoped template mappings; symbol renames validate exact Word token edits and pin the prior data source to preserve per-tender values, while deletion removes only the selected mapping.
 - Tender export order persists separately per tender; module-filtered suggestions never query other modules, and selecting a shared signer copies signer/authorization fields into the tender JSON snapshot so directory edits cannot silently change other tenders.
 
