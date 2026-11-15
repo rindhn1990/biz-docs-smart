@@ -1,10 +1,25 @@
 import { it } from 'node:test';
 import assert from 'node:assert/strict';
 import PizZip from 'pizzip';
-import { centerFields, centerExportValues, resetCenterValues, centerTemplatesForMethod } from './tender-center.ts';
+import { centerFields, centerExportValues, resetCenterValues, centerTemplatesForMethod, orderCenterMappings } from './tender-center.ts';
 import { tenderMappings } from './tender-template-data.ts';
 import { fillMappings } from './template-values.ts';
 import { renderDocxBuffer } from './docx.ts';
+
+it('Word fields follow template list order and region order, sharing each source only once', () => {
+ const rows=[
+  {template_id:'a',placeholder:'A2',source_field:'second',sort_order:2},
+  {template_id:'b',placeholder:'B1',source_field:'shared',sort_order:1},
+  {template_id:'a',placeholder:'A1',source_field:'shared',sort_order:1},
+  {template_id:'b',placeholder:'B2',source_field:'third',sort_order:2},
+  {template_id:'hr',placeholder:'Foreign',sort_order:0},
+ ];
+ const keys=templates=>centerFields(orderCenterMappings(rows,templates),new Map(),[]).map(f=>f.key);
+ assert.deepEqual(keys([{id:'a'},{id:'b'}]),['shared','second','third']);
+ assert.deepEqual(keys([{id:'b'},{id:'a'}]),['shared','third','second']);
+ assert.deepEqual(keys([{id:'b'}]),['shared','third']);
+ assert.equal(rows[0].sort_order,2);
+});
 
 it('procurement method automatically supplies only corresponding templates and input fields', () => {
  const templates=[{id:'a',method:'chi_dinh_thau_rut_gon'},{id:'b',method:'dam_phan_truc_tiep'},{id:'c',method:null}];

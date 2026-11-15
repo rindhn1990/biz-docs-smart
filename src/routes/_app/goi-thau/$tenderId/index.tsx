@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle2, Circle, FileUp, FolderOpen, Loader2, Save, Trash2, RotateCcw } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, FileUp, FolderOpen, Loader2, Save, Trash2, RotateCcw, Undo2, Redo2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,6 +32,7 @@ import { centerKey, resetCenterValues } from '@/lib/tender-center';
 import { loadTenderSharedValues } from '@/lib/tender-shared';
 import { UnsavedDataGuard, type LeaveCheck } from '@/components/UnsavedDataGuard';
 import { hasUnsavedValues } from '@/lib/unsaved-values';
+import { useInputHistory } from '@/hooks/useInputHistory';
 
 export const Route = createFileRoute("/_app/goi-thau/$tenderId/")({
   head: () => ({
@@ -494,7 +495,7 @@ function DataCenter({
 }) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const [values, setValues] = useState<Record<string, string>>({});
+  const { values, setValues, loadValues, resetValues, undo, redo, canUndo, canRedo } = useInputHistory();
   const [saving, setSaving] = useState(false);
   const [savedValues, setSavedValues] = useState<Record<string, string>>({});
   const dirty = hasUnsavedValues(values, savedValues);
@@ -543,10 +544,10 @@ function DataCenter({
     // Background refreshes must not replace a user's unsaved input.
     if (row.data && !dirtyRef.current) {
       const next = (row.data.data ?? {}) as Record<string, string>;
-      setValues(next);
+      loadValues(next);
       setSavedValues(next);
     }
-  }, [row.data]);
+  }, [row.data, loadValues]);
 
   async function save() {
     if (!canWrite || saveLock.current) return false;
@@ -622,14 +623,24 @@ function DataCenter({
 
   return (
     <div className="space-y-4">
-      <UnsavedDataGuard dirty={dirty} saving={saving} onSave={save} onDiscard={() => setValues({ ...savedValues })} registerLeaveCheck={registerLeaveCheck} />
+      <UnsavedDataGuard dirty={dirty} saving={saving} onSave={save} onDiscard={() => resetValues({ ...savedValues })} registerLeaveCheck={registerLeaveCheck} />
+      <div onKeyDownCapture={event => {
+        if (!canWrite || saving || row.isLoading || row.error || event.nativeEvent.isComposing || event.altKey || !(event.ctrlKey || event.metaKey)) return;
+        if (event.target instanceof Element && event.target.closest('[role="dialog"]')) return;
+        const key = event.key.toLowerCase();
+        if (key !== 'z' && key !== 'y') return;
+        event.preventDefault();
+        if (key === 'y' || event.shiftKey) redo(); else undo();
+      }} className="space-y-4">
       {canWrite ? <div className="flex flex-wrap gap-2">
+        <Button size="icon" variant="outline" aria-label="Hoàn tác nhập" title="Hoàn tác nhập (Ctrl+Z)" disabled={!canUndo || saving || row.isLoading || !!row.error} onClick={undo}><Undo2 className="size-4" /></Button>
+        <Button size="icon" variant="outline" aria-label="Làm lại nhập" title="Làm lại nhập (Ctrl+Y)" disabled={!canRedo || saving || row.isLoading || !!row.error} onClick={redo}><Redo2 className="size-4" /></Button>
         <Button disabled={saving || row.isLoading || !!row.error} onClick={() => void save()}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}Lưu dữ liệu chung</Button>
         <ConfirmDelete title="Đặt lại dữ liệu gói thầu?" description="Chỉ xoá giá trị nhập trong Dữ liệu chung của gói này; giữ trường Word, hồ sơ, nhà thầu và lịch sử xuất. Các gói khác không thay đổi." confirmLabel="Đặt lại về trống" onConfirm={async () => {
           const next = resetCenterValues(values, Object.keys(values).map(key => ({key})));
           const result = await supabase.from('tender_data').upsert({ tender_id: tenderId, data: next, updated_by: user?.id ?? null }, { onConflict: 'tender_id' });
           if (result.error) { toast.error('Không đặt lại được dữ liệu', {description:result.error.message}); return; }
-          setValues(next);
+          resetValues(next);
           setSavedValues(next);
           void queryClient.invalidateQueries({queryKey:['tender_data']});
         }}><Button variant="outline" disabled={saving || row.isLoading || !!row.error}><RotateCcw className="size-4" />Đặt lại về trống</Button></ConfirmDelete>
@@ -685,6 +696,7 @@ function DataCenter({
 
       <TenderSignerDirectory values={values} onChange={setValues} canWrite={canWrite && !row.isLoading && !row.error} isAdmin={isAdmin} />
       <TenderCenterWord key={method ?? 'unclassified'} tenderId={tenderId} method={method} values={values} onChange={(key,value) => setValues(prev => ({...prev,[key]:value}))} onSave={save} canWrite={canWrite && !row.isLoading && !row.error} excludedKeys={[...DATA_CENTER_GROUPS.flatMap(g => g.fields.map(f => f.key)), ...SIGNER_FIELDS.map(f => f.key)]} />
+      </div>
 
       {CONTRACTOR_ROLES.map((role) => {
         const rows = (links.data ?? []).filter((l) => l.role === role.value);

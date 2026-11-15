@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { DateField, isDateField } from '@/components/DateField';
 import { DocxPreviewDialog } from '@/components/DocxPreviewDialog';
 import { KHLCNT_FIELDS } from '@/lib/khlcnt';
-import { centerFields, centerExportValues, centerTemplatesForMethod } from '@/lib/tender-center';
+import { centerFields, centerExportValues, centerTemplatesForMethod, orderCenterMappings } from '@/lib/tender-center';
 import { methodLabel } from '@/lib/methods';
 import { tenderMappings } from '@/lib/tender-template-data';
 import { fillMappings, loadInheritedSources } from '@/lib/template-resolve';
@@ -65,8 +65,7 @@ export function TenderCenterWord({ tenderId, method, values, onChange, onSave, c
     setOrdering(false);
   }
   const selectedTemplates = methodTemplates.filter(t => selectedTemplateId === 'all' || t.id === selectedTemplateId);
-  const selectedIds = new Set(selectedTemplates.map(t => t.id));
-  const selectedMappings = (mappings.data?.rows ?? []).filter(m => selectedIds.has(m.template_id));
+  const selectedMappings = orderCenterMappings(mappings.data?.rows ?? [], selectedTemplates);
   const fields = centerFields(selectedMappings, mappings.data?.inherited ?? new Map(), KHLCNT_FIELDS).filter(f => !excludedKeys.includes(f.key));
   async function record(ready: NonNullable<typeof preview>) {
     await recordExport({ module: 'tender', tenderId, templateId: ready.templateId, templateName: ready.title,
