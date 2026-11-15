@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle2, Circle, FileUp, FolderOpen, Loader2, Save, Trash2, RotateCcw } from "lucide-react";
@@ -30,6 +30,8 @@ import { TenderSignerDirectory } from '@/components/TenderSignerDirectory';
 import { SIGNER_FIELDS } from '@/lib/tender-controls';
 import { centerKey, resetCenterValues } from '@/lib/tender-center';
 import { loadTenderSharedValues } from '@/lib/tender-shared';
+import { UnsavedDataGuard, type LeaveCheck } from '@/components/UnsavedDataGuard';
+import { hasUnsavedValues } from '@/lib/unsaved-values';
 
 export const Route = createFileRoute("/_app/goi-thau/$tenderId/")({
   head: () => ({
@@ -63,6 +65,13 @@ function TenderCaseDetail() {
   const { tenderId } = Route.useParams();
   const { canWrite, isAdmin } = useAuth();
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("checklist");
+  const leaveCheck = useRef<LeaveCheck | null>(null);
+  const registerLeaveCheck = useCallback((check: LeaveCheck | null) => { leaveCheck.current = check; }, []);
+  async function changeTab(next: (typeof TABS)[number]['key']) {
+    if (next === tab) return;
+    if (leaveCheck.current && !await leaveCheck.current()) return;
+    setTab(next);
+  }
 
   const tender = useQuery({
     queryKey: ["tender_case", tenderId],
@@ -140,7 +149,7 @@ function TenderCaseDetail() {
           <button
             key={x.key}
             type="button"
-            onClick={() => setTab(x.key)}
+            onClick={() => void changeTab(x.key)}
             role="tab"
             aria-selected={x.key === tab}
             className={cn(
@@ -160,7 +169,7 @@ function TenderCaseDetail() {
       ) : tab === "sources" ? (
         <Sources tenderId={tenderId} canWrite={canWrite} isAdmin={isAdmin} />
       ) : tab === "data" ? (
-        <DataCenter key={tenderId} tenderId={tenderId} method={t.method} canWrite={canWrite} isAdmin={isAdmin} />
+        <DataCenter key={tenderId} tenderId={tenderId} method={t.method} canWrite={canWrite} isAdmin={isAdmin} registerLeaveCheck={registerLeaveCheck} />
       ) : (
         <Info tender={t} />
       )}
@@ -475,16 +484,23 @@ function DataCenter({
   method,
   canWrite,
   isAdmin,
+  registerLeaveCheck,
 }: {
   tenderId: string;
   method: string | null;
   canWrite: boolean;
   isAdmin: boolean;
+  registerLeaveCheck: (check: LeaveCheck | null) => void;
 }) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [savedValues, setSavedValues] = useState<Record<string, string>>({});
+  const dirty = hasUnsavedValues(values, savedValues);
+  const dirtyRef = useRef(false);
+  dirtyRef.current = dirty;
+  const saveLock = useRef(false);
 
   const row = useQuery({
     queryKey: ["tender_data", "center", tenderId],
@@ -524,31 +540,46 @@ function DataCenter({
   });
 
   useEffect(() => {
-    if (row.data) setValues((row.data.data ?? {}) as Record<string, string>);
+    // Background refreshes must not replace a user's unsaved input.
+    if (row.data && !dirtyRef.current) {
+      const next = (row.data.data ?? {}) as Record<string, string>;
+      setValues(next);
+      setSavedValues(next);
+    }
   }, [row.data]);
 
   async function save() {
-    if (!canWrite) return false;
+    if (!canWrite || saveLock.current) return false;
+    saveLock.current = true;
+    const snapshot = { ...values };
     setSaving(true);
+    try {
     const { error } = await supabase.from("tender_data").upsert(
       {
         tender_id: tenderId,
-        data: values,
+        data: snapshot,
         updated_by: user?.id ?? null,
       },
       { onConflict: "tender_id" },
     );
-    setSaving(false);
     if (error) {
       toast.error("Không lưu được dữ liệu", { description: error.message });
       return false;
     }
     toast.success("Đã lưu dữ liệu chung");
+    setSavedValues(snapshot);
     void queryClient.invalidateQueries({ queryKey: ["tender_data"] });
     // Trường dùng chung đã được CSDL đồng bộ sang gói thầu và các hồ sơ.
     for (const key of ["tender_case", "tender_cases", "tenders", "documents", "document_fields"])
       void queryClient.invalidateQueries({ queryKey: [key] });
     return true;
+    } catch (error) {
+      toast.error('Không lưu được dữ liệu', { description: error instanceof Error ? error.message : 'Vui lòng thử lại.' });
+      return false;
+    } finally {
+      saveLock.current = false;
+      setSaving(false);
+    }
   }
 
   async function addContractor(role: string, contractorId: string) {
@@ -591,6 +622,7 @@ function DataCenter({
 
   return (
     <div className="space-y-4">
+      <UnsavedDataGuard dirty={dirty} saving={saving} onSave={save} onDiscard={() => setValues({ ...savedValues })} registerLeaveCheck={registerLeaveCheck} />
       {canWrite ? <div className="flex flex-wrap gap-2">
         <Button disabled={saving || row.isLoading || !!row.error} onClick={() => void save()}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}Lưu dữ liệu chung</Button>
         <ConfirmDelete title="Đặt lại dữ liệu gói thầu?" description="Chỉ xoá giá trị nhập trong Dữ liệu chung của gói này; giữ trường Word, hồ sơ, nhà thầu và lịch sử xuất. Các gói khác không thay đổi." confirmLabel="Đặt lại về trống" onConfirm={async () => {
@@ -598,6 +630,7 @@ function DataCenter({
           const result = await supabase.from('tender_data').upsert({ tender_id: tenderId, data: next, updated_by: user?.id ?? null }, { onConflict: 'tender_id' });
           if (result.error) { toast.error('Không đặt lại được dữ liệu', {description:result.error.message}); return; }
           setValues(next);
+          setSavedValues(next);
           void queryClient.invalidateQueries({queryKey:['tender_data']});
         }}><Button variant="outline" disabled={saving || row.isLoading || !!row.error}><RotateCcw className="size-4" />Đặt lại về trống</Button></ConfirmDelete>
       </div> : null}
