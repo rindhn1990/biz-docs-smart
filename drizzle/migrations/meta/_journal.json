@@ -64,6 +64,13 @@
       "when": 1794543950979,
       "tag": "0008_tender_word_order_and_signer_directory",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794824480107,
+      "tag": "0009_employee_contact_address",
+      "breakpoints": true
     }
   ]
 }
