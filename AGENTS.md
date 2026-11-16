@@ -11,6 +11,8 @@
 
 ## Architecture decisions
 
+- Employee edits load authoritative employee values when opened and use a shared browser-safe patch helper; contact address stays separate from hometown and email changes remain admin-only in the UI.
+
 - Word input fields follow the tender's ordered template list then region sort_order, deduplicating shared sources; per-tender in-memory snapshot history handles typing undo/redo without writing until save and resets on discard/reset or a different loaded snapshot.
 
 - Tender shared data tracks a separate saved snapshot; TanStack navigation and tab changes use one save/discard guard, browser reload uses native beforeunload, and background refreshes cannot overwrite dirty input.

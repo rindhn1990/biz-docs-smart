@@ -41,7 +41,7 @@ type SortKey = "full_name" | "start_date" | "end_date" | "unit_name";
 
 type Filters = { unit: string; q: string; dept: string; status: string; sort: SortKey; asc: boolean };
 
-const COLS = "id,full_name,email,date_of_birth,id_number,id_issue_date,id_issue_place,hometown,position,department,degree_name,degree_major,degree_school,contract_number,contract_type,base_salary,start_date,end_date,contract_status,latest_document_id,unit_id,unit_name";
+const COLS = "id,full_name,email,address,date_of_birth,id_number,id_issue_date,id_issue_place,hometown,position,department,degree_name,degree_major,degree_school,contract_number,contract_type,base_salary,start_date,end_date,contract_status,latest_document_id,unit_id,unit_name";
 
 function buildQuery(f: Filters, withCount: boolean) {
   let q = supabase
@@ -179,6 +179,7 @@ function EmployeeDataPage() {
           "Ngày sinh": r.date_of_birth ?? "",
           "Số CCCD": r.id_number ?? "",
           Email: r.email ?? "",
+          "Địa chỉ liên hệ": r.address ?? "",
           "Ngày cấp CCCD": r.id_issue_date ?? "",
           "Nơi cấp CCCD": r.id_issue_place ?? "",
           "Quê quán": r.hometown ?? "",
@@ -271,6 +272,7 @@ function EmployeeDataPage() {
                 <th className={th}>Ngày sinh</th>
                 <th className={th}>Số CCCD</th>
                 <th className={th}>Email</th>
+                <th className={th}>Địa chỉ liên hệ</th>
                 <th className={th}>Quê quán</th>
                 <th className={th}>Chức vụ</th>
                 <th className={th}>Phòng ban</th>
@@ -303,6 +305,7 @@ function EmployeeDataPage() {
                   <td className={`num ${td}`}>{r.date_of_birth ?? "—"}</td>
                   <td className={`num ${td}`}>{r.id_number ?? "—"}</td>
                   <td className={td} onClick={(e) => e.stopPropagation()}>{isAdmin && r.id ? <EmailCell id={r.id} value={r.email} /> : r.email ?? "—"}</td>
+                  <td className={`max-w-[260px] truncate ${td}`} title={r.address ?? undefined}>{r.address ?? "—"}</td>
                   <td className={`max-w-[220px] truncate ${td}`}>{r.hometown ?? "—"}</td>
                   <td className={td}>{r.position ?? "—"}</td>
                   <td className={td}>{r.department ?? "—"}</td>

@@ -814,6 +814,7 @@ export type Database = {
       }
       employees: {
         Row: {
+          address: string | null
           created_at: string
           created_by: string | null
           date_of_birth: string | null
@@ -835,6 +836,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          address?: string | null
           created_at?: string
           created_by?: string | null
           date_of_birth?: string | null
@@ -856,6 +858,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          address?: string | null
           created_at?: string
           created_by?: string | null
           date_of_birth?: string | null
@@ -2104,6 +2107,7 @@ export type Database = {
     Views: {
       employee_summary_view: {
         Row: {
+          address: string | null
           base_salary: number | null
           contract_id: string | null
           contract_number: string | null
