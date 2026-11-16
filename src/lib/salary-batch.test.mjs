@@ -14,6 +14,15 @@ function fake(overrides = {}) {
 }
 
 describe("Gửi lương bằng bộ gửi giả — không gửi thư thật", () => {
+  it("email gửi thử có thể đổi cho từng lần mà không sửa email nhân sự", async () => {
+    const f = fake();
+    const emp = employee("a");
+    await runSalaryBatch(input({ employees: [emp], testEmail: "first@example.invalid" }), f.dependencies);
+    await runSalaryBatch(input({ employees: [emp], testEmail: "second@example.invalid" }), f.dependencies);
+    assert.deepEqual(f.deliveries.map((mail) => mail.to), ["first@example.invalid", "second@example.invalid"]);
+    assert.equal(emp.email, "test@example.invalid");
+    assert.deepEqual(f.logs.map((log) => log.kind), ["test", "test"]);
+  });
   it("bỏ qua người có sent cùng kỳ nhưng vẫn gửi người tiếp theo", async () => {
     const f = fake();
     const r = await runSalaryBatch(input({ employees: [employee("a"), employee("b")], sentEmployeeIds: new Set(["a"]) }), f.dependencies);

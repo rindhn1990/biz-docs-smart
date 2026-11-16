@@ -1331,16 +1331,21 @@ function SendTab({
       <div className="panel space-y-3 p-4">
         <p className="text-sm font-medium">Bước 3 — Gửi thử và gửi hàng loạt</p>
         <div className="flex flex-wrap items-center gap-2">
+          <label className="grid w-full gap-1.5 sm:w-[300px]">
+          <span className="text-sm font-medium">Địa chỉ email nhận thư thử</span>
           <Input
-            className="w-[260px]"
+            className="w-full"
+            aria-label="Địa chỉ email nhận thư thử"
             type="email"
             placeholder="Email nhận thư thử"
             value={testEmail}
             onChange={(e) => setTestEmail(e.target.value)}
+            disabled={testing || sending}
           />
+          </label>
           <Button
             variant="outline"
-            disabled={!configured || testing || sending || !templateId || selected.length === 0}
+            disabled={!configured || testing || sending || !isValidEmail(testEmail) || !templateId || selected.length === 0}
             onClick={() => void sendTest()}
           >
             {testing ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Mail className="mr-2 size-4" />}
