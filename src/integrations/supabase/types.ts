@@ -1706,6 +1706,21 @@ export type Database = {
           },
         ]
       }
+      tender_method_field_order: {
+        Row: {
+          field_keys: string[]
+          method: string
+        }
+        Insert: {
+          field_keys?: string[]
+          method: string
+        }
+        Update: {
+          field_keys?: string[]
+          method?: string
+        }
+        Relationships: []
+      }
       tender_signers: {
         Row: {
           authorization_date: string
@@ -2169,6 +2184,10 @@ export type Database = {
       }
       reorder_hr_units: { Args: { _ids: string[] }; Returns: undefined }
       reset_document_fields: { Args: { _document_id: string }; Returns: number }
+      update_template_region_group: {
+        Args: { _changes: Json }
+        Returns: number
+      }
     }
     Enums: {
       app_role:

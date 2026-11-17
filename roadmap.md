@@ -5,6 +5,8 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
+- [ ] Yêu cầu 17/11: gom vùng theo ký hiệu/hình thức, sửa một lần đồng bộ các mẫu cùng hình thức; sửa vùng mới tự cập nhật Dữ liệu chung; lưu thứ tự trường Word theo hình thức, kiểm thử và kiểm chứng giao diện.
+
 - [x] Yêu cầu 16/11: email gửi thử có nhãn rõ ràng, chỉnh sửa tùy ý; sửa thông tin/email/địa chỉ nhân sự, hiển thị địa chỉ trong bảng và Excel. 190/190 tests đạt, build OK; UI lưu email/địa chỉ rồi mở lại đọc đúng, đã khôi phục dữ liệu ban đầu; email gửi thử đổi được và nút gửi tắt khi thiếu cấu hình. Không gửi thư thật; chưa thử tải Excel trong lượt này.
 
 - [x] Yêu cầu 15/11 (22:41): trường Word theo thứ tự danh sách mẫu rồi thứ tự vùng, nguồn chung chỉ hiện một lần; Ctrl+Z/Ctrl+Y và nút hoàn tác/làm lại nhập theo gói. 186/186 tests đạt, build OK; UI thật nhập → Ctrl+Z → Ctrl+Y → Ctrl+Z khôi phục giá trị gốc, không lưu hay thay dữ liệu thật, không lỗi trang. Chưa thử đổi/lưu thứ tự mẫu qua UI trong lượt này (đã kiểm thử thứ tự bằng test).

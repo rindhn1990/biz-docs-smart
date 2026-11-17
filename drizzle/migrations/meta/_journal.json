@@ -71,6 +71,13 @@
       "when": 1794824480107,
       "tag": "0009_employee_contact_address",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794933543409,
+      "tag": "0010_method_word_field_order_and_atomic_region_updates",
+      "breakpoints": true
     }
   ]
 }
