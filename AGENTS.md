@@ -17,7 +17,8 @@
 
 - Tender shared data tracks a separate saved snapshot; TanStack navigation and tab changes use one save/discard guard, browser reload uses native beforeunload, and background refreshes cannot overwrite dirty input.
 
-- The region directory reuses module-scoped template mappings; symbol renames validate exact Word token edits and pin the prior data source to preserve per-tender values, while deletion removes only the selected mapping.
+- The region directory groups normalized symbols within explicit method/module scope; metadata-only group edits use a version-checked atomic RPC, while deletion removes only one mapping and never edits Word bytes.
+- Tender region synchronization uses region-sync with browser-safe resolution/planning helpers; it adds only missing effective keys to method-matched linked documents, and field provenance follows the same source resolution as centerFields.
 - Tender export order persists separately per tender; module-filtered suggestions never query other modules, and selecting a shared signer copies signer/authorization fields into the tender JSON snapshot so directory edits cannot silently change other tenders.
 
 - Tender export resolves verified Word aliases in a browser-safe helper, reads only the selected tender's shared data plus its selected document, and records tender linkage; explicit empty document values and template examples must not become fallback data.

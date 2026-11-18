@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from '@tanstack/react-query';
+import { syncRegionToData, refreshRegionData } from '@/lib/region-sync';
 import { ArrowRight, Loader2, MousePointerClick, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -98,6 +100,7 @@ export function TemplateRegionPicker({
   onSaved,
   module,
 }: Props) {
+  const queryClient = useQueryClient();
   const sourceFields =
     module === "hr"
       ? HR_TEMPLATE_FIELDS
@@ -279,7 +282,6 @@ export function TemplateRegionPicker({
           sort_order: (last?.sort_order ?? 0) + 1,
         });
         if (insErr) throw insErr;
-        if (module === "tender") await addFieldToTenderDocuments(key, label.trim() || prettifyPlaceholder(key));
       } else {
         const { error: updateError } = await supabase.from("template_mappings").update({
           date_format: isDateSource(source || key, selection) || detectDateVariant(selection) !== null ? dateFormat : null,
@@ -301,9 +303,14 @@ export function TemplateRegionPicker({
           ? prev
           : [{ placeholder: key, label: label.trim() || prettifyPlaceholder(key), source_field: source || null, module }, ...prev],
       );
+      let destinations: string[] = [];
+      try { destinations = await syncRegionToData(templateId, [key]); }
+      catch (e) { toast.warning('Vùng đã lưu; chưa bổ sung được trường hồ sơ', { description: (e as Error).message }); }
+      await refreshRegionData(queryClient);
       onSaved();
       toast.success("Đã đánh dấu vùng dữ liệu", {
-        description: `Đã thay ${count} vị trí trong văn bản bằng ${wrap[0]}${key}${wrap[1]}.`,
+        description: [`Đã thay ${count} vị trí trong văn bản bằng ${wrap[0]}${key}${wrap[1]}.`, ...destinations].join('\n'),
+        duration: 10000,
       });
     } catch (e) {
       toast.error("Không lưu được vùng dữ liệu", { description: (e as Error).message });
@@ -484,33 +491,3 @@ export function TemplateRegionPicker({
   );
 }
 
-/**
- * Vùng dữ liệu mới của mẫu đấu thầu: thêm ngay trường trống (cần kiểm tra) vào mọi hồ sơ
- * đấu thầu còn thiếu trường này. Mẫu dùng chung cho mọi gói thầu nên áp dụng toàn bộ hồ sơ.
- */
-async function addFieldToTenderDocuments(key: string, label: string) {
-  const { data: docs } = await supabase.from("documents").select("id");
-  const ids = (docs ?? []).map((d) => d.id);
-  if (ids.length === 0) return;
-  const { data: have } = await supabase
-    .from("document_fields")
-    .select("document_id")
-    .eq("field_key", key)
-    .in("document_id", ids);
-  const done = new Set((have ?? []).map((r) => r.document_id));
-  const missing = ids.filter((id) => !done.has(id));
-  if (missing.length === 0) return;
-  const { error } = await supabase.from("document_fields").insert(
-    missing.map((id) => ({
-      document_id: id,
-      field_key: key,
-      label,
-      value: null,
-      confidence: 0.3,
-      needs_review: true,
-      field_group: "Khác",
-      sort_order: 999,
-    })),
-  );
-  if (error) toast.warning("Chưa thêm được trường mới vào hồ sơ", { description: error.message });
-}

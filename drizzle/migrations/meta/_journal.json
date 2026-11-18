@@ -78,6 +78,13 @@
       "when": 1794933543409,
       "tag": "0010_method_word_field_order_and_atomic_region_updates",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794965937659,
+      "tag": "0011_region_group_metadata_only",
+      "breakpoints": true
     }
   ]
 }

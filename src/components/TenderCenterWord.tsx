@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowUp, ArrowDown, Download, Eye, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -15,11 +15,12 @@ import { fillMappings, loadInheritedSources } from '@/lib/template-resolve';
 import { renderAndDownloadDocx, type DelimiterStyle } from '@/lib/docx';
 import { recordExport } from '@/lib/export-history';
 import { orderedTenderTemplates } from '@/lib/tender-controls';
+import { centerFieldUsage } from '@/lib/region-sync-values';
 
 export function useTenderCenterMappings() {
   return useQuery({ queryKey: ['template_mappings', 'tender-center'], queryFn: async () => {
     const [result, inherited] = await Promise.all([
-      supabase.from('template_mappings').select('template_id,placeholder,label,source_field,value,date_format,sort_order,templates!inner(module)').eq('templates.module', 'tender').order('sort_order'),
+      supabase.from('template_mappings').select('template_id,placeholder,label,source_field,value,date_format,sort_order,created_at,templates!inner(module)').eq('templates.module', 'tender').order('sort_order').limit(5000),
       loadInheritedSources('tender'),
     ]);
     if (result.error) throw result.error;
@@ -37,6 +38,8 @@ export function TenderCenterWord({ tenderId, method, values, onChange, onSave, c
   const [busy, setBusy] = useState<string | null>(null);
   const [ordering, setOrdering] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState('all');
+  const [now, setNow] = useState(0);
+  useEffect(() => { setNow(Date.now()); }, []);
   const [preview, setPreview] = useState<{ templateId: string; title: string; fileName: string; source: ArrayBuffer; style: DelimiterStyle; data: Record<string, string> } | null>(null);
   const templates = useQuery({ queryKey: ['templates', 'tender-center'], queryFn: async () => {
     const result = await supabase.from('templates').select('id,name,source_docx_path,delimiter_style,method').eq('module','tender').order('sort_order');
@@ -104,11 +107,12 @@ export function TenderCenterWord({ tenderId, method, values, onChange, onSave, c
       </div>
       {!templates.isLoading && !templates.error && methodTemplates.length === 0 ? <p className="px-4 pt-3 text-sm text-muted-foreground">{method ? 'Chưa có mẫu Word cho hình thức này.' : 'Gói thầu chưa chọn hình thức lựa chọn nhà thầu.'}</p> : null}
       {mappings.error ? <p className="p-4 text-sm text-destructive">Không tải được trường dữ liệu từ mẫu.</p> : mappings.isLoading ? <Loader2 className="m-4 size-4 animate-spin" /> :
-        <div className="grid gap-3 p-4 md:grid-cols-2">{fields.map(f => <label key={f.key}>
-          <span className="mb-1 block text-xs font-medium text-muted-foreground">{f.label}</span>
+        <div className="grid gap-3 p-4 md:grid-cols-2">{fields.map(f => { const usage = centerFieldUsage(f.key, selectedMappings, mappings.data?.inherited ?? new Map(), now); return <div key={f.key}>
+          <label><span className="mb-1 block text-xs font-medium text-muted-foreground">{f.label} {usage.isNew ? <span className="ml-1 text-primary">Mới</span> : null}</span>
           {isDateField(f.key, f.label) ? <DateField value={values[f.key] ?? ''} readOnly={!canWrite} onChange={v => onChange(f.key, v)} /> :
             <input className="input" value={values[f.key] ?? ''} readOnly={!canWrite} onChange={e => onChange(f.key,e.target.value)} />}
-        </label>)}</div>}
+          </label><details className="mt-1 text-xs text-muted-foreground"><summary className="cursor-pointer">Dùng ở {usage.symbols} ký hiệu / {usage.templates} mẫu</summary><ul className="mt-1 space-y-1">{usage.rows.map((r,i) => <li key={`${r.template_id}:${r.placeholder}:${i}`}>{r.placeholder} – {methodTemplates.find(t=>t.id===r.template_id)?.name}</li>)}</ul></details>
+        </div>; })}</div>}
     </section>
     <section className="panel">
       <header className="border-b border-border px-4 py-3"><h2 className="text-sm font-semibold">Xuất Word theo gói thầu</h2></header>

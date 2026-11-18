@@ -652,7 +652,7 @@ function TemplatesPage() {
         ))}
       </ScrollTabs> : null}
 
-      <TemplateRegionDirectory key={module} module={module} templates={templates.data ?? []} />
+      <TemplateRegionDirectory key={`${module}:${method}`} module={module} method={module === 'tender' ? method : null} templates={templates.data ?? []} />
 
       <div className="grid gap-4 2xl:grid-cols-[260px_minmax(0,1fr)]">
         <section className="panel h-fit">

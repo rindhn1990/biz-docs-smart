@@ -1,7 +1,8 @@
+import { normKey } from './template-values';
 export type DirectoryTemplate = { id: string; module: string; method?: string | null };
-export type DirectoryRegion = { id: string; template_id: string; placeholder: string; source_field: string | null };
+export type DirectoryRegion = { id: string; template_id: string; placeholder: string; source_field: string | null; label?: string | null; date_format?: string | null; value?: string | null; updated_at?: string };
 
-/** Exact Word symbols only; never merge different case or different methods implicitly. */
+/** Group configuration by normalized symbol, never implicitly across procurement methods. */
 export function scopeRegionTemplates<T extends DirectoryTemplate>(templates: readonly T[], module: string, method: string | null, allModule = false): T[] {
   return templates.filter(t => t.module === module && (module !== 'tender' || allModule || t.method === method));
 }
@@ -10,11 +11,22 @@ export function groupRegions<T extends DirectoryRegion>(regions: readonly T[], t
   const groups = new Map<string, T[]>();
   for (const region of regions) {
     if (!ids.has(region.template_id)) continue;
-    const group = groups.get(region.placeholder) ?? [];
+    const key = normKey(region.placeholder);
+    const group = groups.get(key) ?? [];
     group.push(region);
-    groups.set(region.placeholder, group);
+    groups.set(key, group);
   }
-  return [...groups].map(([key, rows]) => ({ key, rows, sourceConflict: new Set(rows.map(r => r.source_field ?? '')).size > 1 }));
+  return [...groups].map(([key, rows]) => ({ key, rows,
+    sourceConflict: new Set(rows.map(r => r.source_field ?? '')).size > 1,
+    conflict: ['source_field','label','date_format','value'].some(field => new Set(rows.map(r => r[field as keyof T] ?? '')).size > 1),
+  }));
+}
+export type RegionPatch = { label?: string; source_field?: string | null; date_format?: string | null; value?: string | null };
+export function regionGroupChanges(rows: readonly DirectoryRegion[], templates: readonly DirectoryTemplate[], symbol: string, patch: RegionPatch) {
+  const ids = new Set(templates.map(t => t.id));
+  return rows.filter(r => ids.has(r.template_id) && normKey(r.placeholder) === normKey(symbol)).map(r => ({
+    id: r.id, template_id: r.template_id, expected_updated_at: r.updated_at ?? '', ...patch,
+  }));
 }
 export function orderedWordFields<T extends { key: string }>(fields: readonly T[], keys: readonly string[]): T[] {
   const positions = new Map(keys.map((key, index) => [key, index]));
