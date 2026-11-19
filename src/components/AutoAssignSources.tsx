@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { syncRegionToData, refreshRegionData } from "@/lib/region-sync";
 import { Loader2, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,12 +34,15 @@ const VIA: Record<Proposal["via"], string> = {
 export function AutoAssignSources({
   rows,
   module,
+  templateId,
   onSaved,
 }: {
   rows: Row[];
   module: TemplateModule;
+  templateId: string;
   onSaved: () => void;
 }) {
+  const client = useQueryClient();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -74,7 +79,10 @@ export function AutoAssignSources({
         const { error } = await supabase.from("template_mappings").update({ source_field: p.key }).eq("id", p.id);
         if (error) throw error;
       }
-      toast.success(`Đã gán nguồn cho ${props.length} vùng`);
+      let messages: string[]=[];
+      try { messages=await syncRegionToData(templateId,props.map(p=>p.placeholder)); } catch(e) { toast.warning("Nguồn đã lưu; chưa bổ sung được trường hồ sơ",{description:(e as Error).message}); }
+      await refreshRegionData(client);
+      toast.success(`Đã gán nguồn cho ${props.length} vùng`,{description:messages.join("\n"),duration:10000});
       setOpen(false);
       onSaved();
     } catch (e) {

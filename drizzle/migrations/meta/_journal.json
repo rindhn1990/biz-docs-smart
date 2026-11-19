@@ -85,6 +85,20 @@
       "when": 1794965937659,
       "tag": "0011_region_group_metadata_only",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795063773708,
+      "tag": "0012_tender_center_field_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795063885090,
+      "tag": "0013_safe_tender_field_cleanup",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,7 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 - [ ] Đợt 1/2 (18/11), ưu tiên B1 → B2 → A → B3: đồng bộ cấu hình vùng đúng hồ sơ/hình thức, thông báo vùng đi đâu, gộp ký hiệu chuẩn hoá và cập nhật nguyên tử theo phạm vi, nguồn gốc/Mới dưới trường Word; kiểm thử toàn bộ và xem UI phiên hợp lệ. Không đổi ký hiệu/file Word, không dọn dữ liệu cũ.
 - [ ] Yêu cầu 17/11: lưu thứ tự trường Word theo hình thức (sau đợt 1).
+- [ ] Đợt 2/2 (19/11), sau đợt 1: D kéo thả/lên xuống và đặt lại thứ tự trường theo hình thức; C công cụ admin xem trước, chọn và xác nhận dọn trường thừa, kiểm tra lại điều kiện khi xoá; không tự xoá dữ liệu thật. Kiểm thử toàn bộ, xem UI và báo số ứng viên thực tế.
 
 - [x] Yêu cầu 16/11: email gửi thử có nhãn rõ ràng, chỉnh sửa tùy ý; sửa thông tin/email/địa chỉ nhân sự, hiển thị địa chỉ trong bảng và Excel. 190/190 tests đạt, build OK; UI lưu email/địa chỉ rồi mở lại đọc đúng, đã khôi phục dữ liệu ban đầu; email gửi thử đổi được và nút gửi tắt khi thiếu cấu hình. Không gửi thư thật; chưa thử tải Excel trong lượt này.
 

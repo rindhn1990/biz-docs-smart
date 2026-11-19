@@ -49,3 +49,14 @@ export function resetCenterValues(values: Record<string, string>, fields: readon
   for (const field of fields) out[field.key] = '';
   return out;
 }
+
+export type CenterFieldOrder = { method: string; field_key: string; sort_order: number };
+export function sortCenterFields<T extends { key: string }>(fields: readonly T[], rows: readonly CenterFieldOrder[], method: string | null): T[] {
+  const positions = new Map(rows.filter(r => r.method === method).map(r => [normKey(r.field_key), r.sort_order]));
+  return fields.map((field,index) => ({field,index})).sort((a,b) =>
+    (positions.get(normKey(a.field.key)) ?? Number.MAX_SAFE_INTEGER) - (positions.get(normKey(b.field.key)) ?? Number.MAX_SAFE_INTEGER) || a.index-b.index
+  ).map(r=>r.field);
+}
+export function centerOrderRows(method: string, keys: readonly string[], userId: string | null) {
+  return [...new Set(keys.map(normKey))].map((field_key,index)=>({method,field_key,sort_order:index+1,updated_by:userId}));
+}

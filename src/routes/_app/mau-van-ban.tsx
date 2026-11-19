@@ -53,6 +53,9 @@ import { previousDocxPath, validateDocx } from "@/lib/docx-safety";
 import { reorderedRows, tenderSourceKey } from '@/lib/tender-template-data';
 import { SIGNER_FIELDS } from '@/lib/tender-controls';
 import { TemplateRegionDirectory } from '@/components/TemplateRegionDirectory';
+import { RegionMetadataEditor, type EditRegion } from '@/components/RegionMetadataEditor';
+import { refreshRegionData, syncRegionToData } from '@/lib/region-sync';
+import type { RegionPatch } from '@/lib/region-directory';
 
 export const Route = createFileRoute("/_app/mau-van-ban")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -107,6 +110,12 @@ function TemplatesPage() {
   const [busy, setBusy] = useState<"upload" | "export" | "replace" | "delete" | null>(null);
   const [adding, setAdding] = useState(false);
   const [movingMapping, setMovingMapping] = useState(false);
+  const [regionEdit, setRegionEdit] = useState<{region: EditRegion; patch?: RegionPatch} | null>(null);
+  async function regionSaved(id: string, symbols?: string[]) {
+    try { const messages = await syncRegionToData(id, symbols); if(messages.length) toast.success("Vị trí dữ liệu vùng", {description: [...new Set(messages)].join("\n"), duration: 12000}); }
+    catch(e) { toast.warning("Cấu hình đã lưu; chưa bổ sung được trường hồ sơ", {description:(e as Error).message}); }
+    await refreshRegionData(queryClient);
+  }
   const [newPlaceholder, setNewPlaceholder] = useState("");
   const [newLabel, setNewLabel] = useState("");
   const [newSource, setNewSource] = useState("");
@@ -238,7 +247,7 @@ function TemplatesPage() {
 
       if (placeholders.length > 0) {
         const sug = await suggestForNewPlaceholders(module as TemplateModule, placeholders);
-        await supabase.from("template_mappings").insert(
+        const { error: mappingError } = await supabase.from("template_mappings").insert(
           placeholders.map((p, i) => ({
             template_id: tpl.id,
             placeholder: p,
@@ -247,8 +256,10 @@ function TemplatesPage() {
             sort_order: i + 1,
           })),
         );
+        if (mappingError) throw mappingError;
       }
 
+      await regionSaved(tpl.id, placeholders);
       return { id: tpl.id };
   }
 
@@ -278,7 +289,7 @@ function TemplatesPage() {
       toast.error("Chỗ trống này đã có trong mẫu");
       return;
     }
-    const { error } = await supabase.from("template_mappings").insert({
+    const { error } = const { error: mappingError } = await supabase.from("template_mappings").insert({
       template_id: currentId,
       placeholder,
       label: newLabel.trim() || prettifyPlaceholder(placeholder),
@@ -291,6 +302,7 @@ function TemplatesPage() {
       toast.error("Không thêm được chỗ trống", { description: error.message });
       return;
     }
+    await regionSaved(currentId, [placeholder]);
     setNewPlaceholder("");
     setNewLabel("");
     setNewSource("");
@@ -312,22 +324,13 @@ function TemplatesPage() {
     await queryClient.invalidateQueries({ queryKey: ["template_custom_fields"] });
   }
 
-  async function saveDateFormat(id: string, next: string | null) {
-    const { error } = await supabase.from("template_mappings").update({ date_format: next }).eq("id", id);
-    if (error) {
-      toast.error("Không lưu được kiểu ngày", { description: error.message });
-      return;
-    }
-    await queryClient.invalidateQueries({ queryKey: ["template_mappings"] });
-  }
-
-  async function saveSource(id: string, next: string) {
+  function editRegion(id: string, patch?: RegionPatch) {
     if (!isAdmin) return;
-    const { error } = await supabase.from('template_mappings').update({ source_field: next || null, updated_by: user?.id ?? null }).eq('id', id);
-    if (error) { toast.error('Không lưu được nguồn dữ liệu', { description: error.message }); return; }
-    await queryClient.invalidateQueries({ queryKey: ['template_mappings'] });
-    await queryClient.invalidateQueries({ queryKey: ['template_custom_fields'] });
+    const region = rows.find(r => r.id === id);
+    if (region) setRegionEdit({region,patch});
   }
+  async function saveDateFormat(id: string, next: string | null) { editRegion(id, {date_format:next}); }
+  async function saveSource(id: string, next: string) { editRegion(id, {source_field:next || null}); }
 
   async function moveMapping(from: number, to: number) {
     if (!isAdmin || movingMapping || to < 0 || to >= rows.length) return;
@@ -489,7 +492,7 @@ function TemplatesPage() {
       const removed = rows.map((r) => r.placeholder).filter((p) => !present.has(p));
       if (fresh.length > 0) {
         const sug = await suggestForNewPlaceholders(module as TemplateModule, fresh);
-        await supabase.from("template_mappings").insert(
+        const { error: mappingError } = await supabase.from("template_mappings").insert(
           fresh.map((p, i) => ({
             template_id: current.id,
             placeholder: p,
@@ -498,10 +501,11 @@ function TemplatesPage() {
             sort_order: (rows.at(-1)?.sort_order ?? 0) + i + 1,
           })),
         );
+        if (mappingError) throw mappingError;
       }
 
       await queryClient.invalidateQueries({ queryKey: ["templates"] });
-      await queryClient.invalidateQueries({ queryKey: ["template_mappings", current.id] });
+      await regionSaved(current.id, fresh);
       toast.success("Đã cập nhật file Word của mẫu", {
         description:
           fresh.length > 0 ? `Thêm ${fresh.length} chỗ trống mới.` : "Giữ nguyên các nguồn dữ liệu cũ.",
@@ -532,7 +536,7 @@ function TemplatesPage() {
       setPicking(false);
       setContentSource(null);
       await queryClient.invalidateQueries({ queryKey: ["templates"] });
-      await queryClient.invalidateQueries({ queryKey: ["template_mappings", current.id] });
+      await refreshRegionData(queryClient);
       toast.success("Đã hoàn tác lần sửa gần nhất", { description: "Nguồn dữ liệu đã khai báo vẫn được giữ lại." });
     } catch (e) {
       toast.error("Không hoàn tác được", { description: (e as Error).message });
@@ -911,9 +915,8 @@ function TemplatesPage() {
                 <AutoAssignSources
                   rows={rows}
                   module={module}
-                  onSaved={() => {
-                    void queryClient.invalidateQueries({ queryKey: ["template_mappings"] });
-                  }}
+                  templateId={currentId ?? ""}
+                  onSaved={() => { void refreshRegionData(queryClient); }}
                 />
                 <button
                   type="button"
@@ -1016,7 +1019,7 @@ function TemplatesPage() {
                       <span className="num rounded bg-muted px-1.5 py-0.5 text-xs">
                         {`${wrap[0]}${m.placeholder}${wrap[1]}`}
                       </span>
-                      <span className="mt-1 block text-xs text-muted-foreground">{m.label}</span>
+                      <span className="mt-1 block text-xs text-muted-foreground">{m.label}</span>{isAdmin ? <Button size="icon" variant="ghost" title="Sửa cấu hình vùng" aria-label={`Sửa cấu hình ${m.placeholder}`} onClick={() => editRegion(m.id)}><Pencil className="size-3.5" /></Button> : null}
                     </td>
                     <td className="num px-4 py-2.5 text-xs text-muted-foreground">
                       <select aria-label={`Nguồn dữ liệu ${m.placeholder}`} value={m.source_field ?? ''} disabled={!isAdmin}
@@ -1037,21 +1040,9 @@ function TemplatesPage() {
                         readOnly={!isAdmin}
                         title={isAdmin ? undefined : ADMIN_ONLY_NOTE}
                         placeholder="Nhập ví dụ, vd 13/KT"
-                        onBlur={async (e) => {
+                        onBlur={(e) => {
                           const next = e.target.value;
-                          if (next === (m.value ?? "")) return;
-                          const { error } = await supabase
-                            .from("template_mappings")
-                            .update({ value: next || null })
-                            .eq("id", m.id);
-                          if (error) {
-                            toast.error("Không lưu được ví dụ", { description: error.message });
-                            return;
-                          }
-                          void queryClient.invalidateQueries({ queryKey: ["template_field_examples"] });
-                          void queryClient.invalidateQueries({
-                            queryKey: ["template_mappings", currentId],
-                          });
+                          if (next !== (m.value ?? "")) { editRegion(m.id,{value:next || null}); e.target.value=m.value ?? ""; }
                         }}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30 read-only:bg-muted placeholder:text-muted-foreground placeholder:italic"
                       />
@@ -1134,6 +1125,7 @@ function TemplatesPage() {
         </section>
       </div>
 
+      {regionEdit ? <RegionMetadataEditor region={regionEdit.region} initialPatch={regionEdit.patch} module={module} method={current?.method ?? null} onClose={() => setRegionEdit(null)} /> : null}
       {picking && isAdmin && current?.source_docx_path ? (
         <TemplateRegionPicker
           templateId={current.id}
@@ -1152,7 +1144,7 @@ function TemplatesPage() {
           storagePath={current.source_docx_path}
           mappings={rows}
           onClose={() => setDetecting(false)}
-          onSaved={() => void queryClient.invalidateQueries({ queryKey: ["template_mappings"] })}
+          onSaved={() => { if(currentId) void regionSaved(currentId); }}
         />
       ) : null}
     </div>

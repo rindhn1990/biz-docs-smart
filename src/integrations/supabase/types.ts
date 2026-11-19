@@ -1608,6 +1608,30 @@ export type Database = {
           },
         ]
       }
+      tender_center_field_order: {
+        Row: {
+          field_key: string
+          method: string
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          field_key: string
+          method: string
+          sort_order: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          field_key?: string
+          method?: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       tender_contractors: {
         Row: {
           bid_received_date: string | null
@@ -2177,6 +2201,7 @@ export type Database = {
       }
     }
     Functions: {
+      cleanup_tender_fields: { Args: { _rows: Json }; Returns: string[] }
       complete_password_change: { Args: never; Returns: undefined }
       delete_hr_entity: {
         Args: { _id: string; _kind: string }
