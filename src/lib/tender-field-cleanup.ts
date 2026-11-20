@@ -23,6 +23,7 @@ export function cleanupCandidates(fields:CleanupField[],docs:CleanupDoc[],region
       const canonical=KHLCNT_FIELDS.find(f=>normKey(f.key)===key)?.key;
       // Preserve confirmed rows as well as valued rows, preferring canonical spelling then oldest.
       const keep=[...group].sort((a,b)=>Number(valued(b))-Number(valued(a))||Number(!b.needs_review)-Number(!a.needs_review)||Number(b.field_key===canonical)-Number(a.field_key===canonical)||a.created_at.localeCompare(b.created_at)||a.id.localeCompare(b.id))[0];
+      if (!keep) continue;
       for(const field of group)if(field!==keep&&safe(field))candidates.set(field.id,{field,doc,group:'duplicate',keeper:keep,reason:withValues.length?'Trùng khoá khác hoa thường; giữ dòng có dữ liệu':'Trùng khoá khác hoa thường; giữ dòng chuẩn hoặc cũ nhất'});
     }
     for(const field of rows) {

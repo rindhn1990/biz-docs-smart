@@ -289,7 +289,7 @@ function TemplatesPage() {
       toast.error("Chỗ trống này đã có trong mẫu");
       return;
     }
-    const { error } = const { error: mappingError } = await supabase.from("template_mappings").insert({
+    const { error } = await supabase.from("template_mappings").insert({
       template_id: currentId,
       placeholder,
       label: newLabel.trim() || prettifyPlaceholder(placeholder),
@@ -327,7 +327,7 @@ function TemplatesPage() {
   function editRegion(id: string, patch?: RegionPatch) {
     if (!isAdmin) return;
     const region = rows.find(r => r.id === id);
-    if (region) setRegionEdit({region,patch});
+    if (region) setRegionEdit({region, ...(patch ? {patch} : {})});
   }
   async function saveDateFormat(id: string, next: string | null) { editRegion(id, {date_format:next}); }
   async function saveSource(id: string, next: string) { editRegion(id, {source_field:next || null}); }
@@ -1125,7 +1125,7 @@ function TemplatesPage() {
         </section>
       </div>
 
-      {regionEdit ? <RegionMetadataEditor region={regionEdit.region} initialPatch={regionEdit.patch} module={module} method={current?.method ?? null} onClose={() => setRegionEdit(null)} /> : null}
+      {regionEdit ? <RegionMetadataEditor region={regionEdit.region} {...(regionEdit.patch ? {initialPatch: regionEdit.patch} : {})} module={module} method={current?.method ?? null} onClose={() => setRegionEdit(null)} /> : null}
       {picking && isAdmin && current?.source_docx_path ? (
         <TemplateRegionPicker
           templateId={current.id}
