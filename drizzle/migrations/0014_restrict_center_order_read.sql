@@ -1,0 +1,2 @@
+DROP POLICY IF EXISTS center_order_read ON public.tender_center_field_order;
+CREATE POLICY center_order_read ON public.tender_center_field_order FOR SELECT TO authenticated USING (private.can_tender(auth.uid()));
