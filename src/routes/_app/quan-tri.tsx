@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/PageHeader";
 import { Switch } from "@/components/ui/switch";
+import { adminSetPassword } from "@/lib/admin-password.functions";
 import { ROLE_LABELS, type AppRole } from "@/lib/domain";
 
 const ROLE_HELP: Record<AppRole, string> = {
@@ -108,6 +109,24 @@ function RolesPage() {
     }
   }
 
+  async function resetPassword(userId: string, email: string | null) {
+    const sets = ["ABCDEFGHJKLMNPQRSTUVWXYZ", "abcdefghijkmnpqrstuvwxyz", "23456789", "!@#$%&*?"];
+    const pick = (x: string) => x[crypto.getRandomValues(new Uint32Array(1))[0]! % x.length]!;
+    const suggested = [...sets.map(pick), ...Array.from({ length: 6 }, () => pick(sets.join("")))].join("");
+    const pwd = window.prompt(`Mật khẩu mới cho ${email ?? userId} (tối thiểu 8 ký tự). Người dùng sẽ phải đổi ở lần đăng nhập tới:`, suggested);
+    if (!pwd) return;
+    if (pwd.length < 8) return void toast.error("Mật khẩu cần tối thiểu 8 ký tự");
+    setSaving(userId);
+    try {
+      await adminSetPassword({ data: { userId, password: pwd } });
+      toast.success("Đã đặt mật khẩu mới", { description: `Bàn giao cho ${email ?? "người dùng"}: ${pwd}`, duration: 30000 });
+    } catch (e) {
+      toast.error("Không đặt được mật khẩu", { description: (e as Error).message });
+    } finally {
+      setSaving(null);
+    }
+  }
+
   if (!isAdmin) {
     return (
       <div>
@@ -159,6 +178,7 @@ function RolesPage() {
                 <th className="px-4 py-2.5 font-medium">Đấu thầu</th>
                 <th className="px-4 py-2.5 font-medium">Hợp đồng nhân sự</th>
                 <th className="px-4 py-2.5 font-medium">Trạng thái</th>
+                <th className="px-4 py-2.5 font-medium">Mật khẩu</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -209,11 +229,21 @@ function RolesPage() {
                       </span>
                     </div>
                   </td>
+                  <td className="px-4 py-2.5">
+                    <button
+                      type="button"
+                      disabled={saving === p.id}
+                      onClick={() => void resetPassword(p.id, p.email)}
+                      className="rounded-md border border-input px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+                    >
+                      Đặt lại mật khẩu
+                    </button>
+                  </td>
                 </tr>
               ))}
               {people.isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                     Đang tải…
                   </td>
                 </tr>
