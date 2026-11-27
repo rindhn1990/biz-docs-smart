@@ -11,7 +11,7 @@
 
 ## Architecture decisions
 
-- Employee edits load authoritative employee values when opened and use a shared browser-safe patch helper; contact address stays separate from hometown and email changes remain admin-only in the UI.
+- app_TMDT exposes only tender/procurement workflows; employee contracts and salary notifications belong to the separate HR project, while existing HR data remains untouched when those app features are removed.
 
 - Word input fields follow the tender's ordered template list then region sort_order, deduplicating shared sources; per-tender in-memory snapshot history handles typing undo/redo without writing until save and resets on discard/reset or a different loaded snapshot.
 

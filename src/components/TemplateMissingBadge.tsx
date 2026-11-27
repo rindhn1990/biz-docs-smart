@@ -9,7 +9,7 @@ import { tenderMappings } from '@/lib/tender-template-data';
  * Đếm vùng sẽ thực sự ra trống khi xuất: chưa có nguồn
  * và không tự khớp tên/kế thừa nguồn được. Bấm để mở mẫu trong kho.
  */
-export function TemplateMissingBadge({ templateId, module }: { templateId: string; module: "tender" | "hr" | "payment" | "notice" }) {
+export function TemplateMissingBadge({ templateId, module }: { templateId: string; module: "tender" | "payment" | "notice" }) {
   const q = useQuery({
     queryKey: ["template_mappings", "missing", templateId],
     queryFn: async () => {

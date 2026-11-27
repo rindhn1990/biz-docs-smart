@@ -8,7 +8,6 @@ import { docxToHtml, replacePhraseWithToken, type DelimiterStyle } from "@/lib/d
 import { recallTemplateBuffer, rememberTemplateBuffer } from "@/lib/template-cache";
 import { saveTemplateFile } from "@/lib/template-file-save";
 import { KHLCNT_FIELDS } from "@/lib/khlcnt";
-import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
 import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
 import { NOTICE_TEMPLATE_FIELDS } from "@/lib/notice";
 import { SIGNER_FIELDS, suggestionsForModule } from '@/lib/tender-controls';
@@ -87,7 +86,7 @@ type Props = {
   style: DelimiterStyle;
   onClose: () => void;
   onSaved: () => void;
-  module: "tender" | "hr" | "payment" | "notice";
+  module: "tender" | "payment" | "notice";
 };
 
 /** Xem trước nội dung file Word và bôi đen từng vùng để biến thành chỗ trống dữ liệu. */
@@ -102,11 +101,9 @@ export function TemplateRegionPicker({
 }: Props) {
   const queryClient = useQueryClient();
   const sourceFields =
-    module === "hr"
-      ? HR_TEMPLATE_FIELDS
-      : module === "payment"
-        ? PAYMENT_TEMPLATE_FIELDS
-        : module === "notice" ? NOTICE_TEMPLATE_FIELDS : [...KHLCNT_FIELDS, ...SIGNER_FIELDS];
+    module === "payment"
+      ? PAYMENT_TEMPLATE_FIELDS
+      : module === "notice" ? NOTICE_TEMPLATE_FIELDS : [...KHLCNT_FIELDS, ...SIGNER_FIELDS];
   const wrap: [string, string] = style === "square" ? ["[[", "]]"] : ["{{", "}}"];
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -184,7 +181,6 @@ export function TemplateRegionPicker({
 
   const MODULE_NAMES: Record<string, string> = {
     tender: "Đấu thầu",
-    hr: "Hợp đồng nhân sự",
     payment: "Thanh toán",
     notice: "Thông báo nhà thầu",
   };

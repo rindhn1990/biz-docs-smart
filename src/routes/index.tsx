@@ -3,7 +3,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
     { title: "OfficeFlow — Quản lý văn phòng doanh nghiệp" },
-    { name: "description", content: "Quản lý hồ sơ, đấu thầu và hợp đồng nhân sự trong OfficeFlow." },
+    { name: "description", content: "Quản lý hồ sơ, gói thầu, hợp đồng và thanh toán trong OfficeFlow." },
     { property: "og:title", content: "OfficeFlow — Quản lý văn phòng doanh nghiệp" },
     { property: "og:description", content: "Không gian quản lý hồ sơ và hợp đồng doanh nghiệp." },
     { property: "og:type", content: "website" },

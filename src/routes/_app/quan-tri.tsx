@@ -14,7 +14,7 @@ const ROLE_HELP: Record<AppRole, string> = {
   admin: "Xem và sửa toàn bộ; là vai trò duy nhất được xoá dữ liệu, chỉnh sửa mẫu văn bản, quy trình mẫu và phân quyền.",
   manager: "Xem toàn bộ; nhập, sửa và duyệt dữ liệu gói thầu, hồ sơ, hợp đồng, thanh toán. Không được xoá.",
   commercial: "Xem toàn bộ; nhập và sửa gói thầu, hồ sơ đấu thầu, nhà thầu, xuất văn bản. Không được xoá.",
-  contract: "Xem toàn bộ; nhập và sửa hợp đồng, hợp đồng nhân sự, xuất văn bản. Không được xoá.",
+  contract: "Xem toàn bộ; nhập và sửa hợp đồng, xuất văn bản. Không được xoá.",
   payment: "Xem toàn bộ; nhập và sửa các đợt thanh toán, xuất văn bản thanh toán. Không được xoá.",
   viewer: "Chỉ xem dữ liệu và xem trước văn bản; không nhập, sửa hay xoá.",
 };
@@ -50,7 +50,7 @@ function RolesPage() {
     enabled: isAdmin,
     queryFn: async () => {
       const [{ data: profiles, error }, { data: roles }] = await Promise.all([
-        supabase.from("profiles").select("id,email,full_name,department,is_active,can_access_tender,can_access_hr").order("email"),
+        supabase.from("profiles").select("id,email,full_name,department,is_active,can_access_tender").order("email"),
         supabase.from("user_roles").select("user_id,role"),
       ]);
       if (error) throw error;
@@ -79,10 +79,10 @@ function RolesPage() {
     }
   }
 
-  async function setModule(userId: string, col: "can_access_tender" | "can_access_hr", v: boolean) {
+  async function setTenderAccess(userId: string, v: boolean) {
     setSaving(userId);
     try {
-      const { error } = await supabase.from("profiles").update(col === "can_access_tender" ? { can_access_tender: v } : { can_access_hr: v }).eq("id", userId);
+      const { error } = await supabase.from("profiles").update({ can_access_tender: v }).eq("id", userId);
       if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: ["admin", "people"] });
       toast.success("Đã cập nhật quyền phân hệ");
@@ -160,7 +160,7 @@ function RolesPage() {
           ))}
         </ul>
         <p className="border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
-          Chỉ quản trị viên được xoá dữ liệu. Quyền phân hệ (Đấu thầu / Hợp đồng nhân sự) cấp riêng theo từng tài khoản; quản trị viên luôn dùng được cả hai.
+          Chỉ quản trị viên được xoá dữ liệu. Quyền phân hệ Đấu thầu được cấp riêng theo từng tài khoản; quản trị viên luôn có quyền này.
         </p>
       </section>
       <section className="panel">
@@ -176,7 +176,6 @@ function RolesPage() {
                 <th className="px-4 py-2.5 font-medium">Họ tên</th>
                 <th className="px-4 py-2.5 font-medium">Vai trò</th>
                 <th className="px-4 py-2.5 font-medium">Đấu thầu</th>
-                <th className="px-4 py-2.5 font-medium">Hợp đồng nhân sự</th>
                 <th className="px-4 py-2.5 font-medium">Trạng thái</th>
                 <th className="px-4 py-2.5 font-medium">Mật khẩu</th>
               </tr>
@@ -206,16 +205,14 @@ function RolesPage() {
                       ))}
                     </select>
                   </td>
-                  {(["can_access_tender", "can_access_hr"] as const).map((col) => (
-                    <td key={col} className="px-4 py-2.5">
-                      <Switch
-                        checked={p.roles.includes("admin") || p[col] !== false}
-                        disabled={saving === p.id || p.roles.includes("admin")}
-                        onCheckedChange={(v) => void setModule(p.id, col, v)}
-                        aria-label={`Quyền ${col === "can_access_tender" ? "Đấu thầu" : "Hợp đồng nhân sự"} của ${p.email ?? p.id}`}
-                      />
-                    </td>
-                  ))}
+                  <td className="px-4 py-2.5">
+                    <Switch
+                      checked={p.roles.includes("admin") || p.can_access_tender !== false}
+                      disabled={saving === p.id || p.roles.includes("admin")}
+                      onCheckedChange={(v) => void setTenderAccess(p.id, v)}
+                      aria-label={`Quyền Đấu thầu của ${p.email ?? p.id}`}
+                    />
+                  </td>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2">
                       <Switch
@@ -243,7 +240,7 @@ function RolesPage() {
               ))}
               {people.isLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                     Đang tải…
                   </td>
                 </tr>

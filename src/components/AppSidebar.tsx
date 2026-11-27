@@ -10,28 +10,23 @@ import {
   FolderOpen,
   Settings,
   Lock,
-  Users,
-  
-  IdCard,
   ShieldCheck,
   Workflow,
   Handshake,
   Receipt,
   History,
-  Table2,
-  Mail,
   Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { allowedModuleTabs, currentModule } from "@/components/ModuleTabs";
+import { allowedModuleTabs } from "@/components/ModuleTabs";
 
 type ActiveItem = {
   to: string;
   label: string;
   icon: React.ElementType;
   locked?: false;
-  search?: { module: "tender" | "hr" };
+  search?: { module: "tender" };
 };
 type LockedItem = { label: string; icon: React.ElementType; locked: true };
 type Item = ActiveItem | LockedItem;
@@ -65,31 +60,12 @@ const tenderGroups: { title: string; items: Item[] }[] = [
   lockedGroup,
 ];
 
-const hrGroups: { title: string; items: Item[] }[] = [
-  {
-    title: "Hợp đồng nhân sự",
-    items: [
-      { to: "/nhan-su", label: "Hồ sơ nhân sự", icon: IdCard },
-      { to: "/nhan-su/hop-dong", label: "Hợp đồng nhân sự", icon: Users },
-      { to: "/nhan-su/du-lieu", label: "Dữ liệu nhân sự", icon: Table2 },
-      { to: "/mau-van-ban", label: "Mẫu văn bản", icon: FileText, search: { module: "hr" } },
-    ],
-  },
-  lockedGroup,
-];
-
 export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const location = useRouterState({ select: (s) => s.location });
   const pathname = location.pathname;
-  const activeModule = currentModule(pathname, (location.search as { module?: unknown }).module);
-  const { isAdmin, canTender, canHr } = useAuth();
-  const tabs = allowedModuleTabs(canTender, canHr, isAdmin);
-  const effModule = activeModule === "nhan-su" ? (canHr ? "nhan-su" : "dau-thau") : canTender ? "dau-thau" : "nhan-su";
-  const hrItems: Item[] = isAdmin
-    ? [...hrGroups[0]!.items, { to: "/nhan-su/thong-bao-luong", label: "Thông báo lương", icon: Mail }]
-    : hrGroups[0]!.items;
-  const effHrGroups = [{ ...hrGroups[0]!, items: hrItems }, ...hrGroups.slice(1)];
-  const baseGroups = !canTender && !canHr ? [] : effModule === "nhan-su" ? effHrGroups : tenderGroups;
+  const { isAdmin, canTender } = useAuth();
+  const tabs = allowedModuleTabs(canTender);
+  const baseGroups = canTender ? tenderGroups : [];
   const groups = isAdmin
     ? [
         ...baseGroups,
@@ -131,7 +107,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
               onClick={onNavigate}
               className={cn(
                 "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
-                tab.key === effModule
+                tab.key === "dau-thau"
                   ? "bg-sidebar-primary font-medium text-sidebar-primary-foreground"
                   : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
               )}
@@ -168,10 +144,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
                     </li>
                   );
                 }
-                const active =
-                  item.to === "/nhan-su"
-                    ? pathname === "/nhan-su" || /^\/nhan-su\/(?!hop-dong$|du-lieu$|thong-bao-luong$)/.test(pathname)
-                    : pathname === item.to || pathname.startsWith(`${item.to}/`);
+                const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
                 return (
                   <li key={item.to}>
                     <Link

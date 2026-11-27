@@ -1,6 +1,5 @@
 import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { ShieldAlert, Clock, Loader2, LogOut, PanelLeft, UserRound } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { ForceChangePassword } from "@/components/ForceChangePassword";
@@ -19,14 +18,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ROLE_LABELS } from "@/lib/domain";
-import { TENDER_PATHS } from "@/components/ModuleTabs";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
 });
 
 function AppLayout() {
-  const { loading, session, profile, roles, isActive, mustChangePassword, refresh, signOut, canTender, canHr } = useAuth();
+  const { loading, session, profile, roles, isActive, mustChangePassword, refresh, signOut, canTender } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
@@ -203,42 +201,24 @@ function AppLayout() {
         <ReminderBanner />
 
         <main className="min-w-0 flex-1 p-4 md:p-6">
-          {(() => {
-            const inHr = pathname === "/nhan-su" || pathname.startsWith("/nhan-su/");
-            const inTender = TENDER_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-            const blocked = (inHr && !canHr) || (inTender && !canTender);
-            if (!canTender && !canHr) {
-              return <NoAccess message="Tài khoản chưa được cấp quyền sử dụng phân hệ nào. Vui lòng liên hệ quản trị viên." />;
-            }
-            if (blocked) {
-              return (
-                <NoAccess
-                  message={`Bạn không có quyền truy cập phân hệ ${inHr ? "Hợp đồng nhân sự" : "Đấu thầu"}.`}
-                  to={inHr ? "/tong-quan" : "/nhan-su"}
-                  toLabel={inHr ? "Về phân hệ Đấu thầu" : "Về phân hệ Hợp đồng nhân sự"}
-                />
-              );
-            }
-            return <Outlet />;
-          })()}
+          {canTender ? (
+            <Outlet />
+          ) : (
+            <NoAccess message="Tài khoản chưa được cấp quyền sử dụng phân hệ Đấu thầu. Vui lòng liên hệ quản trị viên." />
+          )}
         </main>
       </div>
     </div>
   );
 }
 
-function NoAccess({ message, to, toLabel }: { message: string; to?: "/tong-quan" | "/nhan-su"; toLabel?: string }) {
+function NoAccess({ message }: { message: string }) {
   return (
     <div className="panel mx-auto mt-10 max-w-md space-y-4 p-6 text-center">
       <div className="mx-auto grid size-11 place-items-center rounded-full bg-muted">
         <ShieldAlert className="size-5 text-muted-foreground" />
       </div>
       <p className="text-sm">{message}</p>
-      {to ? (
-        <Button asChild variant="outline">
-          <Link to={to}>{toLabel}</Link>
-        </Button>
-      ) : null}
     </div>
   );
 }

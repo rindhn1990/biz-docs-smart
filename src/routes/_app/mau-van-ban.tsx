@@ -41,7 +41,6 @@ import {
   type DelimiterStyle,
 } from "@/lib/docx";
 import { KHLCNT_FIELDS } from "@/lib/khlcnt";
-import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
 import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
 import { NOTICE_TEMPLATE_FIELDS } from "@/lib/notice";
 import { DEFAULT_METHOD, TENDER_METHODS, type TenderMethod } from "@/lib/methods";
@@ -60,11 +59,9 @@ import type { RegionPatch } from '@/lib/region-directory';
 export const Route = createFileRoute("/_app/mau-van-ban")({
   validateSearch: (search: Record<string, unknown>) => ({
     module:
-      search["module"] === "hr"
-        ? ("hr" as const)
-        : search["module"] === "payment"
-          ? ("payment" as const)
-          : search["module"] === "notice" ? ("notice" as const) : ("tender" as const),
+      search["module"] === "payment"
+        ? ("payment" as const)
+        : search["module"] === "notice" ? ("notice" as const) : ("tender" as const),
     tpl: typeof search["tpl"] === "string" ? (search["tpl"] as string) : undefined,
   }),
   head: () => ({
@@ -179,11 +176,9 @@ function TemplatesPage() {
     queryFn: () => loadInheritedSources(module),
   });
   const sourceFields =
-    module === "hr"
-      ? HR_TEMPLATE_FIELDS
-      : module === "payment"
-        ? PAYMENT_TEMPLATE_FIELDS
-        : module === "notice" ? NOTICE_TEMPLATE_FIELDS : [...KHLCNT_FIELDS, ...SIGNER_FIELDS.map(f => ({...f, group:'Khác' as const, value:'', conf:0.3}))];
+    module === "payment"
+      ? PAYMENT_TEMPLATE_FIELDS
+      : module === "notice" ? NOTICE_TEMPLATE_FIELDS : [...KHLCNT_FIELDS, ...SIGNER_FIELDS.map(f => ({...f, group:'Khác' as const, value:'', conf:0.3}))];
   const sourceOptions = [...sourceFields];
   for (const row of rows) {
     const key = row.source_field || (module === 'tender' ? tenderSourceKey(row.placeholder) : row.placeholder);
@@ -569,11 +564,9 @@ function TemplatesPage() {
       <PageHeader
         title="Mẫu văn bản"
         description={
-          module === "hr"
-            ? "Kho mẫu Word dành riêng cho hồ sơ và hợp đồng nhân sự."
-            : module === "payment"
-              ? "Kho mẫu Word dành riêng cho hồ sơ thanh toán, dữ liệu lấy từ thông tin nhà thầu."
-              : module === "notice" ? "Mẫu thông báo nhà thầu." : "Chọn hình thức lựa chọn nhà thầu, rồi tải một hoặc nhiều mẫu Word lên."
+          module === "payment"
+            ? "Kho mẫu Word dành riêng cho hồ sơ thanh toán, dữ liệu lấy từ thông tin nhà thầu."
+            : module === "notice" ? "Mẫu thông báo nhà thầu." : "Chọn hình thức lựa chọn nhà thầu, rồi tải một hoặc nhiều mẫu Word lên."
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
@@ -627,7 +620,7 @@ function TemplatesPage() {
       />
 
       <div className="mb-4 flex flex-wrap gap-2" aria-label="Kho mẫu theo phân hệ">
-        {([['tender', 'Đấu thầu'], ['payment', 'Thanh toán'], ['notice', 'Thông báo nhà thầu'], ['hr', 'Nhân sự']] as const).map(([key, label]) => <Button key={key} variant={module === key ? 'secondary' : 'outline'} size="sm" onClick={() => void navigate({ to: '/mau-van-ban', search: {module:key, tpl:undefined} })}>{label}</Button>)}
+        {([['tender', 'Đấu thầu'], ['payment', 'Thanh toán'], ['notice', 'Thông báo nhà thầu']] as const).map(([key, label]) => <Button key={key} variant={module === key ? 'secondary' : 'outline'} size="sm" onClick={() => void navigate({ to: '/mau-van-ban', search: {module:key, tpl:undefined} })}>{label}</Button>)}
       </div>
       {module === "tender" ? <ScrollTabs
         role="tablist"

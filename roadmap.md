@@ -5,6 +5,9 @@ Nguyên tắc: không sửa code khi chưa chốt hạng mục; ưu tiên module
 
 ## Trạng thái hiện tại (đã có)
 
+- [x] Tách app 27/11: đã bỏ toàn bộ phân hệ Nhân sự khỏi app_TMDT; giữ nguyên dữ liệu; 209 tests, tsgo, build và UI menu/mẫu/phân quyền/đường dẫn cũ đều đạt.
+- [ ] Tách app 27/11: bỏ phân hệ Đấu thầu khỏi app HR. Đang bị chặn vì công cụ liên dự án chỉ cho đọc bản sao; cần mở dự án HR để chỉnh trực tiếp.
+
 - [ ] Đợt 1/2 (18/11), ưu tiên B1 → B2 → A → B3: đồng bộ cấu hình vùng đúng hồ sơ/hình thức, thông báo vùng đi đâu, gộp ký hiệu chuẩn hoá và cập nhật nguyên tử theo phạm vi, nguồn gốc/Mới dưới trường Word; kiểm thử toàn bộ và xem UI phiên hợp lệ. Không đổi ký hiệu/file Word, không dọn dữ liệu cũ.
 - [ ] Yêu cầu 17/11: lưu thứ tự trường Word theo hình thức (sau đợt 1).
 - [ ] Đợt 2/2 (19/11), sau đợt 1: D kéo thả/lên xuống và đặt lại thứ tự trường theo hình thức; C công cụ admin xem trước, chọn và xác nhận dọn trường thừa, kiểm tra lại điều kiện khi xoá; không tự xoá dữ liệu thật. Kiểm thử toàn bộ, xem UI và báo số ứng viên thực tế.

@@ -89,7 +89,8 @@ function AuthPage() {
 
   useEffect(() => {
     if (!loading && session) {
-      void navigate({ to: next && next.startsWith("/") ? next : "/tong-quan" });
+      const destination = next && next.startsWith("/") && !next.startsWith("/nhan-su") ? next : "/tong-quan";
+      void navigate({ to: destination });
     }
   }, [loading, session, navigate, next]);
 

@@ -1,6 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
 import { KHLCNT_FIELDS } from "@/lib/khlcnt";
-import { HR_TEMPLATE_FIELDS } from "@/lib/hr";
 import { PAYMENT_TEMPLATE_FIELDS } from "@/lib/payment";
 import { NOTICE_TEMPLATE_FIELDS } from "@/lib/notice";
 import { normKey, type MappingLike } from "./template-values";
@@ -8,12 +7,12 @@ import { tenderSourceKey } from './tender-template-data';
 import { SIGNER_FIELDS } from './tender-controls';
 export { normKey, fillMappings, applyMappingDateFormats } from "./template-values";
 
-export type TemplateModule = "tender" | "hr" | "payment" | "notice";
+export type TemplateModule = "tender" | "payment" | "notice";
 
 /** Chuẩn hoá tên vùng/trường để so khớp: bỏ dấu, chữ thường, bỏ khoảng trắng, gạch dưới, gạch ngang. */
 
 export function moduleSourceFields(module: TemplateModule): readonly { key: string; label: string }[] {
-  return module === "hr" ? HR_TEMPLATE_FIELDS : module === "payment" ? PAYMENT_TEMPLATE_FIELDS : module === "notice" ? NOTICE_TEMPLATE_FIELDS : [...KHLCNT_FIELDS, ...SIGNER_FIELDS];
+  return module === "payment" ? PAYMENT_TEMPLATE_FIELDS : module === "notice" ? NOTICE_TEMPLATE_FIELDS : [...KHLCNT_FIELDS, ...SIGNER_FIELDS];
 }
 
 /**
